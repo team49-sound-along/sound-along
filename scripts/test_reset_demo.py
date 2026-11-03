@@ -93,3 +93,32 @@ def test_apply_leaves_no_temp_file_behind(tmp_path):
     make(tmp_path)
     r.apply(tmp_path, r.plan(tmp_path))
     assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_a_translation_of_a_deleted_teacher_passage_is_deleted_too_but_a_sample_translation_is_kept(tmp_path):
+    make(tmp_path)
+    gen = "0e8b1b1e-0000-4000-8000-000000000002"      # teacher-generated
+    sample = "0e8b1b1e-0000-4000-8000-000000000001"   # built-in sample
+    t_gen, t_sample = "0e8b1b1e-0000-5000-8000-0000000000a1", "0e8b1b1e-0000-5000-8000-0000000000a2"
+    for tid, source in ((t_gen, gen), (t_sample, sample)):
+        (tmp_path / f"{tid}.timing.json").write_text(json.dumps({"id": tid, "translationOf": {"id": source, "lang": "en", "sentenceMap": [0]}}))
+        (tmp_path / f"{tid}.mp3").write_text("a")
+        (tmp_path / f"{tid}.cards.json").write_text("{}")
+        (tmp_path / f"{tid}.place-x-12345678.jpg").write_text("p")
+        (tmp_path / f"{tid}.word-y-12345678.png").write_text("w")
+    samples = tmp_path / "samples"
+    samples.mkdir()
+    (samples / f"{sample}.json").write_text("{}")
+    names = {p.name for p in r.plan(tmp_path, samples)["files"]}
+    assert f"{t_gen}.mp3" in names and f"{t_gen}.timing.json" in names and f"{t_gen}.place-x-12345678.jpg" in names and f"{t_gen}.word-y-12345678.png" in names
+    assert not any(n.startswith(t_sample) for n in names)
+    r.apply(tmp_path, r.plan(tmp_path, samples))
+    assert not (tmp_path / f"{t_gen}.mp3").exists() and (tmp_path / f"{t_sample}.mp3").exists()
+
+
+def test_a_translation_pointing_at_a_missing_source_is_also_removed(tmp_path):
+    make(tmp_path)
+    orphan = "0e8b1b1e-0000-5000-8000-0000000000b1"
+    (tmp_path / f"{orphan}.timing.json").write_text(json.dumps({"id": orphan, "translationOf": {"id": "0e8b1b1e-9999-4000-8000-000000000000"}}))
+    (tmp_path / f"{orphan}.mp3").write_text("a")
+    assert f"{orphan}.mp3" in {p.name for p in r.plan(tmp_path, tmp_path / "none")["files"]}

@@ -5,7 +5,8 @@
 
 Cleared:  the play / word-tap / completion counters, assignments, blind-test ratings, and every passage a teacher generated
           (its audio, timing, cards and raw input).
-Kept:     the built-in sample passages, settings, pronunciation fixes, dismissed review items, the listening-test clips.
+          translations of those passages (they have no raw/ file, so they are found by the link in their timing file).
+Kept:     the built-in sample passages and their translations, settings, pronunciation fixes, dismissed review items, the listening-test clips.
 Standard library only.
 """
 from __future__ import annotations
@@ -46,6 +47,15 @@ def pair_id(timing_file: Path) -> str | None:
     return value if isinstance(value, str) else None
 
 
+def _translation_source(timing_file: Path) -> str | None:
+    """The source passage id of a translation (timing.translationOf.id), or None."""
+    try:
+        link = json.loads(timing_file.read_text(encoding="utf-8")).get("translationOf")
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return None
+    return link.get("id") if isinstance(link, dict) and isinstance(link.get("id"), str) else None
+
+
 def plan(data: Path, samples: Path = SAMPLES) -> dict:
     """What a reset would do, computed without touching anything."""
     state_file = data / "state.json"
@@ -60,7 +70,17 @@ def plan(data: Path, samples: Path = SAMPLES) -> dict:
         pair = pair_id(data / f"{i}.timing.json")
         if pair and UUID.match(pair) and pair not in built_in and pair not in wanted:
             wanted.append(pair)
-    files = [p for i in wanted for p in [data / "raw" / f"{i}.json", *(data / f"{i}{s}" for s in GENERATED_SUFFIXES)] if p.exists()]
+    doomed = set(wanted)
+    for timing in sorted(data.glob("*.timing.json")):  # translations have no raw/ file: remove those whose source is deleted or missing
+        tid = timing.name.removesuffix(".timing.json")
+        if tid in doomed or not UUID.match(tid) or tid in built_in:
+            continue
+        link = _translation_source(timing)
+        if link and (link in doomed or (link not in built_in and not (data / f"{link}.timing.json").exists())):
+            wanted.append(tid)
+            doomed.add(tid)
+    files = [p for i in wanted for p in [data / "raw" / f"{i}.json", *(data / f"{i}{s}" for s in GENERATED_SUFFIXES),
+                                         *sorted(data.glob(f"{i}.place-*")), *sorted(data.glob(f"{i}.word-*"))] if p.exists()]
     return {
         "events": state.get("events", ZERO_EVENTS),
         "assignments": len(state.get("assignments", [])),
