@@ -85,6 +85,22 @@ export async function passageIndex(fetchFn = globalThis.fetch) {
   return api.passages();
 }
 
+/**
+ * Word and place cards: a static JSON document next to the timing file (docs/CARDS.md), like the rest of the content.
+ * Cards are optional, so a missing, offline or malformed document gives null and the reader uses the passage vocabulary.
+ */
+export async function fetchCards(id, fetchFn = globalThis.fetch) {
+  try {
+    const res = await fetchFn(`/data/${encodeURIComponent(id)}.cards.json`);
+    if (!res.ok) return null;
+    const doc = await res.json();
+    const isMap = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+    return isMap(doc) ? { words: isMap(doc.words) ? doc.words : {}, places: isMap(doc.places) ? doc.places : {} } : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Static timing file (not enveloped). */
 export async function fetchTiming(id) {
   let res;
