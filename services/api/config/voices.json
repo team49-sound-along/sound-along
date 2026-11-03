@@ -1,22 +1,7 @@
 [
  {
   "id": "af_heart",
-  "label": "Heart (US female, grade A)",
-  "lang": "en"
- },
- {
-  "id": "af_bella",
-  "label": "Bella (US female, grade A-)",
-  "lang": "en"
- },
- {
-  "id": "af_nicole",
-  "label": "Nicole (US female, grade B-)",
-  "lang": "en"
- },
- {
-  "id": "bf_emma",
-  "label": "Emma (UK female, grade B-)",
+  "label": "Heart (US female)",
   "lang": "en"
  },
  {

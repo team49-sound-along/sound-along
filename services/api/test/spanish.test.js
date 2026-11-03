@@ -15,8 +15,8 @@ const ID = "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98";
 
 describe("voices.json", () => {
   const voices = loadVoices();
-  test("only the four B- or better English voices and the three Spanish voices, every entry with a lang", () => {
-    assert.deepEqual(voices.filter((v) => v.lang === "en").map((v) => v.id), ["af_heart", "af_bella", "af_nicole", "bf_emma"]);
+  test("the one English voice that passed listening and the three Spanish voices, every entry with a lang", () => {
+    assert.deepEqual(voices.filter((v) => v.lang === "en").map((v) => v.id), ["af_heart"]);
     assert.ok(voices.every((v) => v.id && v.label && ["en", "es"].includes(v.lang)));
     assert.deepEqual(voices.filter((v) => v.lang === "es"), [
       { id: "ef_dora", label: "Dora (Spanish female, not graded)", lang: "es" },
@@ -58,7 +58,7 @@ describe("voiceEs settings", async () => {
   });
 
   test("helpers: patch keeps only sent fields and merge never mutates", () => {
-    assert.deepEqual(parseSettingsPatch({ voiceEs: "em_santa", voice: "bf_emma" }, loadVoices()), { voiceEs: "em_santa", voice: "bf_emma" });
+    assert.deepEqual(parseSettingsPatch({ voiceEs: "em_santa", voice: "af_heart" }, loadVoices()), { voiceEs: "em_santa", voice: "af_heart" });
     const cur = Object.freeze({ voice: "af_heart", speed: 1, mp3Kbps: 48 });
     assert.equal(mergeSettings(cur, {}).voiceEs, "ef_dora");
   });

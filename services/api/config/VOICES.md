@@ -17,3 +17,11 @@ Phonon 31M-en (gradium/phonon-31m-en, Apache-2.0, `ptts` package) is the licence
 automatic checks, but nobody has listened to it, and adding it grows the generator image. Offer it only after the blind
 audition (8 clips, see the team notes) puts it above the Kokoro voices. Its Spanish models are CC BY-NC 4.0 and gated, so they
 cannot be used here.
+
+## Listening results (blind, 8 clips, 2 reviewers, 2026-11-03)
+Both reviewers sent the same clips back in the same order, so the result is consistent but small (n=2, one 53-word passage).
+- **Robotic / shrill / creepy, so removed:** af_bella, bf_emma, af_nicole (reviewer 1 called Nicole "a bit creepy", reviewer 2 "the worst").
+- **Kept:** af_heart ranked first by both reviewers.
+- **Also rated well:** Phonon Everly and Hadley (top 3 for both). Phonon Spencer was called human but with a strong British accent.
+- **ReadWorks' human clip** was rated "not good" by one reviewer (more treble, male voice, recording noise), so it is not a gold standard.
+- Phonon is English only here (Spanish models are non-commercial), and it is not wired in yet.

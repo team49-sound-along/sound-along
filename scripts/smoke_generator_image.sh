@@ -13,7 +13,7 @@ assert result.words, 'no words produced'
 assert result.unaligned_words == 0, f'{result.unaligned_words} unaligned words'
 assert [w['text'] for w in result.words][2:4] == ['were', 'good—'], 'em-dash was not split'
 # every selectable voice must be baked in, and the recognizer must run offline too
-for voice in ('af_bella', 'bf_emma'):
+for voice in ('af_heart',):
     out = create_engine('kokoro', settings={'voice': voice}).synthesize('Hello there.')
     assert len(out.audio) > 0, voice
 from asr_words import resample_to_16k, transcribe
