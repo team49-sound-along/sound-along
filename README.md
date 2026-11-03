@@ -23,7 +23,7 @@ Browser (Vue 3) -> CloudFront (OAC) -+- /app/*  -> S3 (static web app)
 API Lambda -> Step Functions -> Generator Lambda (container, arm64, Kokoro and Phonon baked in, no internet needed)
                                   parse -> synthesize per sentence -> align words -> master audio -> publish to S3
 ```
-Details: `docs/AWS.md` (AWS contract), `docs/API.md` (HTTP contract), `docs/FORMAT.md` (file format for ReadWorks' frontend), `docs/COST.md` (long-run cost), `docs/DEPLOY.md` (deploy-day runbook), `infra/README.md` (infrastructure).
+Details: `infra/README.md` (infrastructure).
 
 ## Run it locally (no AWS needed)
 Prerequisites: Python 3.12 for local development only (Kokoro supports Python 3.10 to 3.12; the deployed generator image runs the required Python 3.14), Node 18 or newer (the customer requires 18.x; see `.nvmrc`), and `uv`. No ffmpeg is needed.
@@ -35,7 +35,7 @@ Rebuild every sample and every measured number from scratch (about 3 minutes, pl
 Tests: `cd services/parse && ../../.venv/bin/python -m pytest` (same for `synth`, `eval`, `generator`, `scripts`), `cd services/api && npm test`, `cd web && npm test`, and for the infrastructure (Python) `cd infra && python -m pytest`.
 
 ## Deploy to AWS
-Region `us-west-2`. Docker must be running (the generator is a container image). The infrastructure is AWS CDK 2.x in Python. The full step-by-step runbook, with checks and troubleshooting, is `docs/DEPLOY.md`; in short:
+Region `us-west-2`. Docker must be running (the generator is a container image). The infrastructure is AWS CDK 2.x in Python. In short:
 ```bash
 cd web && npm run build && cd ../infra
 uv venv --python 3.14 && source .venv/bin/activate && pip install -r requirements-dev.txt
@@ -67,7 +67,7 @@ Honest limits:
 - Phone-width layout and a deployed run through CloudFront have not been verified yet.
 
 ## Cost
-Reading is served from static files, so the cost that grows with usage is audio delivery. See `docs/COST.md`. The MP3 bitrate is a setting (`SOUND_ALONG_MP3_KBPS`, default 48).
+Reading is served from static files, so the cost that grows with usage is audio delivery. The MP3 bitrate is a setting (`SOUND_ALONG_MP3_KBPS`, default 48).
 
 ## Following the ReadWorks technical guide
 | Guide says | What we do |
@@ -77,7 +77,7 @@ Reading is served from static files, so the cost that grows with usage is audio 
 | AWS CDK 2.x, us-west-2, single account | Yes. |
 | Serverless for TTS, VM for content management, browser client | TTS is a Lambda container behind Step Functions. The content-management API runs on an EC2 VM by default; a Lambda option exists for lower idle cost (see `infra/README.md`). |
 | Timing in S3 "in zipped form" | Timing JSON is stored gzipped with `Content-Encoding`, so browsers decompress it transparently. |
-| Frontend reads JSON documents and only presents | The reader reads the S3 documents (`docs/FORMAT.md`). The library list and the teacher screens use the API. |
+| Frontend reads JSON documents and only presents | The reader reads the S3 documents. The library list and the teacher screens use the API. |
 | Minimal libraries, JS-native preferred | The web app has one runtime dependency (Vue). |
 
 ## Pronunciation fixes
