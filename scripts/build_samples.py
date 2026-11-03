@@ -18,6 +18,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -35,6 +36,10 @@ PRIDE = "ff1d34c9-14f1-4e78-b509-6568dc912a17"
 CDN = "https://dq5qica5h7eg3.cloudfront.net/data/audio"
 HUMAN_PARK_URL = f"{CDN}/Lets_Meet_a_Park_Caretaker_1786044484_1_{PARK}.mp3"
 POLLY_PRIDE_URL = f"{CDN}/Excerpt_from_Pride_and_Prejudice-{PRIDE}_0001.mp3"
+TEA = "5af24980-4d6d-41c1-87fa-4f21cb2d169d"
+# ReadWorks' own product JSON flags passages that have a human recording with "hau" (Park and Tea Party have it;
+# the Polly-read Pride and Prejudice passage does not). The audio files are public on their CDN.
+HUMAN_TEA_URL = f"{CDN}/A_Very_Messy_Tea_Party_1548193857_1_{TEA}.mp3"
 
 
 def log(message: str) -> None:
@@ -49,16 +54,37 @@ def download(url: str, target: Path) -> Path:
     return target
 
 
-def generate_ai(passage_file: Path) -> None:
-    subprocess.run([sys.executable, str(ROOT / "services/synth/run_local.py"), str(passage_file), str(DATA)], check=True, stdout=subprocess.DEVNULL)
+# Stable ids for the human-narrated variants (the Park Caretaker one keeps the id used since the first build).
+HUMAN_NAMESPACE = uuid.UUID("5f0d1c1e-6a53-4d7b-9a73-0a4f4c8f2b11")
 
 
-def align_human(workdir: Path) -> None:
-    human_mp3 = download(HUMAN_PARK_URL, workdir / "park_human.mp3")
-    subprocess.run(
-        [sys.executable, str(ROOT / "services/align/align_human.py"), str(SAMPLES / f"{PARK}.json"), str(human_mp3), str(DATA)],
-        check=True, stdout=subprocess.DEVNULL,
-    )
+def human_id(ai_id: str) -> str:
+    return str(uuid.uuid5(HUMAN_NAMESPACE, ai_id))
+
+
+def job_input(sample: dict, recording: Path | None) -> dict:
+    """The same job input file the API writes for a teacher's passage (docs/API.md), built from a bundled sample."""
+    return {
+        "uuid": sample["uuid"], "title": sample["title"], "content": sample["content"], "vocab": sample.get("vocab"),
+        "source": "sample",
+        "settings": {"voice": "af_heart", "speed": 0.95, "mp3Kbps": 48},
+        "pronunciations": json.loads((ROOT / "services/synth/pronunciations.json").read_text()),
+        "recording": {"path": str(recording)} if recording else None,
+        "humanPassageId": human_id(sample["uuid"]) if recording else None,
+        "qualityCheck": True,
+    }
+
+
+def generate(passage_file: Path, recording: Path | None) -> None:
+    sample = json.loads(passage_file.read_text())
+    raw = DATA / "raw" / f"{sample['uuid']}.json"
+    raw.parent.mkdir(parents=True, exist_ok=True)
+    payload = job_input(sample, recording)
+    payload["pronunciations"] = {k: v for k, v in payload["pronunciations"].items() if not k.startswith("_")}
+    # The stored source lets a passage be regenerated later with new settings or pronunciation fixes.
+    stored = {**payload, "recording": None, "humanPassageId": payload["humanPassageId"]}
+    raw.write_text(json.dumps(stored, ensure_ascii=False))
+    subprocess.run([sys.executable, str(ROOT / "services/synth/run_local.py"), str(raw), str(DATA)], check=True, stdout=subprocess.DEVNULL)
 
 
 def asr_report(passage_id: str) -> tuple[dict, tuple[float, ...]]:
@@ -82,14 +108,14 @@ def asr_report(passage_id: str) -> tuple[dict, tuple[float, ...]]:
 def main(skip_mos: bool) -> int:
     started = time.time()
     passages = sorted(SAMPLES.glob("*.json"))
-    log(f"1/4 generating AI voice for {len(passages)} passages")
-    for passage_file in passages:
-        generate_ai(passage_file)
-
     with tempfile.TemporaryDirectory() as tmp:
         workdir = Path(tmp)
-        log("2/4 aligning the existing human recording")
-        align_human(workdir)
+        log(f"1/4 generating {len(passages)} passages; the Park Caretaker and Tea Party ones also align their existing human recordings")
+        human_mp3 = download(HUMAN_PARK_URL, workdir / "park_human.mp3")
+        recordings = {PARK: human_mp3, TEA: download(HUMAN_TEA_URL, workdir / "tea_human.mp3")}
+        for passage_file in passages:
+            generate(passage_file, recordings.get(passage_file.stem))
+        log("2/4 done")
 
         log("3/4 checking against an independent Whisper transcript")
         rows, pooled = [], []
@@ -102,7 +128,7 @@ def main(skip_mos: bool) -> int:
         naturalness = None
         if not skip_mos:
             log("4/4 predicting naturalness (UTMOS) against public ReadWorks recordings")
-            human = download(HUMAN_PARK_URL, workdir / "park_human.mp3")
+            human = human_mp3
             polly = download(POLLY_PRIDE_URL, workdir / "pride_polly.mp3")
             naturalness = run_mos([
                 f"ai_voice_park={DATA / (PARK + '.mp3')}",
