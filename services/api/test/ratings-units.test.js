@@ -73,7 +73,7 @@ describe("manifest readers", () => {
     assert.equal((await m.read()).length, 1);
   });
 
-  test("S3 manifest reads data/ab/manifest.json once per 60 s", async () => {
+  test("S3 manifest reads raw/ab/manifest.json once per 60 s", async () => {
     let now = 1000;
     const body = { transformToString: async () => JSON.stringify([{ token: "0123456789abcdef", passageId: "p", title: "T", kind: "ai" }]) };
     const s3 = fakeClient(() => ({ Body: body }));
@@ -82,7 +82,7 @@ describe("manifest readers", () => {
     now += 59_000;
     await m.read();
     assert.equal(s3.calls.length, 1);
-    assert.deepEqual([s3.calls[0].name, s3.calls[0].input], ["GetObjectCommand", { Bucket: "B", Key: "data/ab/manifest.json" }]);
+    assert.deepEqual([s3.calls[0].name, s3.calls[0].input], ["GetObjectCommand", { Bucket: "B", Key: "raw/ab/manifest.json" }]);
     now += 2_000;
     await m.read();
     assert.equal(s3.calls.length, 2);
@@ -139,11 +139,11 @@ describe("seed uploads the blind-test files", () => {
     await writeFile(path.join(dir, "ab", "notes.txt"), "x");
     const s3 = fakeClient();
     const keys = await seedAb({ s3, bucket: "B", dataDir: dir, logger: quiet });
-    assert.deepEqual(keys, ["data/ab/0123456789abcdef.mp3", "data/ab/fedcba9876543210.mp3", "data/ab/manifest.json"]);
+    assert.deepEqual(keys, ["data/ab/0123456789abcdef.mp3", "data/ab/fedcba9876543210.mp3", "raw/ab/manifest.json"]);
     assert.deepEqual(s3.calls.map((c) => [c.input.Key, c.input.ContentType]), [
       ["data/ab/0123456789abcdef.mp3", "audio/mpeg"],
       ["data/ab/fedcba9876543210.mp3", "audio/mpeg"],
-      ["data/ab/manifest.json", "application/json"],
+      ["raw/ab/manifest.json", "application/json"],
     ]);
   });
 
@@ -155,6 +155,6 @@ describe("seed uploads the blind-test files", () => {
     await mkdir(path.join(dir, "ab"));
     await writeFile(path.join(dir, "ab", "manifest.json"), "[]");
     await seed({ s3, ddb: fakeClient(), bucket: "B", tableName: "T", dataDir: dir, logger: quiet });
-    assert.equal(s3.calls[0].input.Key, "data/ab/manifest.json");
+    assert.equal(s3.calls[0].input.Key, "raw/ab/manifest.json");
   });
 });

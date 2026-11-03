@@ -124,7 +124,7 @@ Clips are short anonymous excerpts (about 30 s) of the SAME text read by differe
 ```json
 [ { "token": "9f3a1c0b5d7e2a46", "passageId": "<uuid>", "title": "Let's Meet a Park Caretaker", "kind": "ai" | "human" | "polly_current" } ]
 ```
-On AWS the same files live in S3 under `data/ab/` and the manifest at `data/ab/manifest.json` (read by the API, never exposed through CloudFront).
+On AWS the clips live in S3 under `data/ab/` and the manifest (the answer key) at `raw/ab/manifest.json`, outside the `/data/*` route, so it is read by the API and cannot be fetched through CloudFront.
 
 | Method and path | Body | `data` |
 |---|---|---|

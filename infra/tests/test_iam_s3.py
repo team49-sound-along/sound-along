@@ -43,4 +43,4 @@ def test_api_role_reads_raw_inputs_and_the_listening_manifest_and_nothing_broade
 
 
 def test_constants_name_exactly_what_the_api_touches() -> None:
-    assert API_RAW_PREFIX == "raw/*" and API_MANIFEST_KEY == "data/ab/manifest.json"
+    assert API_RAW_PREFIX == "raw/*" and API_MANIFEST_KEY == "raw/ab/manifest.json"

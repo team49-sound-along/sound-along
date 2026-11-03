@@ -6,9 +6,9 @@ from aws_cdk import aws_s3 as s3
 
 # What the CMS API reads and writes in S3 (nothing else):
 #  raw/*                  job inputs and uploaded recordings (write; read for regenerate and "does the recording exist?")
-#  data/ab/manifest.json  the listening-test manifest (read only; it is never served through CloudFront)
+#  raw/ab/manifest.json   the listening-test answer key (read only; outside /data/*, so CloudFront cannot serve it)
 API_RAW_PREFIX = "raw/*"
-API_MANIFEST_KEY = "data/ab/manifest.json"
+API_MANIFEST_KEY = "raw/ab/manifest.json"
 
 
 def list_bucket(bucket: s3.IBucket, prefixes: list[str]) -> iam.PolicyStatement:

@@ -4,7 +4,7 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 
 export const TOKEN = /^[0-9a-f]{16}$/;
 const CACHE_MS = 60_000;
-const MANIFEST_KEY = "data/ab/manifest.json";
+const MANIFEST_KEY = "raw/ab/manifest.json";
 
 /** Keep only well-formed clip entries, as new objects. Anything else in the manifest is ignored. */
 export function cleanManifest(raw) {

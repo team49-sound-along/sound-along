@@ -62,7 +62,7 @@ export async function seed({ s3, ddb, bucket, tableName, dataDir, logger = conso
 const AB_MANIFEST = "manifest.json";
 const AB_CLIP = /^[0-9a-f]{16}\.mp3$/;
 
-/** Upload <dataDir>/ab/ (blind-test clips as audio/mpeg, manifest.json as application/json) to S3 data/ab/. Returns the keys. */
+/** Upload <dataDir>/ab/ (blind-test clips as audio/mpeg, manifest.json as application/json) to S3 (clips under data/ab/, the manifest under raw/ab/ so CloudFront can never serve the answer key). Returns the keys. */
 export async function seedAb({ s3, bucket, dataDir, logger = console }) {
   const dir = path.join(dataDir, "ab");
   let names = [];
@@ -78,7 +78,7 @@ export async function seedAb({ s3, bucket, dataDir, logger = console }) {
       logger.warn(`skipping ab/${name}: not a clip or the manifest`);
       continue;
     }
-    const Key = `data/ab/${name}`;
+    const Key = isManifest ? "raw/ab/manifest.json" : `data/ab/${name}`;
     await s3.send(new PutObjectCommand({ Bucket: bucket, Key, Body: await readFile(path.join(dir, name)), ContentType: isManifest ? "application/json" : "audio/mpeg" }));
     keys.push(Key);
   }
