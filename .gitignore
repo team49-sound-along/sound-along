@@ -11,3 +11,6 @@ out/
 # Generated audio, timing and state: rebuild with scripts/build_samples.py. Never commit third-party recordings.
 data/*
 !data/.gitkeep
+
+# raw Wikipedia text used once to write the place cards (CC BY-SA); the committed cards are our own wording
+samples/cards/places.raw.json

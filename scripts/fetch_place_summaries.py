@@ -46,7 +46,7 @@ def fetch(title: str) -> dict | None:
     req = urllib.request.Request(ENDPOINT + urllib.parse.quote(title, safe="_()"), headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=20) as res:  # noqa: S310 (fixed https endpoint)
-            data = json.loads(res.read().decode("utf-8"))
+            data = json.loads(res.read(1_000_000).decode("utf-8"))  # a summary is a few KB; never read an unbounded body
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as err:
         sys.stderr.write(f"  skipped {title}: {err}\n")
         return None

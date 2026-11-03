@@ -24,6 +24,7 @@ LOG = logging.getLogger(__name__)
 
 # Our voice id -> the voice's name in Phonon's catalog (gradium/phonon-voices).
 PHONON_VOICES = {"phonon_hadley": "Hadley", "phonon_everly": "Everly"}
+DEFAULT_VOICE = "phonon_hadley"
 # The revisions the listening test and benchmarks used. The Docker image bakes exactly these and loads them from disk.
 MODEL_REVISION = "8c64b55ec301728e2d1695bfea87a08a267d0c2d"
 VOICES_REVISION = "da6c9ec0d47be8df5c87c730a3aa97187f3229c3"
@@ -52,16 +53,23 @@ def load_tts() -> Any:
 
 
 def apply_respellings(sentence: str, respellings: Mapping[str, str]) -> str:
-    """Spell each fixed word as its respelling ("gaieties" -> "gay uh teez"); whole words, any case. "/phonemes/" are skipped."""
+    """Spell each fixed word as its respelling ("gaieties" -> "gay uh teez"); whole words, any case, a leading capital is kept. "/phonemes/" are skipped."""
     plain = {w.lower(): r for w, r in respellings.items() if not (len(r) > 2 and r.startswith("/") and r.endswith("/"))}
     if not plain:
         return sentence
-    pattern = re.compile(r"\b(" + "|".join(re.escape(w) for w in sorted(plain, key=len, reverse=True)) + r")\b", re.IGNORECASE)
-    return pattern.sub(lambda m: plain[m.group(1).lower()], sentence)
+    # (?<!\w)...(?!\w) rather than \b, so a key such as "st." still matches; a leading capital in the text is kept.
+    pattern = re.compile(r"(?<!\w)(" + "|".join(re.escape(w) for w in sorted(plain, key=len, reverse=True)) + r")(?!\w)", re.IGNORECASE)
+
+    def spell(match: re.Match[str]) -> str:
+        fix = plain[match.group(1).lower()]
+        return fix[:1].upper() + fix[1:] if match.group(1)[:1].isupper() else fix
+
+    return pattern.sub(spell, sentence)
 
 
 class PhononEngine:
     name = "phonon"
+    applies_speed = False  # the model has no speed control; recorded as generatedWith.speedApplied
     native_timing = False  # no word times from the model: the recognizer supplies them (see flow.run_flow)
 
     def __init__(self, voice: str, respellings: Mapping[str, str] | None = None, tts: Any = None) -> None:

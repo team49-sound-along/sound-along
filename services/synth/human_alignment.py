@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import Sequence
 
-from asr_words import Heard, norm
+from asr_words import Heard, expand_spoken_numbers, norm
 
 LEADING_STEP_S = 0.3  # spacing used when words precede the first matched word or follow the last one
 
@@ -24,6 +24,7 @@ class AlignedWord:
 
 def align_words(display: Sequence[str], heard: Sequence[Heard]) -> list[AlignedWord]:
     """One AlignedWord per display word, in order, with non-decreasing starts."""
+    heard = expand_spoken_numbers(list(heard), display)
     shown = [(i, norm(w)) for i, w in enumerate(display) if norm(w)]
     spoken = [(j, norm(h.text)) for j, h in enumerate(heard) if norm(h.text)]
     times: dict[int, tuple[float, float, bool]] = {}

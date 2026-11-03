@@ -38,3 +38,55 @@ def test_starts_never_decrease_and_ends_never_precede_starts():
 def test_empty_heard_still_returns_one_word_each():
     out = align_words(["a", "b"], [])
     assert len(out) == 2 and not any(w.aligned for w in out)
+
+
+# --- spelled-out numbers vs the recognizer's digits ("twenty" vs "20") -----------------------------------------------------------
+def _h(*words, step=0.5):
+    return [Heard(w, i * step, i * step + 0.4) for i, w in enumerate(words)]
+
+
+def test_a_spoken_number_the_recognizer_wrote_as_digits_matches_the_spelled_word():
+    out = align_words(["She", "read", "for", "twenty", "minutes."], _h("She", "read", "for", "20", "minutes"))
+    assert [w.aligned for w in out] == [True] * 5
+    assert out[3].start_s == 1.5
+
+
+def test_digits_spoken_as_two_words_are_split_across_the_time_the_recognizer_gave_them():
+    out = align_words(["For", "over", "one", "hundred", "years!"], _h("For", "over", "100", "years"))
+    assert [w.aligned for w in out] == [True] * 5
+    assert out[2].start_s == 1.0 and out[2].end_s <= out[3].start_s <= out[3].end_s  # "one" then "hundred", in order, inside 100's span
+    assert out[3].start_s > out[2].start_s
+
+
+def test_six_million_and_a_hyphenated_compound():
+    assert all(w.aligned for w in align_words(["Over", "six", "million", "people"], _h("Over", "6", "million", "people")))
+    assert all(w.aligned for w in align_words(["She", "is", "twenty-one", "today"], _h("She", "is", "21", "today")))
+
+
+def test_digits_the_text_itself_shows_are_left_alone():
+    out = align_words(["In", "1767", "the", "£60", "tax", "began."], _h("In", "1767", "the", "£60", "tax", "began"))
+    assert [w.aligned for w in out] == [True] * 6
+
+
+def test_numbers_above_999_are_never_expanded():
+    from asr_words import expand_spoken_numbers
+
+    heard = _h("In", "1767", "it", "began")
+    assert expand_spoken_numbers(heard, ["In", "seventeen", "sixty-seven", "it", "began"]) == heard  # the text spells it out; still left alone
+    assert expand_spoken_numbers(_h("a", "1000", "b"), ["a", "one", "thousand", "b"]) == _h("a", "1000", "b")
+
+
+def test_expand_spoken_numbers_covers_zero_to_999_and_keeps_order_and_non_numbers():
+    from asr_words import expand_spoken_numbers
+
+    out = expand_spoken_numbers(_h("a", "0", "13", "40", "101", "999", "b"), [])
+    assert [h.text for h in out] == ["a", "zero", "thirteen", "forty", "one", "hundred", "one", "nine", "hundred", "ninetynine", "b"]
+    starts = [h.start_s for h in out]
+    assert starts == sorted(starts) and all(h.end_s >= h.start_s for h in out)
+
+
+def test_a_word_that_merely_contains_digits_is_not_expanded():
+    from asr_words import expand_spoken_numbers
+
+    heard = _h("3rd", "1700s", "A4")
+    assert expand_spoken_numbers(heard, []) == heard

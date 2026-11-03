@@ -12,7 +12,7 @@ def engine_for_voice(voice: str | None) -> str | None:
     """The engine a voice belongs to when it is not Kokoro's, so choosing a voice in Settings is enough."""
     from phonon_engine import PHONON_VOICES
 
-    return "phonon" if voice in PHONON_VOICES else None
+    return "phonon" if isinstance(voice, str) and voice in PHONON_VOICES else None
 
 
 def create_engine(
@@ -33,9 +33,12 @@ def create_engine(
             raise ValueError(f"{options.get(voice_key)!r} is an English voice; choose a Spanish voice for Spanish text.")
         chosen = engine_for_voice(options.get(voice_key))  # type: ignore[assignment]
     if chosen == "phonon":
-        from phonon_engine import PhononEngine
+        from phonon_engine import DEFAULT_VOICE, PhononEngine
 
-        return PhononEngine(voice=options.get("voice"), respellings=load_respellings() if respellings is None else respellings)
+        if language != "en":
+            raise ValueError("Phonon speaks English only; use Kokoro for Spanish text.")
+        voice = options.get("voice") if engine_for_voice(options.get("voice")) else DEFAULT_VOICE  # TTS_ENGINE=phonon with no Phonon voice chosen
+        return PhononEngine(voice=voice, respellings=load_respellings() if respellings is None else respellings)
     if chosen == "kokoro":
         from engine import KokoroEngine
 

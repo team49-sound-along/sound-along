@@ -115,6 +115,7 @@ def run_flow(
         **artifacts.timing, "language": language,
         "generatedWith": {
             "settings": passage.get("settings"), "pronunciations": passage.get("pronunciations"),
+            "speedApplied": bool(getattr(engine, "applies_speed", True)),
             "hash": fingerprint(passage, recording_path),
         },
     }

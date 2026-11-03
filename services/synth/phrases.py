@@ -28,7 +28,7 @@ def phrase_ends(words: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
     on_line = 0
     for index, word in enumerate(items):
         on_line += 1
-        text = str(word.get("text", ""))
+        text = str(word.get("text") or "")
         following = items[index + 1] if index + 1 < len(items) else None
         ends_sentence = following is None or following.get("sentence") != word.get("sentence") or bool(_HARD_END.search(text))
         ends_phrase = bool(_SOFT_END.search(text)) and on_line >= MIN_WORDS

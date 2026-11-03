@@ -7,6 +7,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass
+from typing import Sequence
 
 import numpy as np
 
@@ -39,6 +40,40 @@ class Heard:
     text: str
     start_s: float
     end_s: float
+
+
+_ONES = "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split()
+_TENS = "_ _ twenty thirty forty fifty sixty seventy eighty ninety".split()
+_DIGITS = re.compile(r"\W*(\d{1,3})\W*")
+
+
+def _number_words(n: int) -> list[str]:
+    """English words for 0..999 as the tokens a text would show: 21 is ONE token, "twentyone" (the text spells it "twenty-one")."""
+    if n < 20:
+        return [_ONES[n]]
+    if n < 100:
+        return [_TENS[n // 10] + (_ONES[n % 10] if n % 10 else "")]
+    return [_ONES[n // 100], "hundred", *(_number_words(n % 100) if n % 100 else [])]
+
+
+def expand_spoken_numbers(heard: list[Heard], display: Sequence[str]) -> list[Heard]:
+    """A recognizer writes "twenty" as "20". When the passage spells a number out, replace that digit token with its words,
+    splitting its time span evenly, so "twenty", "six million" and "one hundred" align exactly instead of being estimated.
+
+    Only whole 0..999 digit tokens are expanded, and never when the text itself shows those digits (years such as 1767, "£60"
+    already match as written). English only: the words are English.
+    """
+    shown = {norm(w) for w in display}
+    out: list[Heard] = []
+    for item in heard:
+        match = _DIGITS.fullmatch(item.text)
+        if not match or str(int(match.group(1))) in shown or match.group(1) in shown:
+            out.append(item)
+            continue
+        words = _number_words(int(match.group(1)))
+        step = (item.end_s - item.start_s) / len(words)
+        out.extend(Heard(w, item.start_s + i * step, item.start_s + (i + 1) * step) for i, w in enumerate(words))
+    return out
 
 
 def decode_audio(path: str, sample_rate: int = SR) -> np.ndarray:

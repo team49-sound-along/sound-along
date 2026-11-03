@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "parse"))  # repo l
 
 from tokenizer import tokenize_html  # noqa: E402
 
-PIPELINE_VERSION = "2026-11-03.3"
+PIPELINE_VERSION = "2026-11-03.4"
 _WORD = re.compile(r"^\W+|\W+$")
 
 

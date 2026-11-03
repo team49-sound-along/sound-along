@@ -182,3 +182,8 @@ def test_python_flags_give_the_same_lines_as_the_browser_rule():
         assert mine == browser, f"{title}: Python and browser lines differ"
         checked += len(words)
     assert checked > 1500
+
+
+def test_a_missing_text_field_is_treated_as_empty_like_the_browser_does():
+    words = [{"i": 0, "text": None, "sentence": 0, "paragraph": 0}, {"i": 1, "text": "ok", "sentence": 0, "paragraph": 0}]
+    assert [w["phraseEnd"] for w in phrase_ends(words)] == [False, True]
