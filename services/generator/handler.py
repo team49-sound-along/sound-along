@@ -82,6 +82,12 @@ def live_enrichment(passage: dict[str, Any]) -> Any:
     return enrich_places(passage, ner=ner_places, words=word_picture_cards)
 
 
+def _place_lookups_off(passage: dict[str, Any]) -> bool:
+    from enrich_places import _switched_off
+
+    return _switched_off(passage)
+
+
 def _cards_reviewed(clients: Clients, passage_id: str) -> bool:
     try:
         body = clients.s3.get_object(Bucket=clients.bucket, Key=f"data/{passage_id}.cards.json")["Body"].read()
@@ -212,6 +218,8 @@ def _translate_cards_to_s3(deps: Dependencies, pid: str, tid: str, target_timing
                            lang: str, source_lang: str, localized: dict[str, str]) -> None:
     """Translated place and word cards with their pictures, uploaded next to the translated audio. Best effort."""
     try:
+        if _cards_reviewed(deps.clients, tid):
+            return  # a person already reviewed these cards; never replace them
         doc = _get_json(deps.clients, f"data/{pid}.cards.json")
         if not doc:
             return
@@ -261,7 +269,10 @@ def process_translation(event: dict[str, Any], deps: Dependencies) -> dict[str, 
         source_lang = passage["language"]
         lang = other_language(source_lang)
         model = deps.translate_model(source_lang, lang)
-        localize = (lambda names: deps.localize_fn(names, source_lang, lang)) if deps.localize_fn else None
+        # Wikipedia sees only place names spaCy found in English text, and only when place lookups are allowed (teacher setting or operator switch).
+        # Spanish text has no place detector here (its candidates are every capitalised name, people included), so nothing is sent for it.
+        allowed = deps.localize_fn is not None and source_lang == "en" and not _place_lookups_off(passage)
+        localize = (lambda names: deps.localize_fn(names, source_lang, lang)) if allowed else None
         translated = translate_passage(passage, model, deps.names_for(source_lang), localize=localize)
         job = build_translated_passage(passage, lang, translated)
         tid = job["uuid"]

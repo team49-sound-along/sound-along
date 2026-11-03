@@ -137,3 +137,53 @@ def test_a_passage_too_long_for_the_lambda_limit_is_skipped_with_a_clear_reason(
     s3, table, deps = published(content="<p>" + "word " * (h.MAX_TRANSLATE_WORDS + 50) + ".</p>")
     out = h.process_translation({"jobId": "j", "passageId": PASSAGE_ID, "rawKey": EVENT["rawKey"]}, deps)
     assert out["status"] == "skipped" and "too long to translate automatically" in out["reason"]
+
+
+def _spy_deps(deps, names_for=lambda lang: (lambda text: ["Piedmont Park"])):
+    calls = []
+    return h.Dependencies(deps.clients, FakeEngine, fake_encoder, translate_model=lambda s, t: fake_model,
+                          names_for=names_for, localize_fn=lambda names, s, t: calls.append(list(names)) or {}), calls
+
+
+def test_names_are_looked_up_on_wikipedia_for_english_sources_only_when_place_lookups_are_allowed():
+    s3, table, deps = published(content="<p>We went to Piedmont Park. It was fun.</p>")
+    spy, calls = _spy_deps(deps)
+    run(s3, table, spy)
+    assert calls, "English passages still get localised place names"
+    s3, table, deps = published(content="<p>We went to Piedmont Park. It was fun.</p>", settings={"placeCards": False})
+    spy, calls = _spy_deps(deps)
+    run(s3, table, spy)
+    assert calls == [], "a teacher who switched place lookups off must not have names sent to Wikipedia"
+
+
+def test_the_operator_switch_stops_name_lookups_too(monkeypatch):
+    monkeypatch.setenv("PLACE_CARDS", "off")
+    s3, table, deps = published(content="<p>We went to Piedmont Park. It was fun.</p>")
+    spy, calls = _spy_deps(deps)
+    run(s3, table, spy)
+    assert calls == []
+
+
+def test_spanish_sources_never_send_capitalised_names_to_wikipedia():
+    s3, table, deps = published(content="<p>Ana y Pablo van al parque. Es divertido.</p>")
+    raw = json.loads(s3.objects[EVENT["rawKey"]])
+    s3.objects[EVENT["rawKey"]] = json.dumps({**raw, "language": "es"}).encode()
+    spy, calls = _spy_deps(deps, names_for=h._names_for)  # the real finder: every capitalised run is a candidate, "Pablo" included
+    out = run(s3, table, spy)
+    assert out["status"] == "done" and calls == [], "names of people must not leave the system"
+
+
+def test_translated_cards_that_a_person_reviewed_are_never_overwritten():
+    s3, table, deps = published(content="<p>We went to the park.</p>", cards=True)
+    tid = run(s3, table, deps)["translatedId"]
+    reviewed = json.dumps({"words": {"parque": {"word": "parque", "definition": "Un lugar con árboles."}}, "places": {}, "reviewed": True}).encode()
+    s3.objects[f"data/{tid}.cards.json"] = reviewed
+    run(s3, table, deps)  # the passage is regenerated and translated again
+    assert s3.objects[f"data/{tid}.cards.json"] == reviewed
+
+
+def test_generated_translated_cards_are_marked_unreviewed_and_machine_translated():
+    s3, table, deps = published(content="<p>We went to the park.</p>", cards=True)
+    tid = run(s3, table, deps)["translatedId"]
+    cards = json.loads(s3.objects[f"data/{tid}.cards.json"])
+    assert cards["reviewed"] is False and cards["machineTranslated"] is True and cards["source"] == "translated"
