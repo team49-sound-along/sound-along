@@ -1,0 +1,30 @@
+{
+  "labelledBy": "an AI model, reading each question against the passage text. NOT a ReadWorks editor and not a teacher.",
+  "labelledAt": "2026-11-03, before any judge model or rubric code existed",
+  "scale": {
+    "good": "usable as written",
+    "fixable": "right idea, needs a small human edit (for example the evidence sentence number)",
+    "reject": "should not reach students"
+  },
+  "criteria": ["grounded", "oneCorrectAnswer", "noFalsePremise", "needsPassage", "worthAsking", "goodDistractors"],
+  "labels": [
+    {"passageId": "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98", "question": "What is Piedmont Park known for?", "verdict": "reject", "failed": ["worthAsking", "goodDistractors"],
+     "note": "Vague. The passage only says it is a big park. 'No park' is a silly choice."},
+    {"passageId": "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98", "question": "Who is Doug Widener?", "verdict": "fixable", "failed": ["grounded"],
+     "note": "The answer (park caretaker) is right but the cited sentence is generic; sentence 15 introduces Doug."},
+    {"passageId": "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98", "question": "Why does Doug put mulch around trees?", "verdict": "fixable", "failed": ["grounded"],
+     "note": "The reason is in sentence 24 ('helps trees soak up the water'), not 23. 'To help trees grow' is a loose paraphrase."},
+    {"passageId": "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98", "question": "Where is Doug’s favorite spot?", "verdict": "good", "failed": [],
+     "note": "Stated directly in sentence 26."},
+    {"passageId": "5af24980-4d6d-41c1-87fa-4f21cb2d169d", "question": "Why were colonists upset about the 1767 taxes?", "verdict": "good", "failed": [],
+     "note": "Supported by sentence 22."},
+    {"passageId": "5af24980-4d6d-41c1-87fa-4f21cb2d169d", "question": "How many chests of tea were dumped?", "verdict": "good", "failed": [],
+     "note": "Sentence 43 says three hundred forty-two."},
+    {"passageId": "ff1d34c9-14f1-4e78-b509-6568dc912a17", "question": "What made Elizabeth happy at the start of the journey?", "verdict": "good", "failed": [],
+     "note": "Sentence 0: seeing her sister looking so well."},
+    {"passageId": "ff1d34c9-14f1-4e78-b509-6568dc912a17", "question": "Who stopped the carriage at the small gate?", "verdict": "reject", "failed": ["oneCorrectAnswer"],
+     "note": "Ambiguous: Mr. Collins and Charlotte both appeared at the door. Nobody 'stopped' the carriage."},
+    {"passageId": "ff1d34c9-14f1-4e78-b509-6568dc912a17", "question": "Why did Elizabeth think Charlotte was happy?", "verdict": "reject", "failed": ["noFalsePremise"],
+     "note": "False premise: the text says Elizabeth admired Charlotte's composure about exercise, not that she thought Charlotte was happy."}
+  ]
+}
