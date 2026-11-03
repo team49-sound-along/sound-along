@@ -1,6 +1,7 @@
 """Constants and small value types shared by the stack modules."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -36,6 +37,7 @@ class SourcePaths:
     vm_dir: Path
     generator_dir: Path
     web_dist: Path
+    questions_dir: Path
 
 
 def default_source_paths() -> SourcePaths:
@@ -45,6 +47,7 @@ def default_source_paths() -> SourcePaths:
         vm_dir=build / "api-vm",
         generator_dir=REPO_ROOT / "services" / "generator",
         web_dist=REPO_ROOT / "web" / "dist",
+        questions_dir=REPO_ROOT / "services" / "questions",
     )
 
 
@@ -66,3 +69,20 @@ def require_bundle(path: Path, what: str) -> Path:
             f"{what} not found at {path}. Run `python bundle_api.py` in infra/ first (needs Node and npx)."
         )
     return path
+
+
+_MODEL_ID = re.compile(r"^bedrock:[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+
+
+def parse_questions_model(value: object) -> str | None:
+    """Validate the `questionsModel` CDK context value: `bedrock:<modelId>` or absent. There is deliberately no default model."""
+    if value is None:
+        return None
+    if not isinstance(value, str) or not _MODEL_ID.match(value) or ".." in value:
+        raise ValueError(f'Invalid CDK context "questionsModel": {value!r}. Use -c questionsModel=bedrock:<modelId> (there is no default).')
+    return value
+
+
+def parse_questions_enabled(value: object) -> bool:
+    """The `questionsEnabled` switch is on only for the exact value true; anything else is off."""
+    return value is True or value == "true"

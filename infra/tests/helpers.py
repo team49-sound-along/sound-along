@@ -15,15 +15,16 @@ SOURCES = SourcePaths(
     vm_dir=FIXTURES / "api-vm",
     generator_dir=FIXTURES / "generator",
     web_dist=FIXTURES / "web-dist",
+    questions_dir=FIXTURES / "questions",
 )
 
 
-def synth(cms_host: str = "ec2", alert_email: str | None = "test@example.com", sources: SourcePaths = SOURCES) -> Template:
+def synth(cms_host: str = "ec2", alert_email: str | None = "test@example.com", sources: SourcePaths = SOURCES, questions_model: str | None = None, questions_enabled: bool = False) -> Template:
     app = cdk.App()
     stack = SoundAlongStack(
         app,
         "TestStack",
-        props=SoundAlongStackProps(alert_email=alert_email, cms_host=cms_host, sources=sources),
+        props=SoundAlongStackProps(alert_email=alert_email, cms_host=cms_host, sources=sources, questions_model=questions_model, questions_enabled=questions_enabled),
         env=cdk.Environment(region="us-west-2"),
     )
     return Template.from_stack(stack)

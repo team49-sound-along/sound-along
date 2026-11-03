@@ -5,6 +5,7 @@ from pathlib import Path
 
 from aws_cdk import Duration, RemovalPolicy
 from aws_cdk import aws_dynamodb as dynamodb
+from aws_cdk import aws_iam as iam
 from aws_cdk import aws_ecr_assets as ecr_assets
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_logs as logs
@@ -12,7 +13,8 @@ from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
 from .config import API_ENV_DEFAULTS
-from .iam_util import api_s3_policies, object_access
+from .config import REGION
+from .iam_util import api_s3_policies, list_bucket, object_access
 
 
 def _log_group(scope: Construct, construct_id: str) -> logs.LogGroup:
@@ -83,4 +85,41 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
     props.table.grant_read_write_data(fn)
     fn.add_to_role_policy(object_access(props.bucket, ["s3:GetObject"], "raw/*"))
     fn.add_to_role_policy(object_access(props.bucket, ["s3:PutObject"], "data/*"))
+    return fn
+
+
+@dataclass(frozen=True)
+class QuestionsFunctionProps:
+    code_dir: Path
+    bucket: s3.IBucket
+    model: str | None = None  # "bedrock:<modelId>"; None means no model, no Bedrock permission, and the function stays off
+    enabled: bool = False
+
+
+def create_questions_function(scope: Construct, props: QuestionsFunctionProps) -> lambda_.Function:
+    """Drafts practice questions for a published passage. Best effort and bounded: reserved concurrency 2, a kill switch that defaults to off,
+    S3 read of data/* and write of raw/questions/* only (never data/*, so a draft can never be served), and Bedrock permission for one model only."""
+    on = bool(props.model) and props.enabled
+    environment = {"BUCKET": props.bucket.bucket_name, "QUESTIONS_ENABLED": "true" if on else "false", "QUESTIONS_REGION": REGION, "QUESTIONS_COUNT": "4"}
+    if props.model:
+        environment["QUESTIONS_MODEL"] = props.model
+    fn = lambda_.Function(
+        scope,
+        "QuestionsFunction",
+        runtime=lambda_.Runtime.PYTHON_3_14,
+        architecture=lambda_.Architecture.ARM_64,
+        handler="qg_handler.handler",
+        code=lambda_.Code.from_asset(str(props.code_dir), exclude=["test_*.py", "conftest.py", "__pycache__", "*.pyc", ".pytest_cache"]),
+        memory_size=256,
+        timeout=Duration.seconds(120),
+        reserved_concurrent_executions=2,
+        log_group=_log_group(scope, "QuestionsLogs"),
+        environment=environment,
+    )
+    fn.add_to_role_policy(object_access(props.bucket, ["s3:GetObject"], "data/*"))
+    fn.add_to_role_policy(list_bucket(props.bucket, ["data/*"]))
+    fn.add_to_role_policy(object_access(props.bucket, ["s3:PutObject"], "raw/questions/*"))
+    if props.model:
+        model_id = props.model.removeprefix("bedrock:")
+        fn.add_to_role_policy(iam.PolicyStatement(actions=["bedrock:InvokeModel"], resources=[f"arn:aws:bedrock:{REGION}::foundation-model/{model_id}"]))
     return fn

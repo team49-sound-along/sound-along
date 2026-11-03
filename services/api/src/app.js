@@ -12,7 +12,7 @@ import { mountLocalRecordingUpload, recordingRoutes } from "./routes/recordings.
 import { loadVoices } from "./settings.js";
 import { parseAssignmentInput, parseEvent, parseToggle } from "./validate.js";
 
-const DATA_FILE = /^[0-9a-f-]{36}\.(mp3|timing\.json|soundalong\.json|cards\.json|(?:place|word)-[a-z0-9-]{1,60}-[0-9a-f]{8}\.(?:jpg|png))$/;
+const DATA_FILE = /^[0-9a-f-]{36}\.(mp3|timing\.json|soundalong\.json|cards\.json|questions\.json|(?:place|word)-[a-z0-9-]{1,60}-[0-9a-f]{8}\.(?:jpg|png))$/;
 
 const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",

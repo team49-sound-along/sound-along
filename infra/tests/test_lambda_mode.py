@@ -61,7 +61,8 @@ def test_api_lambda_s3_access_is_limited_to_raw_inputs_the_manifest_and_a_prefix
 
 def test_missing_bundle_gives_actionable_error(tmp_path) -> None:
     sources = SourcePaths(
-        lambda_dir=tmp_path / "nope", vm_dir=SOURCES.vm_dir, generator_dir=SOURCES.generator_dir, web_dist=SOURCES.web_dist
+        lambda_dir=tmp_path / "nope", vm_dir=SOURCES.vm_dir, generator_dir=SOURCES.generator_dir, web_dist=SOURCES.web_dist,
+        questions_dir=SOURCES.questions_dir,
     )
     with pytest.raises(FileNotFoundError, match="python bundle_api.py"):
         synth("lambda", sources=sources)

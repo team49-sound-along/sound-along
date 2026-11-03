@@ -53,3 +53,8 @@ def test_image_urls_are_collected_from_place_cards_only_and_must_stay_on_our_own
     assert v.image_urls(doc) == ["/data/x.place-a-12345678.jpg", "/data/x.word-relax-12345678.png"]
     assert v.cards_problem({"words": {"w": {}}, "places": {"A": {"imageUrl": "https://example.com/a.jpg"}}}) is not None
     assert v.cards_problem({"words": {"w": {}}, "places": {"A": {"imageUrl": "/data/x.place-a-12345678.jpg"}}}) is None
+
+
+def test_draft_locations_cover_data_and_raw_paths_for_the_passage():
+    paths = v.draft_paths("abc")
+    assert "/data/abc.draft.json" in paths and "/raw/questions/abc.draft.json" in paths and all("abc" in p for p in paths)

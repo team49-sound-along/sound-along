@@ -135,7 +135,8 @@ def test_outputs_for_ssm_access(template: Template) -> None:
 
 def test_missing_vm_bundle_gives_actionable_error(tmp_path) -> None:
     sources = SourcePaths(
-        lambda_dir=SOURCES.lambda_dir, vm_dir=tmp_path / "nope", generator_dir=SOURCES.generator_dir, web_dist=SOURCES.web_dist
+        lambda_dir=SOURCES.lambda_dir, vm_dir=tmp_path / "nope", generator_dir=SOURCES.generator_dir, web_dist=SOURCES.web_dist,
+        questions_dir=SOURCES.questions_dir,
     )
     with pytest.raises(FileNotFoundError, match="python bundle_api.py"):
         synth("ec2", sources=sources)

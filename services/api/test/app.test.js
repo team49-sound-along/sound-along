@@ -111,6 +111,16 @@ describe("cards documents", () => {
       assert.equal((await call("GET", `/data/${bad}`)).status, 404, bad);
     }
   });
+  test("approved questions are served, but a draft and anything under raw/questions never are", async () => {
+    await writeFile(path.join(dir, `${PID}.questions.json`), JSON.stringify({ version: 1, reviewed: true, questions: [] }));
+    const ok = await call("GET", `/data/${PID}.questions.json`);
+    assert.equal(ok.status, 200);
+    assert.equal(ok.json.reviewed, true);
+    await writeFile(path.join(dir, `${PID}.draft.json`), "{}");
+    for (const name of [`${PID}.draft.json`, `${PID}.questions.draft.json`, `${PID}.questions.json.bak`, "questions%2F" + PID + ".draft.json", "raw%2Fquestions%2F" + PID + ".draft.json", "questions.json"]) {
+      assert.equal((await call("GET", `/data/${name}`)).status, 404, name);
+    }
+  });
   test("only the exact <uuid>.cards.json name is served, and the listening answer key stays unreachable", async () => {
     for (const name of ["cards.json", `${PID}.cards.json.bak`, `${PID}.cards.JSON`, `${PID}.card.json`, "ab%2Fmanifest.json", "raw%2Fab%2Fmanifest.json", "ab/manifest.json"]) {
       assert.equal((await call("GET", `/data/${name}`)).status, 404, name);

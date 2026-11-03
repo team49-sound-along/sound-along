@@ -78,6 +78,11 @@ def image_urls(doc: Any) -> list[str]:
     return cards
 
 
+def draft_paths(passage_id: str) -> list[str]:
+    """Where an unreviewed question draft must NOT be reachable through the front door (it lives under raw/, outside /data/*)."""
+    return [f"/data/{passage_id}.draft.json", f"/data/{passage_id}.questions.draft.json", f"/raw/questions/{passage_id}.draft.json", f"/data/raw/questions/{passage_id}.draft.json"]
+
+
 def cards_problem(doc: Any) -> Optional[str]:
     """None when the cards document has the shape the reader expects, otherwise what is wrong."""
     if not isinstance(doc, dict) or not isinstance(doc.get("words"), dict) or not isinstance(doc.get("places"), dict):
@@ -162,6 +167,13 @@ def run(site: str, generate: bool, language: str, timeout_s: int) -> int:
                 pictures += 1
         return f"{len(wanted)} English sample text(s) each have a valid cards document; {pictures} place picture(s) load as images"
 
+    def drafts_unreachable() -> str:
+        """A question draft a student could fetch is exactly the failure the review step guards against."""
+        for url in draft_paths(state["passage"]):
+            r = request("GET", f"{site}{url}")
+            assert r.status != 200 or b'"questions"' not in r.body, f"{url} is reachable (HTTP {r.status}): a draft must never be served"
+        return f"{len(draft_paths(state['passage']))} draft locations are not served"
+
     def signed_write() -> str:
         current = request("GET", f"{site}/api/settings").json()["data"]
         body = json.dumps({k: current[k] for k in ("voice", "voiceEs", "speed", "mp3Kbps") if k in current}).encode()
@@ -184,9 +196,9 @@ def run(site: str, generate: bool, language: str, timeout_s: int) -> int:
         return "a trial is available" if trial else "no clips yet (run scripts/build_samples.py, then seed)"
 
     for name, fn in (("site loads", page), ("API health", health), ("passage list", passages), ("timing document", timing),
-                     ("audio range request (seeking)", audio_range), ("word and place cards", cards), ("write through the front door", signed_write),
+                     ("audio range request (seeking)", audio_range), ("word and place cards", cards), ("question drafts are not served", drafts_unreachable), ("write through the front door", signed_write),
                      ("security headers", security_headers), ("insights", insights), ("listening test clips", listening)):
-        if "passage" not in state and name in ("timing document", "audio range request (seeking)", "word and place cards"):
+        if "passage" not in state and name in ("timing document", "audio range request (seeking)", "word and place cards", "question drafts are not served"):
             report.emit("SKIP", name, "no passage to test")
             continue
         report.check(name, fn)

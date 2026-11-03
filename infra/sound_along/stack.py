@@ -26,8 +26,10 @@ from .config import (
 from .functions import (
     ApiFunctionProps,
     GeneratorFunctionProps,
+    QuestionsFunctionProps,
     create_api_function,
     create_generator_function,
+    create_questions_function,
 )
 from .pipeline import create_state_machine
 
@@ -39,6 +41,8 @@ class SoundAlongStackProps:
     alert_email: str | None = None
     cms_host: str = DEFAULT_CMS_HOST
     sources: SourcePaths | None = None
+    questions_model: str | None = None  # "bedrock:<modelId>"; no default. None means no Bedrock permission and the function stays off
+    questions_enabled: bool = False
 
 
 class SoundAlongStack(Stack):
@@ -71,7 +75,10 @@ class SoundAlongStack(Stack):
         generator = create_generator_function(
             self, GeneratorFunctionProps(generator_dir=sources.generator_dir, bucket=bucket, table=table)
         )
-        state_machine = create_state_machine(self, generator)
+        questions = create_questions_function(
+            self, QuestionsFunctionProps(code_dir=sources.questions_dir, bucket=bucket, model=props.questions_model, enabled=props.questions_enabled)
+        )
+        state_machine = create_state_machine(self, generator, questions)
 
         if cms_host == CMS_HOST_EC2:
             vm = CmsVm(
