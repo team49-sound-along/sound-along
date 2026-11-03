@@ -4,7 +4,7 @@ import { UUID } from "./recordings/rules.js";
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const EVENT_TYPES = new Set(["play", "word_tap", "complete"]);
 
-export const LIMITS = { titleMax: 120, textMin: 20, textMax: 12000 };
+export const LIMITS = { titleMax: 120, textMin: 20, textMax: 12000, wordsMax: 1400 }; // wordsMax: measured ~0.5 s of narration + timing per word, so 1,400 words stays well inside the 900 s Lambda limit
 
 const bad = (message) => {
   throw new HttpError(400, message);
@@ -42,6 +42,8 @@ export function parseGenerateInput(body) {
   if (title.length < 1 || title.length > LIMITS.titleMax) bad(`Title must be 1 to ${LIMITS.titleMax} characters.`);
   if (text.length < LIMITS.textMin) bad(`Add at least ${LIMITS.textMin} characters of text.`);
   if (text.length > LIMITS.textMax) bad(`Text can be at most ${LIMITS.textMax.toLocaleString("en-US")} characters.`);
+  const words = text.split(/\s+/).length;
+  if (words > LIMITS.wordsMax) bad(`This passage is ${words.toLocaleString("en-US")} words, which is too long to read aloud in one go. Split it into parts of up to ${LIMITS.wordsMax.toLocaleString("en-US")} words.`);
   let recordingId = null;
   if (body.recordingId != null) {
     if (typeof body.recordingId !== "string" || !UUID.test(body.recordingId)) bad("That recording id is not valid. Upload the recording again.");

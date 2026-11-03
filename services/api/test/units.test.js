@@ -76,3 +76,10 @@ test("summaries carry the translation links so the reader can offer a language s
   assert.deepEqual(back.translations, {});
   assert.deepEqual(summarizePassage({ id: "z", timing: { title: "T", translations: { es: {}, fr: null } }, mtimeMs: 0 }).translations, {});
 });
+
+test("a passage over the word limit is refused with advice to split it", async () => {
+  const { parseGenerateInput, LIMITS } = await import("../src/validate.js");
+  const ok = parseGenerateInput({ title: "T", text: "go ".repeat(LIMITS.wordsMax).trim() });
+  assert.equal(ok.title, "T");
+  assert.throws(() => parseGenerateInput({ title: "T", text: "go ".repeat(LIMITS.wordsMax + 1).trim() }), (err) => err.status === 400 && /Split it into parts/.test(err.message));
+});
