@@ -70,7 +70,7 @@ def test_generator_container_lambda(template: Template) -> None:
             "PackageType": "Image",
             "Architectures": ["arm64"],
             "MemorySize": 4096,
-            "Timeout": 600,
+            "Timeout": 900,  # the Lambda maximum: the longest text can need minutes to translate and narrate
             "ReservedConcurrentExecutions": 2,
             "Environment": {"Variables": {"BUCKET": Match.any_value(), "TABLE_NAME": Match.any_value()}},
         },
@@ -88,7 +88,7 @@ def test_standard_state_machine_with_one_retrying_task(template: Template) -> No
     assert re.search(r"MaxAttempts\D+1\b", definition)
     assert "States.TaskFailed" not in definition
     assert "Payload.$" in definition
-    assert re.search(r"TimeoutSeconds\D+900\b", definition)
+    assert re.search(r"TimeoutSeconds\D+2700\b", definition)
 
 
 def test_on_demand_table_with_ttl(template: Template) -> None:

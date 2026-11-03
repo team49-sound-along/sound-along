@@ -97,28 +97,62 @@ def test_reserved_concurrency_is_totalled_so_a_small_account_quota_is_visible() 
 
 
 # ---- the state machine -----------------------------------------------------------------------------------------------------------
-def test_questions_run_only_after_a_generator_that_reported_done() -> None:
-    states = definition(synth())["States"]
-    choice = next(s for s in states.values() if s["Type"] == "Choice")
-    rule = choice["Choices"][0]
-    assert rule["Variable"] == "$.status" and rule["StringEquals"] == "done" and rule["Next"] == "InvokeQuestions"
-    assert states["InvokeGenerator"]["Next"] == next(n for n, s in states.items() if s is choice)
-    assert "Default" in choice and choice["Default"] != "InvokeQuestions"  # a failed or skipped job goes straight to the end
+def states_of(template: Template) -> dict[str, Any]:
+    return definition(template)["States"]
 
 
-def test_a_questions_failure_is_caught_and_can_never_fail_the_job() -> None:
-    states = definition(synth())["States"]
+def test_follow_up_steps_run_only_after_a_generator_that_reported_done() -> None:
+    states = states_of(synth())
+    first = states["InvokeGenerator"]["Next"]
+    gate = states[first]
+    assert gate["Type"] == "Choice" and gate["Choices"][0]["Variable"] == "$.status" and gate["Choices"][0]["StringEquals"] == "done"
+    assert states[gate["Default"]]["Type"] == "Succeed"  # a failed job ends here: no questions, no translation
+
+
+def test_questions_are_for_english_passages_only_and_translation_follows_either_way() -> None:
+    states = states_of(synth())
+    gate = states[states["InvokeGenerator"]["Next"]]
+    language = states[gate["Choices"][0]["Next"]]
+    assert language["Type"] == "Choice" and language["Choices"][0]["Variable"] == "$.language" and language["Choices"][0]["StringEquals"] == "en"
+    assert language["Choices"][0]["Next"] == "InvokeQuestions" and language["Default"] == "InvokeTranslation"
+    assert states["InvokeQuestions"]["Next"] == "InvokeTranslation"
+
+
+def test_the_questions_result_is_added_to_the_state_not_replacing_it_so_the_next_step_still_has_the_passage_id() -> None:
+    step = states_of(synth())["InvokeQuestions"]
+    assert step["ResultPath"] == "$.questions" and "OutputPath" not in step
+
+
+def test_a_questions_failure_is_caught_continues_to_translation_and_can_never_fail_the_job() -> None:
+    states = states_of(synth())
     step = states["InvokeQuestions"]
+    assert step["Catch"][0]["ErrorEquals"] == ["States.ALL"] and "Retry" not in step
+    skipped = states[step["Catch"][0]["Next"]]
+    assert skipped["Type"] == "Pass" and skipped["Next"] == "InvokeTranslation"
+
+
+def test_translation_is_a_second_invocation_of_the_generator_with_its_own_failure_handling() -> None:
+    template = synth()
+    step = states_of(template)["InvokeTranslation"]
+    payload = json.dumps(step["Parameters"])
+    assert '"mode": "translate"' in payload and "$.passageId" in payload and "$.jobId" in payload
     assert step["Catch"][0]["ErrorEquals"] == ["States.ALL"]
-    handler = states[step["Catch"][0]["Next"]]
-    assert handler["Type"] == "Pass" and handler.get("End") is True
-    assert step["Retry"] if "Retry" in step else True  # no automatic retry loop that could multiply spend
-    assert "Retry" not in step
+    skipped = states_of(template)[step["Catch"][0]["Next"]]
+    assert skipped["Type"] == "Pass" and skipped.get("End") is True
+    retry = step["Retry"]
+    assert len(retry) == 1 and retry[0]["ErrorEquals"] == ["Lambda.TooManyRequestsException"] and retry[0]["MaxAttempts"] == 2  # only a throttle is retried
+    generator_arn = json.dumps(states_of(template)["InvokeGenerator"]["Resource"])
+    assert json.dumps(step["Parameters"]["FunctionName"]) == json.dumps(states_of(template)["InvokeGenerator"]["Parameters"]["FunctionName"]), generator_arn
 
 
 def test_the_generator_step_is_unchanged_and_still_retries_throttling() -> None:
-    gen = definition(synth())["States"]["InvokeGenerator"]
+    gen = states_of(synth())["InvokeGenerator"]
     assert gen["Retry"][0]["MaxAttempts"] == 1 and "Lambda.TooManyRequestsException" in gen["Retry"][0]["ErrorEquals"]
+
+
+def test_the_whole_execution_is_given_time_for_generation_questions_and_translation() -> None:
+    machine = next(iter(synth().find_resources("AWS::StepFunctions::StateMachine").values()))
+    assert json.loads("".join(p if isinstance(p, str) else "REF" for p in machine["Properties"]["DefinitionString"]["Fn::Join"][1]))["TimeoutSeconds"] == 2700
 
 
 # ---- context values --------------------------------------------------------------------------------------------------------------

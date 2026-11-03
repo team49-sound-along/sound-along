@@ -77,7 +77,7 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
         ),
         architecture=lambda_.Architecture.ARM_64,
         memory_size=4096,
-        timeout=Duration.seconds(600),
+        timeout=Duration.seconds(900),  # the Lambda maximum: translating and narrating the longest text can take minutes on 2 CPUs
         reserved_concurrent_executions=2,
         log_group=_log_group(scope, "GeneratorLogs"),
         environment={"BUCKET": props.bucket.bucket_name, "TABLE_NAME": props.table.table_name},
