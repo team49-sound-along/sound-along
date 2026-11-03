@@ -1,5 +1,5 @@
 from human_alignment import align_words
-from qa_metrics import Heard
+from asr_words import Heard
 
 
 def heard(words, step=0.5, start=0.0):

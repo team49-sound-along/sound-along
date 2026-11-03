@@ -14,25 +14,11 @@ from pathlib import Path
 
 import numpy as np
 
-from qa_metrics import Expected, Heard, Report, compare
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "synth"))
 
-SR = 16_000
+from asr_words import SR, Heard, decode_16k, transcribe  # noqa: E402,F401
+from qa_metrics import Expected, Report, compare  # noqa: E402
 
-
-def decode_16k(path: str) -> np.ndarray:
-    raw = subprocess.run(
-        ["ffmpeg", "-loglevel", "error", "-i", path, "-f", "f32le", "-ac", "1", "-ar", str(SR), "-"],
-        check=True, capture_output=True,
-    ).stdout
-    return np.frombuffer(raw, dtype=np.float32)
-
-
-def transcribe(audio: np.ndarray, model_name: str = "small.en") -> list[Heard]:
-    from faster_whisper import WhisperModel
-
-    model = WhisperModel(model_name, device="cpu", compute_type="int8")
-    segments, _ = model.transcribe(audio, language="en", word_timestamps=True, beam_size=5, condition_on_previous_text=False)
-    return [Heard(w.word.strip(), w.start, w.end) for seg in segments for w in (seg.words or [])]
 
 
 def report_dict(report: Report) -> dict:

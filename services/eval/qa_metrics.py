@@ -6,33 +6,16 @@ that flags mispronounced or skipped words and timing drift.
 """
 from __future__ import annotations
 
-import re
+import sys
 from dataclasses import dataclass
 from difflib import SequenceMatcher
+from pathlib import Path
 from typing import Sequence
 
-_NON_ALNUM = re.compile(r"[^0-9a-z]+")
-# Numbers can be written as digits or words ("3" vs "three"), so both forms are excluded on BOTH sides.
-_NUMBER_WORDS = frozenset(
-    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen "
-    "eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred thousand million billion first "
-    "second third fourth fifth sixth seventh eighth ninth tenth".split()
-)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "synth"))
 
+from asr_words import Heard, is_number as _is_number, norm  # noqa: E402,F401  (shared with the generator image)
 
-def _is_number(text: str) -> bool:
-    return any(c.isdigit() for c in text) or norm(text) in _NUMBER_WORDS
-
-
-def norm(text: str) -> str:
-    return _NON_ALNUM.sub("", text.lower())
-
-
-@dataclass(frozen=True)
-class Heard:
-    text: str
-    start_s: float
-    end_s: float
 
 
 @dataclass(frozen=True)

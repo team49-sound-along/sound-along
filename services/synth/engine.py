@@ -6,8 +6,9 @@ Polly (speech marks) and others implement the same Protocol later.
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass
-from typing import Mapping, Protocol, Sequence
+from typing import Any, Mapping, Protocol, Sequence
 
 import numpy as np
 
@@ -31,15 +32,31 @@ class Engine(Protocol):
     def synthesize(self, sentence: str) -> SentenceAudio: ...
 
 
+_PIPELINE: Any = None
+_PIPELINE_LOCK = threading.Lock()
+
+
+def _shared_pipeline() -> Any:
+    """Load the model once per process (about 4 s); every job after that creates its engine instantly."""
+    global _PIPELINE
+    with _PIPELINE_LOCK:
+        if _PIPELINE is None:
+            from kokoro import KPipeline  # imported lazily so Lambda init stays small
+
+            _PIPELINE = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
+        return _PIPELINE
+
+
 class KokoroEngine:
-    """Kokoro-82M (Apache-2.0) via the PyTorch ``kokoro`` package; English only for word timestamps."""
+    """Kokoro-82M (Apache-2.0) via the PyTorch ``kokoro`` package; English only for word timestamps.
+
+    Voice, speed and pronunciation fixes are per-job settings: they come from the job's input file, not from code.
+    """
 
     name = "kokoro"
 
     def __init__(self, voice: str = "af_heart", speed: float = 0.95, respellings: Mapping[str, str] | None = None) -> None:
-        from kokoro import KPipeline  # imported lazily so Lambda init stays small
-
-        self._pipeline = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
+        self._pipeline = _shared_pipeline()
         self.voice = voice
         self._speed = speed
         chosen = load_respellings() if respellings is None else respellings

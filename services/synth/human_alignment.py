@@ -6,15 +6,11 @@ The passage text is the source of truth for what is displayed; the audio only su
 """
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
 from difflib import SequenceMatcher
-from pathlib import Path
 from typing import Sequence
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eval"))
-
-from qa_metrics import Heard, norm  # noqa: E402
+from asr_words import Heard, norm
 
 LEADING_STEP_S = 0.3  # spacing used when words precede the first matched word or follow the last one
 
