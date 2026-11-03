@@ -47,6 +47,19 @@ def _unchanged(passage: dict[str, Any], data_dir: Path, fp: str) -> dict[str, An
     return previous if previous.get("generatedWith", {}).get("hash") == fp else None
 
 
+def publish_cards(passage: dict[str, Any], data_dir: Path, enrich_fn=None) -> bool:
+    """Place cards and pictures for a teacher-generated passage, written next to the audio. Best effort: never raises, so the audio
+    that is already published is never lost to a slow or blocked network."""
+    try:
+        from enrich_places import enrich_places, ner_places, write_enriched
+
+        enriched = enrich_fn(passage) if enrich_fn else enrich_places({**passage, "source": passage.get("source") or "generated"}, ner=ner_places)
+        return bool(enriched and write_enriched(data_dir, passage["uuid"], enriched))
+    except Exception as err:  # noqa: BLE001
+        sys.stderr.write(f"place cards skipped: {err}\n")
+        return False
+
+
 def run(passage: dict[str, Any], data_dir: Path, on_step=_emit_step) -> dict[str, Any]:
     data_dir.mkdir(parents=True, exist_ok=True)
     settings = passage.get("settings") or {}
@@ -64,6 +77,7 @@ def run(passage: dict[str, Any], data_dir: Path, on_step=_emit_step) -> dict[str
     if result.human:
         _write_variant(result.human, data_dir, kbps)
     (data_dir / f"{result.ai.id}.soundalong.json").write_text(json.dumps(result.soundalong, ensure_ascii=False))
+    publish_cards(passage, data_dir)
     return {
         "id": result.ai.id,
         "humanPassageId": result.human.id if result.human else None,

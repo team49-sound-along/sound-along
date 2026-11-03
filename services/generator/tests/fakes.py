@@ -16,15 +16,18 @@ class FakeS3:
         self.objects: dict[str, bytes] = dict(objects or {})
         self.content_types: dict[str, str] = {}
         self.content_encodings: dict[str, str] = {}
+        self.cache_controls: dict[str, str] = {}
 
     def get_object(self, Bucket: str, Key: str) -> dict[str, Any]:
         if Key not in self.objects:
             raise KeyError(Key)
         return {"Body": io.BytesIO(self.objects[Key])}
 
-    def put_object(self, Bucket: str, Key: str, Body: bytes, ContentType: str, ContentEncoding: str | None = None) -> None:
+    def put_object(self, Bucket: str, Key: str, Body: bytes, ContentType: str, ContentEncoding: str | None = None, CacheControl: str | None = None) -> None:
         self.objects[Key] = Body
         self.content_types[Key] = ContentType
+        if CacheControl:
+            self.cache_controls[Key] = CacheControl
         if ContentEncoding:
             self.content_encodings[Key] = ContentEncoding
 

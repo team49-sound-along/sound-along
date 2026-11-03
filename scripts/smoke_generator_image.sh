@@ -32,5 +32,10 @@ for voice in ('phonon_hadley', 'phonon_everly'):
                   create_engine(settings={'voice': voice}))
     assert ph.ai.timing['engine'] == 'phonon' and ph.ai.timing['voice'] == voice, ph.ai.timing['engine']
     assert ph.ai.timing['metrics']['unalignedWords'] <= 0.2 * len(ph.ai.timing['words']), (voice, ph.ai.timing['metrics'])  # recognizer-timed: a short clip may drop a word
-print('OK: handler imports, offline synthesis, 2 extra voices, offline recognition, Spanish with recognizer timing, Phonon (2 voices) offline;', len(result.words), 'English words, 0 unaligned')
+# Live place cards: spaCy finds places offline, and with NO network enrichment returns nothing instead of failing the job
+from enrich_places import enrich_places, ner_places
+assert 'London' in ner_places('We visited Tower Bridge in London.'), ner_places('We visited Tower Bridge in London.')
+offline = enrich_places({'uuid': 'x', 'source': 'generated', 'language': 'en', 'content': '<p>We saw Tower Bridge in London.</p>'}, ner=ner_places)
+assert offline is None, offline
+print('OK: handler imports, offline synthesis, 2 extra voices, offline recognition, Spanish with recognizer timing, Phonon (2 voices) offline, place detection and offline-safe enrichment;', len(result.words), 'English words, 0 unaligned')
 "

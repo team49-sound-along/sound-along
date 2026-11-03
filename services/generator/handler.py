@@ -44,6 +44,7 @@ class Dependencies:
     encoder: Encoder = encode_mp3
     transcribe_fn: Callable[..., Any] = transcribe
     decode_fn: Callable[..., Any] = decode_audio
+    enrich_fn: Callable[[dict[str, Any]], Any] = lambda passage: None  # production turns this on in handler(); unit tests never touch the network
 
 
 def _read_raw(clients: Clients, raw_key: str) -> dict[str, Any]:
@@ -51,13 +52,47 @@ def _read_raw(clients: Clients, raw_key: str) -> dict[str, Any]:
     return json.loads(body)
 
 
-def _put(clients: Clients, key: str, body: bytes, content_type: str, gzipped: bool = False) -> None:
+def _put(clients: Clients, key: str, body: bytes, content_type: str, gzipped: bool = False, cache_control: str | None = None) -> None:
     """ReadWorks' guide: large word-level timing "can live in S3 in zipped form". Gzipped objects carry
     Content-Encoding, so a browser's fetch() decompresses them without any client code."""
     if gzipped:
         clients.s3.put_object(Bucket=clients.bucket, Key=key, Body=gzip.compress(body, mtime=0), ContentType=content_type, ContentEncoding="gzip")
     else:
-        clients.s3.put_object(Bucket=clients.bucket, Key=key, Body=body, ContentType=content_type)
+        extra = {"CacheControl": cache_control} if cache_control else {}
+        clients.s3.put_object(Bucket=clients.bucket, Key=key, Body=body, ContentType=content_type, **extra)
+
+
+IMMUTABLE = "public, max-age=31536000, immutable"  # picture file names carry a content hash, so they can be cached for a year
+
+
+def live_enrichment(passage: dict[str, Any]) -> Any:
+    """Place cards and pictures for a teacher-generated passage (see enrich_places.py). Never raises."""
+    from enrich_places import enrich_places, ner_places
+
+    return enrich_places(passage, ner=ner_places)
+
+
+def _cards_reviewed(clients: Clients, passage_id: str) -> bool:
+    try:
+        body = clients.s3.get_object(Bucket=clients.bucket, Key=f"data/{passage_id}.cards.json")["Body"].read()
+        return json.loads(body).get("reviewed") is True
+    except Exception:  # noqa: BLE001  (no cards yet is the normal case)
+        return False
+
+
+def _publish_cards(deps: "Dependencies", passage_id: str, passage: dict[str, Any]) -> None:
+    """Place cards and pictures next to the audio. Best effort: a failure here must never fail a job whose audio is already published."""
+    try:
+        if _cards_reviewed(deps.clients, passage_id):
+            return  # a person already reviewed these cards; never replace them
+        enriched = deps.enrich_fn({**passage, "uuid": passage_id})
+        if enriched is None:
+            return
+        for name, data in enriched.images.items():
+            _put(deps.clients, f"data/{name}", data, "image/png" if name.endswith(".png") else "image/jpeg", cache_control=IMMUTABLE)
+        _put(deps.clients, f"data/{passage_id}.cards.json", json.dumps(enriched.cards, ensure_ascii=False).encode("utf-8"), "application/json")
+    except Exception:  # noqa: BLE001
+        LOG.exception("place cards skipped for %s", passage_id)
 
 
 def _publish(deps: Dependencies, variant: Variant, kbps: int, source: str, workdir: Path) -> dict[str, Any]:
@@ -128,6 +163,7 @@ def _run(event: dict[str, Any], deps: Dependencies, tracker: JobTracker) -> dict
         if result.human:
             _publish(deps, result.human, kbps, source, workdir)
         _put(deps.clients, f"data/{result.ai.id}.soundalong.json", json.dumps(result.soundalong, ensure_ascii=False).encode("utf-8"), "application/json")
+        _publish_cards(deps, passage_id, {**passage, "source": source})
         _write_index(deps.clients)
     return result.ai.timing["metrics"]
 
@@ -160,4 +196,4 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     except Exception:
         LOG.exception("generator configuration error")
         return {"status": "failed", "jobId": event.get("jobId", "")}
-    return process(event, Dependencies(clients=clients))
+    return process(event, Dependencies(clients=clients, enrich_fn=live_enrichment))

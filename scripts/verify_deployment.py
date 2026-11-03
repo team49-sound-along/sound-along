@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 SHORT_TEXT = {
-    "en": "The class walked to the library on Tuesday. Maya found a book about three red birds. She read for twenty minutes.",
+    "en": "The class walked to the library on Tuesday. Maya found a book about three red birds. She read for twenty minutes about Tower Bridge in London.",
     "es": "Los niños van al parque todos los días. Allí juegan con sus amigos y comen frutas. Después regresan a casa felices.",
 }
 
@@ -220,6 +220,25 @@ def run(site: str, generate: bool, language: str, timeout_s: int) -> int:
                 return f"{len(words)} words, {unaligned} not exactly aligned"
 
             report.check("generated passage is readable", result)
+
+            def live_cards() -> str:
+                """A passage nobody prepared gets place cards and pictures at publish time. Wikipedia being unreachable is a warning."""
+                r = request("GET", f"{site}/data/{state['generated']}.cards.json")
+                if r.status == 404:
+                    report.emit("WARN", "live place cards", "no cards for the new passage (Wikipedia unreachable from the generator, or no place found)")
+                    return "skipped (warning above)"
+                assert r.status == 200, f"HTTP {r.status}"
+                doc = r.json()
+                problem = cards_problem({"words": {"_": {}}, "places": doc.get("places", {})})
+                assert problem is None, problem
+                assert doc.get("places"), "cards document has no places"
+                pictures = image_urls(doc)
+                for url in pictures:
+                    img = request("GET", f"{site}{url}")
+                    assert img.status == 200 and img.headers.get("content-type", "").startswith("image/"), f"{url}: HTTP {img.status}"
+                return f"{len(doc['places'])} place(s), {len(pictures)} picture(s) load as images, reviewed={doc.get('reviewed')}"
+
+            report.check("live place cards for the new passage", live_cards)
 
     sys.stdout.write(f"\n{'ALL CHECKS PASSED' if not report.failed else str(report.failed) + ' CHECK(S) FAILED'}\n")
     return 1 if report.failed else 0
