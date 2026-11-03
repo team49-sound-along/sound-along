@@ -131,3 +131,9 @@ def test_the_lambda_entry_point_routes_translate_events_to_the_translation_mode(
     monkeypatch.setattr(h, "process", lambda event, deps: {"status": "generation"})
     assert h.handler({"mode": "translate", "passageId": "x"}, None) == {"status": "done"}
     assert seen["t"][1].translate_model is not None and h.handler({"passageId": "x"}, None) == {"status": "generation"}
+
+
+def test_a_passage_too_long_for_the_lambda_limit_is_skipped_with_a_clear_reason():
+    s3, table, deps = published(content="<p>" + "word " * (h.MAX_TRANSLATE_WORDS + 50) + ".</p>")
+    out = h.process_translation({"jobId": "j", "passageId": PASSAGE_ID, "rawKey": EVENT["rawKey"]}, deps)
+    assert out["status"] == "skipped" and "too long to translate automatically" in out["reason"]

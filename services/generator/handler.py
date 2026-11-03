@@ -5,6 +5,7 @@ import _bootstrap  # noqa: F401  (must come before synth imports)
 
 import gzip
 import json
+import re
 import logging
 import tempfile
 from dataclasses import dataclass
@@ -237,6 +238,9 @@ def _relink_source(deps: Dependencies, sid: str, doc: dict[str, Any]) -> None:
     put_passage_summary(deps.clients.table, passage_summary(doc, existing.get("createdAt") or now_iso(), existing.get("source") or "generated"))
 
 
+MAX_TRANSLATE_WORDS = 1000
+
+
 def process_translation(event: dict[str, Any], deps: Dependencies) -> dict[str, Any]:
     """The other-language version of a passage, as its own linked passage. Runs as a SECOND invocation after generation (own timeout, own failure).
 
@@ -251,6 +255,9 @@ def process_translation(event: dict[str, Any], deps: Dependencies) -> dict[str, 
         passage = {**raw, "uuid": pid, "language": raw.get("language") or "en", "source": raw.get("source") or "generated"}
         if not should_translate(passage):
             return {**out, "status": "skipped", "reason": "not for this passage"}
+        words = len(re.sub(r"<[^>]*>", " ", passage.get("content") or "").split())
+        if words > MAX_TRANSLATE_WORDS:  # measured: 1,170 words took 755 s of the 900 s Lambda limit
+            return {**out, "status": "skipped", "reason": f"too long to translate automatically ({words} words, limit {MAX_TRANSLATE_WORDS})"}
         source_lang = passage["language"]
         lang = other_language(source_lang)
         model = deps.translate_model(source_lang, lang)
