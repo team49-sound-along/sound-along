@@ -109,3 +109,22 @@ def test_publish_also_writes_translated_cards_and_their_pictures_when_a_translat
     cards = json.loads((tmp_path / f"{tid}.cards.json").read_text())
     assert cards["words"]["galletas"]["translation"]["words"] == ["cookies"] and cards["machineTranslated"] is True
     assert (tmp_path / cards["words"]["galletas"]["imageUrl"].removeprefix("/data/")).read_bytes() == png
+
+
+# ---- when an upload gets a translation -------------------------------------------------------------------------------------------
+@pytest.mark.parametrize("passage,expected", [
+    ({"uuid": SRC, "source": "generated", "language": "en"}, True),
+    ({"uuid": SRC, "source": "generated", "language": "es"}, True),
+    ({"uuid": SRC, "source": "generated"}, True),
+    ({"uuid": SRC, "source": "generated", "settings": {"translate": False}}, False),
+    ({"uuid": SRC, "source": "generated", "noTranslate": True}, False),  # a translation is never translated again
+    ({"uuid": SRC, "source": "sample", "language": "en"}, False),  # demo texts are translated by scripts/build_translations.py
+    ({"uuid": SRC, "source": "generated", "language": "fr"}, False),
+])
+def test_which_passages_get_an_automatic_translation(passage, expected):
+    assert tf.should_translate(passage) is expected
+
+
+def test_the_translated_job_is_marked_so_it_is_never_translated_again():
+    job = tf.build_translated_passage(PASSAGE, "es", TRANSLATED)
+    assert job["noTranslate"] is True and tf.should_translate(job) is False

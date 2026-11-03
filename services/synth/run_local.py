@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from engine import SAMPLE_RATE
 from engines import create_engine
@@ -87,10 +87,27 @@ def run(passage: dict[str, Any], data_dir: Path, on_step=_emit_step) -> dict[str
     }
 
 
+def translate_after_publish(passage: dict[str, Any], data_dir: Path, summary: dict[str, Any]) -> Optional[str]:
+    """The other-language version of a teacher's passage, made AFTER the original is published (so the teacher is never kept waiting).
+    Best effort: any failure leaves the original untouched. Returns the translated passage id or None."""
+    try:
+        from translate_flow import other_language, publish_translation, should_translate
+
+        if not should_translate(passage):
+            return None
+        ids = [summary["id"], *([summary["humanPassageId"]] if summary.get("humanPassageId") else [])]
+        return publish_translation({**passage, "uuid": summary["id"]}, data_dir, other_language(passage.get("language")), source_ids=ids, safe=True)
+    except Exception as err:  # noqa: BLE001
+        sys.stderr.write(f"translation skipped: {err}\n")
+        return None
+
+
 def main(passage_path: str, data_dir: str) -> int:
     passage = json.loads(Path(passage_path).read_text())
     summary = run(passage, Path(data_dir))
     sys.stdout.write(json.dumps({"result": summary}) + "\n")
+    sys.stdout.flush()  # the app marks the job done now; the translation below continues in the background
+    translate_after_publish(passage, Path(data_dir), summary)
     return 0
 
 

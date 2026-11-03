@@ -31,6 +31,12 @@ def other_language(lang: Optional[str]) -> str:
     return "en" if lang == "es" else "es"
 
 
+def should_translate(passage: dict[str, Any]) -> bool:
+    """Teacher-generated English or Spanish passages get a translation automatically, unless switched off (settings.translate = false) or already a translation."""
+    return (passage.get("source") == "generated" and (passage.get("language") or "en") in ("en", "es") and not passage.get("noTranslate")
+            and (passage.get("settings") or {}).get("translate") is not False)
+
+
 def invert_map(sentence_map: Sequence[Sequence[int]], n_target: int) -> list[int]:
     """Target sentence number -> the source sentence it came from."""
     out: list[Optional[int]] = [None] * n_target
@@ -48,6 +54,7 @@ def build_translated_passage(passage: dict[str, Any], lang: str, translated: Tra
     return {
         "uuid": translated_id(passage["uuid"], lang), "title": translated.title or passage.get("title"), "content": translated.content_html,
         "language": lang, "source": passage.get("source") or "generated", "settings": dict(passage.get("settings") or {}), "pronunciations": {},
+        "noTranslate": True,  # a translation is never translated again
     }
 
 
