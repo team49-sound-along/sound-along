@@ -24,7 +24,7 @@ def world():
 def test_success_uploads_objects_with_content_types(world):
     s3, table = world
     result = h.process(EVENT, make_deps(s3, table))
-    assert result == {"status": "done", "jobId": JOB_ID, "passageId": PASSAGE_ID}
+    assert result == {"status": "done", "jobId": JOB_ID, "passageId": PASSAGE_ID, "language": "en"}
     assert s3.content_types[f"data/{PASSAGE_ID}.mp3"] == "audio/mpeg"
     assert s3.content_types[f"data/{PASSAGE_ID}.timing.json"] == "application/json"
     timing = json.loads(gzip.decompress(s3.objects[f"data/{PASSAGE_ID}.timing.json"]))
