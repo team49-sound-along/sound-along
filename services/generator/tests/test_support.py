@@ -40,3 +40,14 @@ def test_bitrate_resolution_prefers_the_setting_then_the_environment_then_the_de
     assert resolve_kbps(32) == 32 and resolve_kbps(None) == 48 and resolve_kbps(999) == 48 and resolve_kbps("x") == 48
     monkeypatch.setenv("SOUND_ALONG_MP3_KBPS", "64")
     assert resolve_kbps(None) == 64 and resolve_kbps(24) == 24
+
+
+def test_vocab_count_counts_distinct_words_not_senses():
+    """Twin of the JS rule in services/api/src/passageSummary.js: 'tax' (noun) and 'tax' (verb) are two senses but one word."""
+    from summary import passage_summary
+
+    timing = {"id": "x", "vocab": {"4217601": {"word": "tax"}, "4217603": {"word": "Tax"}, "813901": {"word": "colonist"},
+                                    "1179703": {"word": "disguise"}, "3277401": {"word": "principle"}}}
+    assert passage_summary(timing, "2026-11-03T00:00:00Z")["vocabCount"] == 4
+    assert passage_summary({"id": "x"}, "t")["vocabCount"] == 0
+    assert passage_summary({"id": "x", "vocab": {"1": {"word": "nature"}, "2": {"definition": "no word"}, "3": {"word": "  "}}}, "t")["vocabCount"] == 1

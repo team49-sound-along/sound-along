@@ -13,6 +13,12 @@ def index_entry(item: dict[str, Any]) -> dict[str, Any]:
     return {**entry, "pairId": entry.get("pairId"), "language": entry.get("language") or "en"}
 
 
+def distinct_vocab_words(vocab: dict[str, Any] | None) -> int:
+    """Vocabulary words in a timing document. Its keys are word senses, so "tax" (noun) and "tax" (verb) are one word.
+    Same rule as services/api/src/passageSummary.js."""
+    return len({str((entry or {}).get("word") or "").strip().lower() for entry in (vocab or {}).values()} - {""})
+
+
 def passage_summary(timing: dict[str, Any], created_at: str, source: str = "generated") -> dict[str, Any]:
     metrics = timing.get("metrics") or {}
     words = metrics.get("words")
@@ -26,7 +32,7 @@ def passage_summary(timing: dict[str, Any], created_at: str, source: str = "gene
         "voice": timing.get("voice") or "unknown",
         "createdAt": created_at,
         "source": source,
-        "vocabCount": len(timing.get("vocab") or {}),
+        "vocabCount": distinct_vocab_words(timing.get("vocab")),
         "language": timing.get("language") or "en",
         "metrics": metrics,
         **extra,
