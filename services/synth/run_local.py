@@ -16,6 +16,7 @@ from typing import Any
 
 from engine import SAMPLE_RATE
 from engines import create_engine
+from fingerprint import fingerprint
 from flow import Variant, run_flow
 from mp3 import encode_mp3, resolve_kbps
 
@@ -37,11 +38,24 @@ def _write_variant(variant: Variant, data_dir: Path, kbps: int) -> None:
     timing_file.write_text(json.dumps(timing, ensure_ascii=False))
 
 
+def _unchanged(passage: dict[str, Any], data_dir: Path, fp: str) -> dict[str, Any] | None:
+    """The previous output when its fingerprint matches (same text, voice, settings, relevant fixes, recording)."""
+    timing_file = data_dir / f"{passage['uuid']}.timing.json"
+    if passage.get("force") or not timing_file.exists() or not (data_dir / f"{passage['uuid']}.mp3").exists():
+        return None
+    previous = json.loads(timing_file.read_text())
+    return previous if previous.get("generatedWith", {}).get("hash") == fp else None
+
+
 def run(passage: dict[str, Any], data_dir: Path, on_step=_emit_step) -> dict[str, Any]:
     data_dir.mkdir(parents=True, exist_ok=True)
     settings = passage.get("settings") or {}
-    engine = create_engine(settings=settings, respellings=passage.get("pronunciations"))
     recording = (passage.get("recording") or {}).get("path")
+    previous = _unchanged(passage, data_dir, fingerprint(passage, recording))
+    if previous is not None:  # nothing that affects the audio changed: no generation, no cost
+        return {"id": passage["uuid"], "humanPassageId": previous.get("pairId") if recording else None,
+                "title": passage.get("title"), "skipped": True, **previous["metrics"]}
+    engine = create_engine(settings=settings, respellings=passage.get("pronunciations"), language=passage.get("language") or "en")
     result = run_flow(passage, engine, on_step, recording_path=recording)
 
     on_step("publish")

@@ -1,6 +1,13 @@
 {
-  "app": "npx tsx bin/app.ts",
-  "watch": { "exclude": ["node_modules", "cdk.out", "test"] },
+  "app": "python app.py",
+  "watch": {
+    "exclude": [
+      ".venv",
+      "cdk.out",
+      "build",
+      "tests"
+    ]
+  },
   "context": {
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
     "@aws-cdk/core:checkSecretUsage": true,

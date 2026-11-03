@@ -9,8 +9,8 @@ export function createDynamoContentMethods({ client, tableName }) {
     async getSettings() {
       const { Item } = await client.send(new GetCommand({ TableName: tableName, Key: SETTINGS_KEY }));
       if (!Item) return null;
-      const { voice, speed, mp3Kbps } = Item;
-      return { voice, speed, mp3Kbps };
+      const { voice, voiceEs, speed, mp3Kbps } = Item;
+      return { voice, ...(voiceEs !== undefined && { voiceEs }), speed, mp3Kbps };
     },
     async putSettings(settings) {
       await client.send(new PutCommand({ TableName: tableName, Item: { ...SETTINGS_KEY, ...settings, updatedAt: new Date().toISOString() } }));

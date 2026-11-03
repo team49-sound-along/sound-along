@@ -1,7 +1,7 @@
 // Minimal hash router (pure parse + reactive current route).
 import { ref, readonly } from "vue";
 
-const PAGES = ["library", "assignments", "generate", "insights", "settings", "pronunciations", "review"];
+const PAGES = ["library", "assignments", "generate", "insights", "settings", "pronunciations", "review", "listening"];
 /** Screens only a teacher may open (the API has no real auth; this is the demo role guard). */
 export const TEACHER_ONLY = ["settings", "pronunciations", "review"];
 export const isTeacherOnly = (name) => TEACHER_ONLY.includes(name);

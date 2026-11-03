@@ -1,7 +1,8 @@
 """Build-time only: download the pinned models into HF_HOME and point refs/main at them.
 
  * Kokoro-82M weights plus every US/UK English voice (teachers choose the voice in Settings, so all must be present).
- * faster-whisper small.en (MIT) for aligning uploaded recordings and the pronunciation check.
+ * faster-whisper small.en (MIT) for aligning uploaded recordings and the pronunciation check, and the multilingual
+   small model for Spanish.
 
 The libraries load repos with the default revision ("main"), so offline lookups need refs/main to exist;
 snapshot_download with a commit hash does not write it.
@@ -17,11 +18,16 @@ MODELS = (
     (
         "hexgrad/Kokoro-82M",
         "f3ff3571791e39611d31c381e3a41a3af07b4987",
-        ["config.json", "kokoro-v1_0.pth", "voices/af_*.pt", "voices/am_*.pt", "voices/bf_*.pt", "voices/bm_*.pt"],
+        ["config.json", "kokoro-v1_0.pth", "voices/af_*.pt", "voices/am_*.pt", "voices/bf_*.pt", "voices/bm_*.pt", "voices/ef_*.pt", "voices/em_*.pt"],
     ),
     (
         "Systran/faster-whisper-small.en",
         "d1d751a5f8271d482d14ca55d9e2deeebbae577f",
+        ["config.json", "model.bin", "tokenizer.json", "vocabulary.txt"],
+    ),
+    (  # multilingual: Spanish word timing and checks
+        "Systran/faster-whisper-small",
+        "536b0662742c02347bc0e980a01041f333bce120",
         ["config.json", "model.bin", "tokenizer.json", "vocabulary.txt"],
     ),
 )

@@ -51,7 +51,7 @@ describe("settings helpers", () => {
     const next = mergeSettings(current, { speed: 0.7 });
     assert.equal(next.speed, 0.7);
     assert.equal(current.speed, 0.95);
-    assert.deepEqual(mergeSettings(null, {}), { voice: "af_heart", speed: 0.95, mp3Kbps: 48 });
+    assert.deepEqual(mergeSettings(null, {}), { voice: "af_heart", voiceEs: "ef_dora", speed: 0.95, mp3Kbps: 48 });
     const patch = parseSettingsPatch({ speed: 1.2, mp3Kbps: 24 }, loadVoices());
     assert.deepEqual(patch, { speed: 1.2, mp3Kbps: 24 });
   });

@@ -11,6 +11,7 @@ export function summarizePassage({ id, timing, mtimeMs, source }) {
     source: source === "generated" ? "generated" : "sample",
     vocabCount: Object.keys(timing.vocab ?? {}).length,
     pairId: timing.pairId ?? null,
+    language: timing.language === "es" ? "es" : "en",
   };
 }
 

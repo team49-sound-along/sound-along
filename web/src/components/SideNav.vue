@@ -14,6 +14,7 @@ const items = computed(() => [
   { name: "library", href: "#/library", label: "Library", icon: "library" },
   { name: "assignments", href: "#/assignments", label: role.value === "student" ? "My assignments" : "Assignments", icon: "assign" },
   { name: "generate", href: "#/generate", label: "Generate", icon: "generate" },
+  { name: "listening", href: "#/listening", label: "Listening test", icon: "listen" },
   { name: "insights", href: "#/insights", label: "Insights", icon: "insights" },
   ...(role.value === "teacher" ? teacherItems : []),
 ]);

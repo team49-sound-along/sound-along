@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createFileContentMethods } from "./fileContent.js";
+import { createFileRatingMethods } from "./fileRatings.js";
 
 // Synthetic classes (no real student data). In AWS this list comes from DynamoDB.
 export const CLASSES = Object.freeze([
@@ -49,6 +50,7 @@ export function createFileStore(filePath) {
 
   return {
     ...createFileContentMethods({ load, commit }),
+    ...createFileRatingMethods({ load, commit }),
     async listClasses() {
       return CLASSES;
     },

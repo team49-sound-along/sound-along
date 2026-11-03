@@ -3,6 +3,7 @@ import { computed } from "vue";
 import StateBlock from "../components/StateBlock.vue";
 import KpiCard from "../components/KpiCard.vue";
 import CostChart from "../components/CostChart.vue";
+import BlindRating from "../components/BlindRating.vue";
 import Icon from "../components/Icon.vue";
 import { api } from "../api.js";
 import { useResource } from "../useResource.js";
@@ -75,6 +76,8 @@ const naturalness = computed(() => {
           </div>
           <p class="small muted">Scores run from 1 (poor) to 5 (excellent).</p>
         </section>
+
+        <BlindRating :summary="data.quality?.blindRating ?? null" />
 
         <section class="card stack" aria-labelledby="cost-h">
           <div>

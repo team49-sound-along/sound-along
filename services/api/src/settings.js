@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { HttpError } from "./http.js";
 
-export const DEFAULT_SETTINGS = Object.freeze({ voice: "af_heart", speed: 0.95, mp3Kbps: 48 });
+export const DEFAULT_SETTINGS = Object.freeze({ voice: "af_heart", voiceEs: "ef_dora", speed: 0.95, mp3Kbps: 48 });
 const SPEED = { min: 0.7, max: 1.2 };
 const KBPS = { min: 24, max: 128 };
 const VOICES_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "config", "voices.json");
@@ -26,8 +26,16 @@ export function parseSettingsPatch(body, voices) {
   if (body === null || typeof body !== "object" || Array.isArray(body)) bad("Send a JSON object.");
   const patch = {};
   if ("voice" in body) {
-    if (typeof body.voice !== "string" || !voices.some((v) => v.id === body.voice)) bad("Choose a voice from the list.");
+    if (typeof body.voice !== "string" || !voices.some((v) => v.id === body.voice && (v.lang ?? "en") === "en")) {
+      bad("Choose an English voice from the list.");
+    }
     patch.voice = body.voice;
+  }
+  if ("voiceEs" in body) {
+    if (typeof body.voiceEs !== "string" || !voices.some((v) => v.id === body.voiceEs && v.lang === "es")) {
+      bad("Choose a Spanish voice from the list.");
+    }
+    patch.voiceEs = body.voiceEs;
   }
   if ("speed" in body) {
     const { speed } = body;
@@ -43,14 +51,16 @@ export function parseSettingsPatch(body, voices) {
     }
     patch.mp3Kbps = mp3Kbps;
   }
-  if (Object.keys(patch).length === 0) bad("Send at least one of voice, speed or mp3Kbps.");
+  if (Object.keys(patch).length === 0) bad("Send at least one of voice, voiceEs, speed or mp3Kbps.");
   return patch;
 }
 
-/** Stored settings (any subset) over the defaults, as a new object. Unknown stored keys are dropped. */
-export function effectiveSettings(stored) {
+/** Stored settings (any subset) over the defaults, as a new object. Unknown stored keys are dropped, and a stored voice that is no longer offered falls back to the default. */
+export function effectiveSettings(stored, voices = loadVoices()) {
+  const offered = (id, lang) => voices.some((v) => v.id === id && (v.lang ?? "en") === lang);
   return {
-    voice: stored?.voice ?? DEFAULT_SETTINGS.voice,
+    voice: offered(stored?.voice, "en") ? stored.voice : DEFAULT_SETTINGS.voice,
+    voiceEs: offered(stored?.voiceEs, "es") ? stored.voiceEs : DEFAULT_SETTINGS.voiceEs,
     speed: stored?.speed ?? DEFAULT_SETTINGS.speed,
     mp3Kbps: stored?.mp3Kbps ?? DEFAULT_SETTINGS.mp3Kbps,
   };

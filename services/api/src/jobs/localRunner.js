@@ -28,6 +28,7 @@ export function createLocalRunner({ jobs, dataDir, python, script, logger = cons
       title,
       content: spec.content ?? textToHtml(spec.text),
       source: spec.source ?? "generated",
+      language: spec.language,
       settings: spec.settings,
       pronunciations: spec.pronunciations,
       recording,

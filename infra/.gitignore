@@ -1,3 +1,4 @@
-node_modules
-cdk.out
-dist
+.venv/
+__pycache__/
+cdk.out/
+build/

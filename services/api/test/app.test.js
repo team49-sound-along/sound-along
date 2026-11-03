@@ -188,3 +188,16 @@ test("unknown API route is a 404 envelope", async () => {
   assert.equal(r.status, 404);
   assert.equal(r.json.success, false);
 });
+
+
+describe("passage index document", () => {
+  test("GET /data/index.json is a plain array of public passage fields (no envelope, no internals)", async () => {
+    const res = await fetch(`${base}/data/index.json`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("cache-control"), /no-cache/);
+    const list = await res.json();
+    assert.ok(Array.isArray(list) && list.length >= 1);
+    assert.ok(list[0].id && list[0].title && "language" in list[0] && "pairId" in list[0]);
+    assert.equal("metrics" in list[0] || "review" in list[0], false);
+  });
+});

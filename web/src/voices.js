@@ -3,7 +3,7 @@
 
 export const isHuman = (passage) => passage?.engine === "human";
 
-export const voiceLabel = (engine) => (engine === "human" ? "Human narrator" : "AI voice");
+export const voiceLabel = (engine) => (engine === "human" ? "Human narrator" : "Read-aloud voice");
 
 /** One entry per text. Hides a human variant when its AI pair is present and records it as `humanId`. */
 export function groupVariants(passages) {

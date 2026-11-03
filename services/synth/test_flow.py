@@ -38,10 +38,12 @@ def test_quality_check_records_only_clearly_different_words_as_suspects():
     assert out.ai.timing["review"] == {"source": "asr-check", "suspects": [{"expected": "gaieties", "heard": "deities"}]}
 
 
-def test_recording_produces_a_linked_human_variant_with_the_same_words():
+def test_recording_produces_a_linked_human_variant_with_the_same_words(tmp_path):
+    rec = tmp_path / "rec.mp3"
+    rec.write_bytes(b"audio")
     recording = np.zeros(24000 * 5, dtype=np.float32)
     spoken = heard(["hello", "world", "we", "saw", "gaieties", "today"], shift=1.0)
-    out = run_flow(PASSAGE, FakeEngine(), recording_path="x.mp3",
+    out = run_flow(PASSAGE, FakeEngine(), recording_path=str(rec),
                    transcribe_fn=lambda audio: spoken, decode_fn=lambda path, rate: recording)
     ai, human = out.ai, out.human
     assert human is not None and human.id == "hu-1"
@@ -54,7 +56,9 @@ def test_recording_produces_a_linked_human_variant_with_the_same_words():
 
 def test_generated_with_records_the_settings_and_pronunciations_used():
     out = run_flow(PASSAGE, FakeEngine())
-    assert out.ai.timing["generatedWith"] == {"settings": {"voice": "af_bella"}, "pronunciations": {"gaieties": "gayetees"}}
+    gw = out.ai.timing["generatedWith"]
+    assert gw["settings"] == {"voice": "af_bella"} and gw["pronunciations"] == {"gaieties": "gayetees"}
+    assert len(gw["hash"]) == 64
 
 
 def test_a_recording_without_a_human_id_is_rejected_with_a_clear_message():
@@ -81,10 +85,12 @@ def test_decode_audio_returns_mono_float_at_the_requested_rate(tmp_path):
         assert 0.2 < float(np.max(np.abs(out))) < 0.4
 
 
-def test_soundalong_block_lists_both_voices_with_the_human_voice_first_and_flags():
+def test_soundalong_block_lists_both_voices_with_the_human_voice_first_and_flags(tmp_path):
+    rec = tmp_path / "rec.mp3"
+    rec.write_bytes(b"audio")
     recording = np.zeros(24000 * 5, dtype=np.float32)
     spoken = heard(["hello", "world", "we", "saw", "gaieties", "today"])
-    both = run_flow(PASSAGE, FakeEngine(), recording_path="x.mp3", transcribe_fn=lambda a: spoken, decode_fn=lambda p, r: recording)
+    both = run_flow(PASSAGE, FakeEngine(), recording_path=str(rec), transcribe_fn=lambda a: spoken, decode_fn=lambda p, r: recording)
     block = both.soundalong
     assert block["features"] == ["sa", "sahv"]
     sa = block["soundAlong"]

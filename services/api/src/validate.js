@@ -28,6 +28,13 @@ export function parseToggle(body) {
   return { soundAlong: body.soundAlong };
 }
 
+/** "en" | "es"; absent means "en". */
+export function parseLanguage(value) {
+  if (value == null) return "en";
+  if (value !== "en" && value !== "es") bad('Language must be "en" or "es".');
+  return value;
+}
+
 export function parseGenerateInput(body) {
   if (!isObject(body)) bad("Send a JSON object.");
   const title = typeof body.title === "string" ? body.title.trim() : "";
@@ -40,7 +47,7 @@ export function parseGenerateInput(body) {
     if (typeof body.recordingId !== "string" || !UUID.test(body.recordingId)) bad("That recording id is not valid. Upload the recording again.");
     recordingId = body.recordingId;
   }
-  return { title, text, recordingId };
+  return { title, text, recordingId, language: parseLanguage(body.language) };
 }
 
 export function parseEvent(body, passageIds) {

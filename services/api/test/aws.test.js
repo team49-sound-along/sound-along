@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { gunzipSync } from "node:zlib";
 import { describe, test } from "node:test";
 import { createApp } from "../src/app.js";
 import { HttpError } from "../src/http.js";
@@ -236,7 +237,12 @@ describe("seed script", () => {
     const ddb = fakeClient();
     const ids = await seed({ s3, ddb, bucket: "B", tableName: "T", dataDir: dir, logger: quiet });
     assert.deepEqual(ids, [id]);
-    assert.deepEqual(s3.calls.map((c) => [c.input.Key, c.input.ContentType]), [[`data/${id}.mp3`, "audio/mpeg"], [`data/${id}.timing.json`, "application/json"]]);
+    assert.deepEqual(s3.calls.map((c) => [c.input.Key, c.input.ContentType]), [
+      [`data/${id}.mp3`, "audio/mpeg"], [`data/${id}.timing.json`, "application/json"], ["data/index.json", "application/json"],
+    ]);
+    const index = s3.calls.find((c) => c.input.Key === "data/index.json").input;
+    assert.equal(index.ContentEncoding, "gzip"); // stored zipped, like the timing documents
+    assert.equal(JSON.parse(gunzipSync(index.Body))[0].id, id);
     const { Item } = ddb.calls[0].input;
     assert.deepEqual([Item.pk, Item.sk, Item.title, Item.words, Item.source, Item.vocabCount], ["PASSAGE", id, "Park", 7, "sample", 1]);
     assert.deepEqual(Item.metrics, { words: 7 });

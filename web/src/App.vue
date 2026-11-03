@@ -11,12 +11,13 @@ import InsightsView from "./views/InsightsView.vue";
 import SettingsView from "./views/SettingsView.vue";
 import PronunciationsView from "./views/PronunciationsView.vue";
 import ReviewView from "./views/ReviewView.vue";
+import ListeningView from "./views/ListeningView.vue";
 import TeacherOnly from "./components/TeacherOnly.vue";
 import { route, isTeacherOnly } from "./router.js";
 import { role, USERS } from "./session.js";
 
-const VIEWS = { library: LibraryView, read: ReaderView, assignments: AssignmentsView, generate: GenerateView, insights: InsightsView, settings: SettingsView, pronunciations: PronunciationsView, review: ReviewView };
-const TITLES = { library: "Library", read: "Reader", assignments: "Assignments", generate: "Generate", insights: "Insights", settings: "Settings", pronunciations: "Pronunciations", review: "Pronunciation review" };
+const VIEWS = { library: LibraryView, read: ReaderView, assignments: AssignmentsView, generate: GenerateView, insights: InsightsView, settings: SettingsView, pronunciations: PronunciationsView, review: ReviewView, listening: ListeningView };
+const TITLES = { library: "Library", read: "Reader", assignments: "Assignments", generate: "Generate", insights: "Insights", settings: "Settings", pronunciations: "Pronunciations", review: "Pronunciation review", listening: "Listening test" };
 const view = computed(() => (isTeacherOnly(route.value.name) && role.value !== "teacher" ? TeacherOnly : VIEWS[route.value.name]));
 const user = computed(() => USERS[role.value]);
 const menuOpen = ref(false);

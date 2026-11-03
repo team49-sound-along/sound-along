@@ -19,11 +19,13 @@ import tempfile
 import time
 import urllib.request
 import uuid
+
+import ab_clips
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-for sub in ("parse", "synth", "eval", "align"):
+for sub in ("parse", "synth", "eval"):
     sys.path.insert(0, str(ROOT / "services" / sub))
 
 from qa_metrics import Expected, compare, percentile  # noqa: E402
@@ -66,8 +68,8 @@ def job_input(sample: dict, recording: Path | None) -> dict:
     """The same job input file the API writes for a teacher's passage (docs/API.md), built from a bundled sample."""
     return {
         "uuid": sample["uuid"], "title": sample["title"], "content": sample["content"], "vocab": sample.get("vocab"),
-        "source": "sample",
-        "settings": {"voice": "af_heart", "speed": 0.95, "mp3Kbps": 48},
+        "source": "sample", "language": sample.get("language", "en"),
+        "settings": {"voice": "af_heart", "voiceEs": "ef_dora", "speed": 0.95, "mp3Kbps": 48},
         "pronunciations": json.loads((ROOT / "services/synth/pronunciations.json").read_text()),
         "recording": {"path": str(recording)} if recording else None,
         "humanPassageId": human_id(sample["uuid"]) if recording else None,
@@ -94,8 +96,9 @@ def generate(passage_file: Path, recording: Path | None, workdir: Path) -> None:
 
 def asr_report(passage_id: str) -> tuple[dict, tuple[float, ...]]:
     timing = json.loads((DATA / f"{passage_id}.timing.json").read_text())
+    language = timing.get("language", "en")
     expected = [Expected(w["i"], w["text"], w["start_ms"]) for w in timing["words"]]
-    report = compare(expected, transcribe(decode_16k(str(DATA / f"{passage_id}.mp3"))))
+    report = compare(expected, transcribe(decode_16k(str(DATA / f"{passage_id}.mp3")), language=language))
     row = {
         "id": passage_id,
         "title": timing["title"],
@@ -122,19 +125,33 @@ def main(skip_mos: bool) -> int:
             generate(passage_file, recordings.get(passage_file.stem), workdir)
         log("2/4 done")
 
-        log("3/4 checking against an independent Whisper transcript")
+        log("3/5 checking English passages against an independent Whisper transcript")
         rows, pooled = [], []
         for passage_file in passages:
+            language = json.loads((DATA / f"{passage_file.stem}.timing.json").read_text()).get("language", "en")
+            if language != "en":
+                # Spanish word times come from the same recognizer that would do the check, so checking them against it
+                # would be circular. They are reported as unaligned counts and review suspects only.
+                log(f"  {passage_file.stem[:8]} ({language}): timing is recognizer-derived, so no independent check")
+                continue
             row, errors = asr_report(passage_file.stem)
             rows.append(row)
             pooled.extend(errors)
             log(f"  {row['title'][:34]:<34} WER {row['wer']:.3f}  median {row['medianErrorMs']} ms  p95 {row['p95ErrorMs']} ms")
 
+        polly = download(POLLY_PRIDE_URL, workdir / "pride_polly.mp3")
+        log("4/5 building the blind listening clips (same text, loudness-matched, identical encoding)")
+        manifest = ab_clips.build(DATA, [
+            {"passageId": PARK, "kind": "human", "audioPath": str(human_mp3), "humanId": human_id(PARK)},
+            {"passageId": TEA, "kind": "human", "audioPath": str(recordings[TEA]), "humanId": human_id(TEA)},
+            {"passageId": PRIDE, "kind": "polly_current", "audioPath": str(polly)},
+        ])
+        log(f"  {len(manifest)} clips in data/ab (manifest is never served)")
+
         naturalness = None
         if not skip_mos:
-            log("4/4 predicting naturalness (UTMOS) against public ReadWorks recordings")
+            log("5/5 predicting naturalness (UTMOS) against public ReadWorks recordings")
             human = human_mp3
-            polly = download(POLLY_PRIDE_URL, workdir / "pride_polly.mp3")
             naturalness = run_mos([
                 f"ai_voice_park={DATA / (PARK + '.mp3')}",
                 f"readworks_human_park={human}",
@@ -146,7 +163,7 @@ def main(skip_mos: bool) -> int:
     report = {
         "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "asr": {
-            "method": "faster-whisper small.en transcript with word timestamps, compared with our timing. Agreement between two systems, not ground truth.",
+            "method": "faster-whisper small.en transcript with word timestamps, compared with our timing, English passages only (Spanish timing comes from the same recognizer, so it cannot be checked against it). Agreement between two systems, not ground truth.",
             "passages": rows,
             "pooled": {
                 "wordsChecked": words,

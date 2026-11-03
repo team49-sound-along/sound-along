@@ -74,5 +74,17 @@ class JobTracker:
         self._update({"status": "failed", "error": message, "finishedAt": now_iso()})
 
 
+def list_passage_items(table: Any) -> list[dict[str, Any]]:
+    """Every PASSAGE summary item. String key conditions keep this free of boto3 imports (the Table resource accepts them)."""
+    items: list[dict[str, Any]] = []
+    kwargs: dict[str, Any] = {"KeyConditionExpression": "pk = :pk", "ExpressionAttributeValues": {":pk": "PASSAGE"}}
+    while True:
+        page = table.query(**kwargs)
+        items.extend(page.get("Items", []))
+        if not page.get("LastEvaluatedKey"):
+            return items
+        kwargs["ExclusiveStartKey"] = page["LastEvaluatedKey"]
+
+
 def put_passage_summary(table: Any, summary: dict[str, Any]) -> None:
     table.put_item(Item=to_dynamo({"pk": "PASSAGE", "sk": summary["id"], **summary}))

@@ -32,19 +32,20 @@ class Engine(Protocol):
     def synthesize(self, sentence: str) -> SentenceAudio: ...
 
 
-_PIPELINE: Any = None
+LANGUAGES = {"en": "a", "es": "e"}  # Kokoro language codes: American English, Spanish
+DEFAULT_VOICE = {"en": "af_heart", "es": "ef_dora"}
+_PIPELINES: dict[str, Any] = {}
 _PIPELINE_LOCK = threading.Lock()
 
 
-def _shared_pipeline() -> Any:
-    """Load the model once per process (about 4 s); every job after that creates its engine instantly."""
-    global _PIPELINE
+def _shared_pipeline(language: str = "en") -> Any:
+    """Load each language's pipeline once per process (about 4 s); every job after that creates its engine instantly."""
     with _PIPELINE_LOCK:
-        if _PIPELINE is None:
+        if language not in _PIPELINES:
             from kokoro import KPipeline  # imported lazily so Lambda init stays small
 
-            _PIPELINE = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
-        return _PIPELINE
+            _PIPELINES[language] = KPipeline(lang_code=LANGUAGES[language], repo_id="hexgrad/Kokoro-82M")
+        return _PIPELINES[language]
 
 
 class KokoroEngine:
@@ -55,11 +56,23 @@ class KokoroEngine:
 
     name = "kokoro"
 
-    def __init__(self, voice: str = "af_heart", speed: float = 0.95, respellings: Mapping[str, str] | None = None) -> None:
-        self._pipeline = _shared_pipeline()
-        self.voice = voice
+    def __init__(
+        self,
+        voice: str | None = None,
+        speed: float = 0.95,
+        respellings: Mapping[str, str] | None = None,
+        language: str = "en",
+    ) -> None:
+        if language not in LANGUAGES:
+            raise ValueError(f"Unsupported language {language!r}. Use 'en' or 'es'.")
+        self.language = language
+        # Kokoro returns word timestamps for English only; for Spanish the flow gets them from a recognizer instead.
+        self.native_timing = language == "en"
+        self._pipeline = _shared_pipeline(language)
+        self.voice = voice or DEFAULT_VOICE[language]
         self._speed = speed
-        chosen = load_respellings() if respellings is None else respellings
+        # Pronunciation fixes are respellings run through the ENGLISH grapheme-to-phoneme step, so English only.
+        chosen = {} if language != "en" else (load_respellings() if respellings is None else respellings)
         self._phonemes = build_phonemes(chosen, lambda text: self._pipeline.g2p(text)[0])
 
     def synthesize(self, sentence: str) -> SentenceAudio:

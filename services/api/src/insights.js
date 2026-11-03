@@ -7,7 +7,7 @@ const POLLY_STANDARD_PER_M = 4;
 const sum = (items, pick) => items.reduce((total, item) => total + (pick(item) ?? 0), 0);
 const round = (value, places) => (value == null ? null : Number(value.toFixed(places)));
 
-export function buildInsights({ timings, assignments, events, qualityReport = null }) {
+export function buildInsights({ timings, assignments, events, qualityReport = null, blindRating = null }) {
   // A human-narrated variant shares its text with the AI-voice passage, so it must not double-count
   // characters, cost or generation speed. Alignment quality still counts every variant.
   const generated = timings.filter((t) => t.engine !== "human");
@@ -40,6 +40,7 @@ export function buildInsights({ timings, assignments, events, qualityReport = nu
         ? { ...qualityReport.asr.pooled, method: qualityReport.asr.method, generatedAt: qualityReport.generatedAt }
         : null,
       naturalness: qualityReport?.naturalness ?? null,
+      blindRating,
     },
     speed: {
       avgRealTimeFactor: audioSeconds > 0 ? round(generateSeconds / audioSeconds, 3) : null,

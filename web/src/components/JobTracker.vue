@@ -50,7 +50,7 @@ const summary = computed(() => [
       <p class="small muted">Source: job metrics from GET /api/jobs/{{ job.id }}.</p>
       <div v-if="job.humanPassageId && job.passageId" class="open-row">
         <a class="btn primary" :href="`#/read/${encodeURIComponent(job.humanPassageId)}`">Open with human narrator</a>
-        <a class="btn" :href="`#/read/${encodeURIComponent(job.passageId)}`">Open with AI voice</a>
+        <a class="btn" :href="`#/read/${encodeURIComponent(job.passageId)}`">Open with read-aloud voice</a>
       </div>
       <a v-else-if="job.passageId" class="btn primary" :href="`#/read/${encodeURIComponent(job.passageId)}`">Open in reader</a>
     </div>

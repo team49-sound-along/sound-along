@@ -18,6 +18,7 @@ POLLY_PCM_RATE = 16_000  # the highest PCM rate Polly offers for neural voices
 
 class PollyEngine:
     name = "polly"
+    native_timing = True  # Polly returns word speech marks in every language it speaks
 
     def __init__(self, client: Any, voice: str = "Joanna", engine: str = "neural") -> None:
         self._client = client

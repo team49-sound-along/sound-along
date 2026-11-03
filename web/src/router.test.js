@@ -23,3 +23,8 @@ test("teacher screens parse and are guarded", () => {
   assert.equal(isTeacherOnly("library"), false);
   assert.equal(isTeacherOnly("generate"), false);
 });
+
+test("listening test route exists and is open to both roles", () => {
+  assert.equal(parseHash("#/listening").name, "listening");
+  assert.equal(isTeacherOnly("listening"), false);
+});

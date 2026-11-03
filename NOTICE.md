@@ -14,8 +14,12 @@ license for the version you install.
 | AWS CDK | Infrastructure as code | Apache-2.0 |
 
 ## Content
-- `samples/` holds three public ReadWorks passages, reduced to title, text and vocabulary. The text belongs to
-  ReadWorks and is used here for a hackathon demonstration only. Answer keys and question sets are not included.
+- `samples/` holds three ReadWorks passages, reduced to title, text and vocabulary. ReadWorks provided them for this
+  event as public data (their JSON is served from the public bucket `readworks-media`, under `data/p/<passage-id>`). The text
+  belongs to ReadWorks and is used here for a hackathon demonstration only. Answer keys and question sets are not included.
+- `samples/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.json` ("Un día en el parque") is an original passage written for this
+  demonstration; it contains no ReadWorks content.
+- Headings inside a passage are read aloud (ReadWorks' human recording reads them even though their `text` field omits them).
 - ReadWorks' existing human and Polly recordings are NOT stored in this repository. `scripts/build_samples.py`
   downloads them from ReadWorks' public CDN at build time to align and measure them.
 - Passage data is public or synthetic. No student data is used.

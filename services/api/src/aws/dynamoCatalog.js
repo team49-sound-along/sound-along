@@ -18,7 +18,7 @@ export function createDynamoCatalog({ client, tableName, now = Date.now, cacheMs
   return {
     async list() {
       return (await items())
-        .map((item) => stripKeys({ id: item.sk, ...item }, ["metrics", "review"]))
+        .map((item) => stripKeys({ id: item.sk, ...item, language: item.language === "es" ? "es" : "en" }, ["metrics", "review"]))
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
     async timings() {

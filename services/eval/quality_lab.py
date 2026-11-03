@@ -44,27 +44,36 @@ def run_asr(timing_path: str, audio_path: str) -> dict:
     return {"title": timing.get("title"), "voice": timing.get("voice"), **report_dict(compare(expected, heard))}
 
 
-def run_mos(items: list[str], window_s: int = 8) -> dict:
+def load_predictor():
     import torch
 
-    predictor = torch.hub.load("tarepan/SpeechMOS:v1.2.0", "utmos22_strong", trust_repo=True).eval()
+    return torch.hub.load("tarepan/SpeechMOS:v1.2.0", "utmos22_strong", trust_repo=True).eval()
+
+
+def mos_of(audio_16k: np.ndarray, predictor, window_s: int = 8) -> dict:
+    """Mean and 10th-percentile predicted MOS over 8-second windows of 16 kHz mono audio."""
+    import torch
+
+    step, scores = window_s * SR, []
+    for start in range(0, max(len(audio_16k) - SR, 1), step):
+        chunk = audio_16k[start:start + step]
+        if len(chunk) < 2 * SR:
+            continue
+        with torch.no_grad():
+            scores.append(float(predictor(torch.from_numpy(chunk).unsqueeze(0), SR)))
+    return {
+        "meanMos": round(float(np.mean(scores)), 3) if scores else None,
+        "p10Mos": round(float(np.percentile(scores, 10)), 3) if scores else None,
+        "windows": len(scores),
+    }
+
+
+def run_mos(items: list[str], window_s: int = 8) -> dict:
+    predictor = load_predictor()
     results: dict[str, dict] = {}
     for item in items:
         label, path = item.split("=", 1)
-        audio = decode_16k(path)
-        step = window_s * SR
-        scores = []
-        for start in range(0, max(len(audio) - SR, 1), step):
-            chunk = audio[start:start + step]
-            if len(chunk) < 2 * SR:
-                continue
-            with torch.no_grad():
-                scores.append(float(predictor(torch.from_numpy(chunk).unsqueeze(0), SR)))
-        results[label] = {
-            "meanMos": round(float(np.mean(scores)), 3) if scores else None,
-            "p10Mos": round(float(np.percentile(scores, 10)), 3) if scores else None,
-            "windows": len(scores),
-        }
+        results[label] = mos_of(decode_16k(path), predictor, window_s)
     return results
 
 

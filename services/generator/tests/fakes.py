@@ -60,6 +60,10 @@ class FakeTable:
         self._reject_floats(Item)
         self.items[(Item["pk"], Item["sk"])] = Item
 
+    def query(self, KeyConditionExpression: str, ExpressionAttributeValues: dict[str, Any], **_kwargs: Any) -> dict[str, Any]:
+        pk = ExpressionAttributeValues[":pk"]
+        return {"Items": [dict(item) for (p, _), item in self.items.items() if p == pk]}
+
     def job(self, job_id: str) -> dict[str, Any]:
         return self.items[("JOB", job_id)]
 

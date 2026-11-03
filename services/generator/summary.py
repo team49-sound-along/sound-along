@@ -4,6 +4,15 @@ from __future__ import annotations
 from typing import Any
 
 
+INDEX_HIDDEN = ("pk", "sk", "metrics", "review")
+
+
+def index_entry(item: dict[str, Any]) -> dict[str, Any]:
+    """One entry of data/index.json: the public Passage fields only (same as GET /api/passages)."""
+    entry = {k: v for k, v in item.items() if k not in INDEX_HIDDEN}
+    return {**entry, "pairId": entry.get("pairId"), "language": entry.get("language") or "en"}
+
+
 def passage_summary(timing: dict[str, Any], created_at: str, source: str = "generated") -> dict[str, Any]:
     metrics = timing.get("metrics") or {}
     words = metrics.get("words")
@@ -18,6 +27,7 @@ def passage_summary(timing: dict[str, Any], created_at: str, source: str = "gene
         "createdAt": created_at,
         "source": source,
         "vocabCount": len(timing.get("vocab") or {}),
+        "language": timing.get("language") or "en",
         "metrics": metrics,
         **extra,
     }

@@ -2,15 +2,17 @@
 
 Read-along narration for K-12 passages, built for the [ReadWorks](https://www.readworks.org) challenge at AWS Breaking Barriers 2026 (NYC, Team 49).
 
-A student presses play and every word is highlighted as it is spoken. Tapping any word replays from that word. Passage text becomes narration and word-level timing automatically, with no manual editing. Where ReadWorks already has a human recording, the same highlighting is added to it, and the reader can switch between the human narrator and the AI voice.
+A student presses play and every word is highlighted as it is spoken. Tapping any word replays from that word. Passage text becomes narration and word-level timing automatically, with no manual editing. Where ReadWorks already has a human recording, the same highlighting is added to it, and the reader can switch between the human narrator and the computer-generated read-aloud voice.
 
 ## What it does
-- **Text to narration, automatically.** Open-source voice (Kokoro-82M, Apache-2.0) with an editable pronunciation overrides file and loudness matching.
-- **Word-level timing and live highlighting.** Tap a word to play from it. Arrow keys move between words (one tab stop), Enter or Space plays.
-- **Existing human recordings get highlighting** with no regeneration (Whisper alignment), plus a Human / AI voice toggle that keeps the reader's place.
+- **Any teacher content, on demand.** Paste a passage or upload a `.txt`/`.md` file, optionally with your own recording. Parsing, narration, word timing and publishing run automatically. A recording is aligned into a linked human-narrated variant.
+- **English and Spanish.** Kokoro speaks both. It gives word timing for English only, so Spanish word times come from a multilingual Whisper pass.
+- **Nothing hardcoded for voice and pronunciation.** Voice, speed and MP3 quality are stored Settings. Pronunciation fixes are stored data a teacher edits. An automatic check lists candidate mispronounced words for review (candidates, not confirmed mistakes), and a fix plus "regenerate" closes the loop.
+- **Word-level timing and live highlighting.** Tap a word to play from it. "Hear this word" plays just that word. Arrow keys move between words (one tab stop), Enter or Space plays.
+- **Existing human recordings get highlighting** with no regeneration (Whisper alignment), plus a Recorded narrator / read-aloud voice toggle that keeps the reader's place.
 - **Word help** while reading: definition, part of speech, examples and Spanish translations, taken from the passage's own vocabulary data.
 - **Teacher view:** assign a passage to a class and switch Sound Along on or off. Students whose teacher turned it off see the text without audio.
-- **Generate:** paste text, watch the four pipeline steps run, open the result in the reader.
+- **Blind listening test.** Anonymous clips of the same text, loudness-matched and identically encoded; ratings feed Insights, which is the vision document's narration-quality metric.
 - **Insights:** measured quality, cost comparison and classroom adoption, with each number labelled by how it was measured.
 
 ## Architecture
@@ -21,7 +23,7 @@ Browser (Vue 3) -> CloudFront (OAC) -+- /app/*  -> S3 (static web app)
 API Lambda -> Step Functions -> Generator Lambda (container, arm64, Kokoro baked in, no internet needed)
                                   parse -> synthesize per sentence -> align words -> master audio -> publish to S3
 ```
-Details: `docs/AWS.md` (AWS contract), `docs/API.md` (HTTP contract), `docs/COST.md` (long-run cost), `infra/README.md` (deploy).
+Details: `docs/AWS.md` (AWS contract), `docs/API.md` (HTTP contract), `docs/FORMAT.md` (file format for ReadWorks' frontend), `docs/COST.md` (long-run cost), `docs/DEPLOY.md` (deploy-day runbook), `infra/README.md` (infrastructure).
 
 ## Run it locally (no AWS needed)
 Prerequisites: Python 3.12, Node 18 or newer (the customer requires 18.x; see `.nvmrc`), and `uv`. No ffmpeg is needed.
@@ -30,17 +32,20 @@ scripts/dev.sh          # installs, builds the samples, serves http://127.0.0.1:
 ```
 Rebuild every sample and every measured number from scratch (about 3 minutes): `.venv/bin/python scripts/build_samples.py`
 
-Tests: `cd services/parse && ../../.venv/bin/python -m pytest` (same for `synth`, `eval`, `align`, `generator`), `cd services/api && npm test`, `cd web && npm test`, `cd infra && npm test`.
+Tests: `cd services/parse && ../../.venv/bin/python -m pytest` (same for `synth`, `eval`, `generator`, `scripts`), `cd services/api && npm test`, `cd web && npm test`, and for the infrastructure (Python) `cd infra && python -m pytest`.
 
 ## Deploy to AWS
-Region `us-west-2`. Docker must be running (the generator is a container image).
+Region `us-west-2`. Docker must be running (the generator is a container image). The infrastructure is AWS CDK 2.x in Python. The full step-by-step runbook, with checks and troubleshooting, is `docs/DEPLOY.md`; in short:
 ```bash
-cd web && npm run build && cd ../infra && npm install
-npx cdk bootstrap aws://<ACCOUNT_ID>/us-west-2
-npx cdk deploy                      # add -c alertEmail=you@example.com to also create a monthly cost budget
+cd web && npm run build && cd ../infra
+uv venv --python 3.14 && source .venv/bin/activate && pip install -r requirements-dev.txt
+python bundle_api.py
+npx aws-cdk@2 bootstrap aws://<ACCOUNT_ID>/us-west-2
+npx aws-cdk@2 deploy                 # content-management API on a VM (the guide's default); add -c cmsHost=lambda for the cheaper idle option
 BUCKET=<BucketName output> TABLE_NAME=<TableName output> node ../services/api/scripts/seed.js
+python ../scripts/verify_deployment.py --site <SiteUrl output> --generate
 ```
-The cost budget is optional because some sandbox accounts block the Budgets API.
+The cost budget is optional (`-c alertEmail=you@example.com`) because some sandbox accounts block the Budgets API.
 
 ## Measured results
 All from `data/quality-report.json`, written by `scripts/build_samples.py` for the three bundled passages (2,319 words checked). The ASR check compares our timing and text with an independent Whisper transcript. It is agreement between two systems, not ground truth.

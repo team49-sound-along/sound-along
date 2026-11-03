@@ -6,15 +6,10 @@ alphanumeric characters match, so a highlight always lands on the word the stude
 """
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Optional, Sequence
 
-_NON_ALNUM = re.compile(r"[^0-9a-z]+")
-
-
-def norm(text: str) -> str:
-    return _NON_ALNUM.sub("", text.lower())
+from asr_words import norm  # noqa: E402  (one accent-tolerant definition shared with the recognizer code)
 
 
 @dataclass(frozen=True)

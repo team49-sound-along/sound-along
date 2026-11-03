@@ -4,6 +4,9 @@ import { HttpError, errorHandler, fail, ok, route } from "./http.js";
 import { buildInsights } from "./insights.js";
 import { createRateLimiter } from "./rateLimit.js";
 import { contentRoutes } from "./routes/content.js";
+import { mountLocalClips, ratingRoutes } from "./routes/ratings.js";
+import { createFileManifest } from "./ratings/manifest.js";
+import { summarizeRatings } from "./ratings/summary.js";
 import { generationRoutes } from "./routes/generation.js";
 import { mountLocalRecordingUpload, recordingRoutes } from "./routes/recordings.js";
 import { loadVoices } from "./settings.js";
@@ -27,9 +30,10 @@ const SECURITY_HEADERS = {
  *   jobs     job registry (async)      (memory locally, DynamoDB on AWS)
  *   runner   starts generation         (child process locally, Step Functions on AWS)
  *   recordings  human recording slots   (local disk, or S3 presigned PUT)
+ *   manifest blind-test clip manifest   (<dataDir>/ab/manifest.json locally, S3 data/ab/manifest.json on AWS)
  *   sources  stored job input by id     (raw/<id>.json on disk or S3; used by regenerate)
  */
-export function createApp({ store, catalog, jobs, runner, recordings, sources, config, logger = console }) {
+export function createApp({ store, catalog, jobs, runner, recordings, sources, config, manifest = config.dataDir ? createFileManifest(config.dataDir) : null, random, logger = console }) {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", config.trustProxy ?? false);
@@ -93,6 +97,7 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
 
   generationRoutes(api, { store, jobs, runner, recordings, sources, config, generateLimiter });
   recordingRoutes(api, { recordings, config, writeLimiter });
+  ratingRoutes(api, { store, manifest, writeLimiter, config, random });
   contentRoutes(api, { store, catalog, voices: config.voices ?? loadVoices(), writeLimiter });
 
   api.get(
@@ -116,18 +121,32 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
   api.get(
     "/insights",
     route(async (req, res) => {
-      const [timings, assignments, events, qualityReport] = await Promise.all([
+      const [timings, assignments, events, qualityReport, ratings] = await Promise.all([
         catalog.timings(),
         store.listAssignments(),
         store.eventCounts(),
         catalog.qualityReport?.() ?? null,
+        store.listRatings?.() ?? [],
       ]);
-      res.json(ok(buildInsights({ timings, assignments, events, qualityReport })));
+      const blindRating = ratings.length > 0 ? summarizeRatings(ratings) : null;
+      res.json(ok(buildInsights({ timings, assignments, events, qualityReport, blindRating })));
     }),
   );
 
   api.use((req, res) => res.status(404).json(fail("Unknown API route.")));
   app.use("/api", api);
+
+  mountLocalClips(app, { config });
+
+  // The passage index is a plain JSON document (no envelope), exactly what the generator publishes to S3 data/index.json on
+  // AWS: the frontend reads documents and does no processing (ReadWorks' technical guide).
+  app.get(
+    "/data/index.json",
+    route(async (req, res) => {
+      res.set("Cache-Control", "no-cache");
+      res.json(await catalog.list());
+    }),
+  );
 
   // Generated files: an allow-list, so state.json and raw inputs are never served. sendFile supports Range (MP3 seeking).
   app.get("/data/:file", (req, res) => {

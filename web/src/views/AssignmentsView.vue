@@ -3,7 +3,7 @@ import { computed, ref, watch } from "vue";
 import StateBlock from "../components/StateBlock.vue";
 import AssignmentForm from "../components/AssignmentForm.vue";
 import AssignmentsTable from "../components/AssignmentsTable.vue";
-import { api } from "../api.js";
+import { api, passageIndex } from "../api.js";
 import { useResource } from "../useResource.js";
 import { route } from "../router.js";
 import { role } from "../session.js";
@@ -11,7 +11,7 @@ import { prependAssignment, removeAssignment, replaceAssignment } from "../assig
 import { formatDate } from "../format.js";
 
 const { data, loading, error, reload } = useResource(async () => {
-  const [passages, classes, assignments] = await Promise.all([api.passages(), api.classes(), api.assignments()]);
+  const [passages, classes, assignments] = await Promise.all([passageIndex(), api.classes(), api.assignments()]);
   return { passages, classes, assignments };
 });
 const items = ref([]);

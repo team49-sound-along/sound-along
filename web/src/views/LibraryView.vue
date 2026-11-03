@@ -3,13 +3,13 @@ import { computed, ref } from "vue";
 import Icon from "../components/Icon.vue";
 import StateBlock from "../components/StateBlock.vue";
 import PassageCard from "../components/PassageCard.vue";
-import { api } from "../api.js";
+import { passageIndex } from "../api.js";
 import { useResource } from "../useResource.js";
 import { filterPassages } from "../assignments.js";
 import { groupVariants } from "../voices.js";
 import { role } from "../session.js";
 
-const { data, loading, error, reload } = useResource(api.passages);
+const { data, loading, error, reload } = useResource(passageIndex);
 const query = ref("");
 const layout = ref("grid");
 const passages = computed(() => groupVariants(data.value ?? []));

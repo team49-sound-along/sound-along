@@ -8,10 +8,13 @@ import { useJobPoll } from "../useJobPoll.js";
 import { validateRecording } from "../files.js";
 import { uploadRecording } from "../upload.js";
 import { TEXT_MAX, TEXT_MIN, TITLE_MAX, generateErrorMessage, validateGenerate } from "../validation.js";
+import { LANGUAGES, PRONUNCIATION_NOTE, langAttr, languageCopy, withLanguage } from "../language.js";
 import { formatCount } from "../format.js";
 
 const title = ref("");
 const text = ref("");
+const language = ref("en");
+const copy = computed(() => languageCopy(language.value));
 const recording = ref(null);
 const submitted = ref(false);
 const starting = ref(false);
@@ -35,7 +38,7 @@ async function submit() {
   starting.value = true;
   resetJob();
   try {
-    const body = { title: title.value.trim(), text: text.value };
+    const body = withLanguage({ title: title.value.trim(), text: text.value }, language.value);
     if (recording.value) {
       const file = recording.value;
       const { contentType } = validateRecording(file);
@@ -58,6 +61,7 @@ function reset() {
   title.value = "";
   text.value = "";
   recording.value = null;
+  language.value = "en";
   submitted.value = false;
   startError.value = "";
   resetJob();
@@ -76,13 +80,20 @@ function reset() {
     <form class="card form" novalidate @submit.prevent="submit">
       <TextFileDrop :disabled="running" @loaded="onFileLoaded" />
       <div class="field">
+        <label for="g-lang">Language</label>
+        <select id="g-lang" v-model="language" class="input" aria-describedby="g-lang-help" :disabled="running">
+          <option v-for="l in LANGUAGES" :key="l.value" :value="l.value">{{ l.label }}</option>
+        </select>
+        <p id="g-lang-help" class="small muted">{{ PRONUNCIATION_NOTE }}<template v-if="language === 'es'"> {{ copy.help }}</template></p>
+      </div>
+      <div class="field">
         <label for="g-title">Title</label>
-        <input id="g-title" v-model="title" class="input" type="text" :maxlength="TITLE_MAX + 20" autocomplete="off" :aria-invalid="submitted && !!check.errors.title" :aria-describedby="submitted && check.errors.title ? 'g-title-err' : undefined" :disabled="running" />
+        <input id="g-title" v-model="title" class="input" :lang="langAttr(language)" :placeholder="copy.titlePlaceholder" type="text" :maxlength="TITLE_MAX + 20" autocomplete="off" :aria-invalid="submitted && !!check.errors.title" :aria-describedby="submitted && check.errors.title ? 'g-title-err' : undefined" :disabled="running" />
         <span v-if="submitted && check.errors.title" id="g-title-err" class="error-text">{{ check.errors.title }}</span>
       </div>
       <div class="field">
-        <label for="g-text">Passage text</label>
-        <textarea id="g-text" v-model="text" class="input" :aria-invalid="submitted && !!check.errors.text" aria-describedby="g-count g-text-err" :disabled="running"></textarea>
+        <label for="g-text">{{ copy.textLabel }}</label>
+        <textarea id="g-text" v-model="text" class="input" :lang="langAttr(language)" :placeholder="copy.textPlaceholder" :aria-invalid="submitted && !!check.errors.text" aria-describedby="g-count g-text-err" :disabled="running"></textarea>
         <div class="count-row">
           <span id="g-text-err" class="error-text">{{ submitted ? check.errors.text : "" }}</span>
           <span id="g-count" class="small num" :class="overLimit ? 'error-text' : 'muted'">{{ formatCount(text.length) }} / {{ formatCount(TEXT_MAX) }} characters (minimum {{ TEXT_MIN }})</span>

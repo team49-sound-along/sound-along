@@ -4,6 +4,7 @@ import Icon from "./Icon.vue";
 import AudioBar from "./AudioBar.vue";
 import WordHelp from "./WordHelp.vue";
 import { api, audioUrl } from "../api.js";
+import { langAttr } from "../language.js";
 import { findActiveIndex, seekSeconds, wordSlice } from "../timing.js";
 import { route } from "../router.js";
 import { isHuman, resumeIndex, voiceLabel } from "../voices.js";
@@ -207,11 +208,11 @@ function onKey(event) {
 <template>
   <article class="reader" aria-labelledby="reader-h">
     <header class="head">
-      <p class="eyebrow">Now reading &middot; {{ voiceLabel(timing.engine) }}</p>
+      <p class="eyebrow">Now reading &middot; {{ voiceLabel(timing.engine) }}{{ isHuman(timing) ? "" : " (computer-generated)" }}</p>
       <h2 id="reader-h">{{ timing.title }}</h2>
       <div v-if="hasPair && soundAlong" class="voice" role="group" aria-label="Narration voice">
         <button type="button" class="btn" :aria-pressed="isHuman(timing)" :disabled="isHuman(timing)" @click="switchVoice">Human narrator</button>
-        <button type="button" class="btn" :aria-pressed="!isHuman(timing)" :disabled="!isHuman(timing)" @click="switchVoice">AI voice</button>
+        <button type="button" class="btn" :aria-pressed="!isHuman(timing)" :disabled="!isHuman(timing)" @click="switchVoice">Read-aloud voice</button>
       </div>
     </header>
 
@@ -237,7 +238,7 @@ function onKey(event) {
       <Icon name="keyboard" :size="18" />
       <span>Tap or click any word to hear it from there. Keyboard: arrow keys move between words, Enter or Space plays, H plays just that word.</span>
     </p>
-    <div class="passage" role="group" aria-label="Passage text" :aria-describedby="soundAlong ? 'reader-help' : undefined" @keydown="onKey">
+    <div class="passage" :lang="langAttr(timing.language)" role="group" aria-label="Passage text" :aria-describedby="soundAlong ? 'reader-help' : undefined" @keydown="onKey">
       <p v-for="(para, n) in paragraphs" :key="n">
         <template v-for="w in para" :key="w.i">
           <span

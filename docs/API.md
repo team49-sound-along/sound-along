@@ -106,3 +106,41 @@ Written by the API when a job starts. This is the generator's whole input.
 
 ## Timing document additions
 `review: { "source": "asr-check", "suspects": [ { "expected": "gaieties", "heard": "deities" } ] }` is written at generation when `qualityCheck` is true. Suspects exclude differences explained by British/American spelling. `settings` and `pronunciations` used for the run are recorded under `generatedWith`.
+
+---
+
+# v3: Spanish passages and the blind listening test
+
+## Spanish
+- `POST /api/generate` accepts `language: "en" | "es"` (default `"en"`). Spanish passages are spoken by a Kokoro Spanish voice; word timing comes from a multilingual speech-recognition pass because Kokoro gives no word timing for Spanish. The pipeline handles that; the API only passes the language through.
+- `Settings` gains `voiceEs` (default `"ef_dora"`). `voice` must be an English voice and `voiceEs` a Spanish voice. Each entry of `Settings.voices` gains `lang: "en" | "es"`.
+  `services/api/config/voices.json` therefore holds the four English voices graded B- or better (see `config/VOICES.md`) with `"lang": "en"` and three Spanish voices: `ef_dora` ("Dora (Spanish female, not graded)"), `em_alex` ("Alex (Spanish male, not graded)"), `em_santa` ("Santa (Spanish male, not graded)"), each with `"lang": "es"`.
+- Job input file: add `"language": "en" | "es"`. `settings` still carries `voice`, `speed`, `mp3Kbps` and now `voiceEs`.
+- `Passage` gains `language: "en" | "es"` (from the timing document's `language`, default `"en"`).
+- Pronunciation fixes apply to English passages only (the UI says so).
+
+## Blind listening test (the vision document's "blind listener rating" metric)
+Clips are short anonymous excerpts (about 30 s) of the SAME text read by different narrators, loudness-matched and encoded identically, built by `scripts/build_samples.py`. The files are `data/ab/<token>.mp3` where `<token>` is 16 random hex characters, so a URL does not reveal which narrator it is. `data/ab/manifest.json` (never served) maps tokens to meaning:
+```json
+[ { "token": "9f3a1c0b5d7e2a46", "passageId": "<uuid>", "title": "Let's Meet a Park Caretaker", "kind": "ai" | "human" | "polly_current" } ]
+```
+On AWS the same files live in S3 under `data/ab/` and the manifest at `data/ab/manifest.json` (read by the API, never exposed through CloudFront).
+
+| Method and path | Body | `data` |
+|---|---|---|
+| `GET /api/ratings/trial` | | `Trial` or `null` when there are no clips |
+| `POST /api/ratings` | `{ trialId, aToken, bToken, preferred: "a" \| "b" \| "tie", ratingA: 1..5, ratingB: 1..5, raterId?: uuid }` | `{ recorded: true }` |
+| `GET /api/ratings/summary` | | `RatingSummary` |
+| `GET /data/ab/:token.mp3` | | the clip (local API route; CloudFront on AWS). Token must be 16 hex characters. |
+
+```ts
+Trial         { trialId: uuid, title: string, prompt: string, a: { token: string, url: string }, b: { token: string, url: string } }
+              // a pair = the AI voice and one other narrator of the same passage, in random order; url is /data/ab/<token>.mp3
+RatingSummary { raters: number, ratings: number,
+                comparisons: { comparison: "ai vs human" | "ai vs polly_current", n: number, preferredAi: number, preferredOther: number, tie: number }[],
+                meanRating: { ai: number | null, human: number | null, polly_current: number | null } }
+```
+Rules: tokens in POST must exist in the manifest and belong to the same passage with one `ai` clip; reject otherwise with a readable 400. Ratings are real data from real listeners; never seed fake ones. Rate-limit and kill-switch the write route like the other writes. `Insights.quality` gains `blindRating: RatingSummary | null` (null when there are no ratings yet).
+
+## Timing document
+Add `"language": "en" | "es"` (default `"en"`).

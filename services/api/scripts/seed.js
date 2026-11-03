@@ -14,10 +14,17 @@ const exists = (file) => access(file).then(() => true, () => false);
 /** The `source` field of raw/<id>.json, or "sample" when the file is missing or unreadable. */
 const readSource = (file) => readFile(file, "utf8").then((t) => JSON.parse(t).source, () => "sample");
 
+/** Publish data/index.json (newest first, same fields as GET /api/passages): the Library reads this document directly. */
+async function publishIndex({ s3, bucket, summaries }) {
+  const sorted = [...summaries].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  await s3.send(new PutObjectCommand({ Bucket: bucket, Key: "data/index.json", Body: gzipSync(JSON.stringify(sorted)), ContentType: "application/json", ContentEncoding: "gzip" }));
+}
+
 /** Upload every local passage (mp3 + timing) to S3 and write its PASSAGE summary item. Returns the ids seeded. */
 export async function seed({ s3, ddb, bucket, tableName, dataDir, logger = console }) {
   const files = (await readdir(dataDir)).filter((f) => TIMING.test(f));
   const ids = [];
+  const summaries = [];
   for (const file of files) {
     const id = file.match(TIMING)[1];
     const mp3 = path.join(dataDir, `${id}.mp3`);
@@ -39,7 +46,10 @@ export async function seed({ s3, ddb, bucket, tableName, dataDir, logger = conso
     await ddb.send(new PutCommand({ TableName: tableName, Item: item }));
     logger.info(`uploaded ${id}: ${item.title} (s3 data/${id}.mp3, data/${id}.timing.json; PASSAGE item)`);
     ids.push(id);
+    summaries.push(summarizePassage({ id, timing, mtimeMs, source }));
   }
+  if (summaries.length > 0) await publishIndex({ s3, bucket, summaries });
+  await seedAb({ s3, bucket, dataDir, logger });
   const reportFile = path.join(dataDir, "quality-report.json");
   if (await exists(reportFile)) {
     const report = JSON.parse(await readFile(reportFile, "utf8"));
@@ -47,6 +57,33 @@ export async function seed({ s3, ddb, bucket, tableName, dataDir, logger = conso
     logger.info("wrote QUALITY item from data/quality-report.json");
   }
   return ids;
+}
+
+const AB_MANIFEST = "manifest.json";
+const AB_CLIP = /^[0-9a-f]{16}\.mp3$/;
+
+/** Upload <dataDir>/ab/ (blind-test clips as audio/mpeg, manifest.json as application/json) to S3 data/ab/. Returns the keys. */
+export async function seedAb({ s3, bucket, dataDir, logger = console }) {
+  const dir = path.join(dataDir, "ab");
+  let names = [];
+  try {
+    names = await readdir(dir);
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+  }
+  const keys = [];
+  for (const name of names.sort()) {
+    const isManifest = name === AB_MANIFEST;
+    if (!isManifest && !AB_CLIP.test(name)) {
+      logger.warn(`skipping ab/${name}: not a clip or the manifest`);
+      continue;
+    }
+    const Key = `data/ab/${name}`;
+    await s3.send(new PutObjectCommand({ Bucket: bucket, Key, Body: await readFile(path.join(dir, name)), ContentType: isManifest ? "application/json" : "audio/mpeg" }));
+    keys.push(Key);
+  }
+  if (keys.length > 0) logger.info(`uploaded ${keys.length} blind-test file(s) to s3 data/ab/`);
+  return keys;
 }
 
 async function main(env, logger) {

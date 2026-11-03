@@ -23,6 +23,7 @@ export function createSfnRunner({ jobs, s3, sfn, bucket, stateMachineArn, logger
       title,
       content: spec.content ?? textToHtml(spec.text),
       source: spec.source ?? "generated",
+      language: spec.language,
       settings: spec.settings,
       pronunciations: spec.pronunciations,
       recording,

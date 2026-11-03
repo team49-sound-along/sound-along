@@ -69,3 +69,8 @@ export function formatDate(value) {
 export function titleCase(value) {
   return typeof value === "string" && value ? value[0].toUpperCase() + value.slice(1) : DASH;
 }
+
+/** A 1..5 listener rating to one decimal ("4.12" -> "4.1 / 5"). */
+export function formatRating(n) {
+  return isNum(n) ? `${n.toFixed(1)} / 5` : DASH;
+}

@@ -21,6 +21,7 @@ const PATHS = {
   settings: "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4",
   speak: "M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM6 11a6 6 0 0 0 12 0M12 17v4",
   review: "M5 4h14v16H5zM9 9l2 2 4-4M9 15h6",
+  listen: "M4 14v-2a8 8 0 0 1 16 0v2M4 14h3v6H4zM17 14h3v6h-3z",
   alert: "M12 4l9 16H3zM12 10v4M12 17v.01",
 };
 </script>

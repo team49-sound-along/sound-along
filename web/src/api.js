@@ -59,12 +59,31 @@ export const api = {
   dismissReview: (word) => request("POST", "/api/review/dismiss", { word }),
   regenerate: (passageId) => request("POST", `/api/passages/${encodeURIComponent(passageId)}/regenerate`, {}),
   job: (id) => request("GET", `/api/jobs/${encodeURIComponent(id)}`),
+  ratingTrial: () => request("GET", "/api/ratings/trial"),
+  submitRating: (body) => request("POST", "/api/ratings", body),
   insights: () => request("GET", "/api/insights"),
   /** Fire and forget: analytics must never break reading. */
   event: (body) => {
     request("POST", "/api/events", body).catch(() => {});
   },
 };
+
+/**
+ * The passage list as a document: ReadWorks' guide says the frontend reads JSON documents and does no processing, so the
+ * list comes from data/index.json (an S3 object on AWS). If the document is missing or malformed, fall back to the API.
+ */
+export async function passageIndex(fetchFn = globalThis.fetch) {
+  try {
+    const res = await fetchFn("/data/index.json", { cache: "no-cache" });
+    if (res.ok) {
+      const list = await res.json();
+      if (Array.isArray(list)) return list;
+    }
+  } catch {
+    /* fall through to the API */
+  }
+  return api.passages();
+}
 
 /** Static timing file (not enveloped). */
 export async function fetchTiming(id) {

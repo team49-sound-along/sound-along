@@ -31,7 +31,7 @@ test("read target prefers the human narration", () => {
 
 test("labels and detection", () => {
   assert.equal(voiceLabel("human"), "Human narrator");
-  assert.equal(voiceLabel("kokoro"), "AI voice");
+  assert.equal(voiceLabel("kokoro"), "Read-aloud voice");
   assert.equal(isHuman(human), true);
   assert.equal(isHuman(undefined), false);
 });

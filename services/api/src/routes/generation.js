@@ -42,13 +42,14 @@ export function generationRoutes(api, { store, jobs, runner, recordings, sources
     route((req, res) =>
       guarded(req, res, {
         prepare: (r) => parseGenerateInput(r.body),
-        async build({ title, text, recordingId }) {
+        async build({ title, text, recordingId, language }) {
           if (recordingId && !(await recordings?.exists(recordingId))) {
             throw new HttpError(400, "We could not find that recording. Upload it again and retry.");
           }
           return {
             title,
             text,
+            language,
             recordingId,
             humanPassageId: recordingId ? randomUUID() : null,
             ...(await snapshot()),
@@ -72,6 +73,7 @@ export function generationRoutes(api, { store, jobs, runner, recordings, sources
             title: stored.title,
             content: stored.content,
             source: stored.source ?? "generated",
+            language: stored.language === "es" ? "es" : "en",
             recording: stored.recording ?? null,
             humanPassageId: stored.recording ? (stored.humanPassageId ?? null) : null,
             ...(await snapshot()),

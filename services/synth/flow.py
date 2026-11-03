@@ -13,13 +13,28 @@ import numpy as np
 from artifacts import generate_artifacts
 from asr_words import Heard, decode_audio, resample_to_16k, transcribe
 from engine import SAMPLE_RATE, Engine
+from fingerprint import fingerprint
 from human_alignment import align_words
 from pipeline import StepCallback, _noop
 from review import find_suspects
 
 NARRATOR_LABEL = "ReadWorks narrator"
-Transcribe = Callable[[np.ndarray], list[Heard]]
+Transcribe = Callable[..., list[Heard]]
 Decode = Callable[[str, int], np.ndarray]
+
+
+def _recognize(transcribe_fn: Transcribe, audio: np.ndarray, language: str) -> list[Heard]:
+    """English keeps the original one-argument call; other languages pass the language so the right model runs."""
+    return transcribe_fn(audio) if language == "en" else transcribe_fn(audio, language=language)
+
+
+def _retime(words: list[dict[str, Any]], heard: list[Heard]) -> list[dict[str, Any]]:
+    """Replace word times with the recognizer's, matched to the known text (same method used for human recordings)."""
+    aligned = align_words([w["text"] for w in words], heard)
+    return [
+        {**w, "start_ms": round(a.start_s * 1000), "end_ms": round(a.end_s * 1000), "aligned": a.aligned}
+        for w, a in zip(words, aligned)
+    ]
 
 
 @dataclass(frozen=True)
@@ -59,15 +74,10 @@ def soundalong_block(ai_timing: dict[str, Any], human_timing: Optional[dict[str,
 
 
 def _human_variant(ai_timing: dict[str, Any], passage: dict[str, Any], recording_path: str,
-                   transcribe_fn: Transcribe, decode_fn: Decode) -> Variant:
-    heard = transcribe_fn(decode_fn(recording_path, 16_000))
+                   transcribe_fn: Transcribe, decode_fn: Decode, language: str) -> Variant:
+    heard = _recognize(transcribe_fn, decode_fn(recording_path, 16_000), language)
     audio = decode_fn(recording_path, SAMPLE_RATE)
-    aligned = align_words([w["text"] for w in ai_timing["words"]], heard)
-    words = [
-        {**{k: v for k, v in word.items() if k not in ("start_ms", "end_ms", "aligned")},
-         "start_ms": round(a.start_s * 1000), "end_ms": round(a.end_s * 1000), "aligned": a.aligned}
-        for word, a in zip(ai_timing["words"], aligned)
-    ]
+    words = _retime(ai_timing["words"], heard)
     seconds = len(audio) / SAMPLE_RATE
     unaligned = sum(1 for w in words if not w["aligned"])
     metrics = {
@@ -79,7 +89,7 @@ def _human_variant(ai_timing: dict[str, Any], passage: dict[str, Any], recording
     human_id = passage["humanPassageId"]
     timing = {
         "id": human_id, "title": ai_timing.get("title"), "engine": "human", "voice": NARRATOR_LABEL,
-        "pairId": ai_timing["id"], "duration_ms": round(seconds * 1000), "metrics": metrics,
+        "pairId": ai_timing["id"], "language": language, "duration_ms": round(seconds * 1000), "metrics": metrics,
         "vocab": ai_timing.get("vocab", {}), "words": words,
         **({"generatedWith": ai_timing["generatedWith"]} if "generatedWith" in ai_timing else {}),
     }
@@ -99,16 +109,31 @@ def run_flow(
     if recording_path and not passage.get("humanPassageId"):
         raise ValueError("A recording needs a humanPassageId so the two variants can be linked.")
 
+    language = passage.get("language") or "en"
     artifacts = generate_artifacts(passage, engine, on_step)
-    timing = {**artifacts.timing, "generatedWith": {"settings": passage.get("settings"), "pronunciations": passage.get("pronunciations")}}
+    timing = {
+        **artifacts.timing, "language": language,
+        "generatedWith": {
+            "settings": passage.get("settings"), "pronunciations": passage.get("pronunciations"),
+            "hash": fingerprint(passage, recording_path),
+        },
+    }
+
+    heard_ai: Optional[list[Heard]] = None
+    if not getattr(engine, "native_timing", True):
+        # The engine (Kokoro in Spanish) gives audio but no word times: take them from a recognizer pass instead.
+        heard_ai = _recognize(transcribe_fn, resample_to_16k(artifacts.audio, SAMPLE_RATE), language)
+        words = _retime(timing["words"], heard_ai)
+        timing = {**timing, "words": words, "metrics": {**timing["metrics"], "unalignedWords": sum(1 for w in words if not w["aligned"])}}
 
     if passage.get("qualityCheck"):
-        heard = transcribe_fn(resample_to_16k(artifacts.audio, SAMPLE_RATE))
-        suspects = find_suspects([w["text"] for w in timing["words"]], heard)
+        if heard_ai is None:
+            heard_ai = _recognize(transcribe_fn, resample_to_16k(artifacts.audio, SAMPLE_RATE), language)
+        suspects = find_suspects([w["text"] for w in timing["words"]], heard_ai)
         timing = {**timing, "review": {"source": "asr-check", "suspects": suspects}}
 
     human = None
     if recording_path:
-        human = _human_variant(timing, passage, recording_path, transcribe_fn, decode_fn)
+        human = _human_variant(timing, passage, recording_path, transcribe_fn, decode_fn, language)
         timing = {**timing, "pairId": human.id}
     return FlowResult(ai=Variant(passage["uuid"], artifacts.audio, timing), human=human)

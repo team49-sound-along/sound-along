@@ -15,12 +15,13 @@ import numpy as np
 
 from asr_words import decode_audio, transcribe
 from clients import Clients, create_clients
-from dynamo import JobTracker, now_iso, put_passage_summary
+from dynamo import JobTracker, list_passage_items, now_iso, put_passage_summary
 from engine import SAMPLE_RATE
 from engines import create_engine
+from fingerprint import fingerprint
 from flow import Variant, run_flow
 from mp3 import encode_mp3, resolve_kbps
-from summary import passage_summary
+from summary import index_entry, passage_summary
 
 LOG = logging.getLogger()
 LOG.setLevel(logging.INFO)
@@ -31,7 +32,9 @@ Encoder = Callable[[np.ndarray, int, int], bytes]  # (audio, sample_rate, kbps) 
 
 def engine_for(passage: dict[str, Any]) -> Any:
     """Build the engine from THIS job's stored settings and pronunciation fixes (nothing is baked into the image)."""
-    return create_engine(settings=passage.get("settings"), respellings=passage.get("pronunciations"))
+    return create_engine(
+        settings=passage.get("settings"), respellings=passage.get("pronunciations"), language=passage.get("language") or "en"
+    )
 
 
 @dataclass(frozen=True)
@@ -69,10 +72,34 @@ def _publish(deps: Dependencies, variant: Variant, kbps: int, source: str, workd
     return summary
 
 
+def _json_default(value: Any) -> Any:
+    from decimal import Decimal
+
+    if isinstance(value, Decimal):
+        return int(value) if value == value.to_integral_value() else float(value)
+    raise TypeError(f"Cannot serialise {type(value).__name__}")
+
+
+def _write_index(clients: Clients) -> None:
+    """Publish data/index.json (newest first): the frontend reads this document instead of calling the API."""
+    entries = sorted((index_entry(i) for i in list_passage_items(clients.table)), key=lambda e: e.get("createdAt", ""), reverse=True)
+    body = json.dumps(entries, ensure_ascii=False, default=_json_default).encode("utf-8")
+    _put(clients, "data/index.json", body, "application/json", gzipped=True)
+
+
 def _fetch_recording(clients: Clients, key: str, workdir: Path) -> str:
     target = workdir / "recording.audio"
     target.write_bytes(clients.s3.get_object(Bucket=clients.bucket, Key=key)["Body"].read())
     return str(target)
+
+
+def _previous_timing(clients: Clients, passage_id: str) -> dict[str, Any] | None:
+    """The timing document already published for this passage, or None (first run)."""
+    try:
+        body = clients.s3.get_object(Bucket=clients.bucket, Key=f"data/{passage_id}.timing.json")["Body"].read()
+        return json.loads(gzip.decompress(body) if body[:2] == b"\x1f\x8b" else body)
+    except Exception:  # noqa: BLE001  (missing object, not-yet-readable object: both mean "generate")
+        return None
 
 
 def _run(event: dict[str, Any], deps: Dependencies, tracker: JobTracker) -> dict[str, Any]:
@@ -87,6 +114,11 @@ def _run(event: dict[str, Any], deps: Dependencies, tracker: JobTracker) -> dict
     with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
         workdir = Path(tmp)
         recording_path = _fetch_recording(deps.clients, recording_key, workdir) if recording_key else None
+        previous = None if passage.get("force") else _previous_timing(deps.clients, passage_id)
+        if previous and previous.get("generatedWith", {}).get("hash") == fingerprint(passage, recording_path):
+            LOG.info("unchanged input for %s: skipping generation", passage_id)
+            tracker.step("publish")
+            return previous["metrics"]
         result = run_flow(
             passage, deps.engine_factory(passage), tracker.step,
             recording_path=recording_path, transcribe_fn=deps.transcribe_fn, decode_fn=deps.decode_fn,
@@ -96,6 +128,7 @@ def _run(event: dict[str, Any], deps: Dependencies, tracker: JobTracker) -> dict
         if result.human:
             _publish(deps, result.human, kbps, source, workdir)
         _put(deps.clients, f"data/{result.ai.id}.soundalong.json", json.dumps(result.soundalong, ensure_ascii=False).encode("utf-8"), "application/json")
+        _write_index(deps.clients)
     return result.ai.timing["metrics"]
 
 

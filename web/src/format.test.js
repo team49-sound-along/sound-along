@@ -43,3 +43,11 @@ test("formatMs, formatShare and formatMos handle values and gaps", () => {
   assert.equal(formatMos(4.512), "4.5");
   assert.equal(formatMos(NaN), DASH);
 });
+
+import { formatRating } from "./format.js";
+test("formatRating shows one decimal out of five", () => {
+  assert.equal(formatRating(4.123), "4.1 / 5");
+  assert.equal(formatRating(3), "3.0 / 5");
+  assert.equal(formatRating(null), DASH);
+  assert.equal(formatRating(NaN), DASH);
+});

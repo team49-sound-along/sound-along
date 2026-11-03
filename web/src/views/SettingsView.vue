@@ -3,16 +3,19 @@ import { computed, ref, watch } from "vue";
 import StateBlock from "../components/StateBlock.vue";
 import { api } from "../api.js";
 import { useResource } from "../useResource.js";
+import { voicesFor } from "../language.js";
 import { KBPS_OPTIONS, SPEED_MAX, SPEED_MIN, SPEED_STEP, formatSpeed, isDirty, mbPerMinute, settingsPayload } from "../settings.js";
 
 const { data, loading, error, reload } = useResource(() => api.settings());
-const form = ref({ voice: "", speed: 0.95, mp3Kbps: 48 });
+const form = ref({ voice: "", voiceEs: "", speed: 0.95, mp3Kbps: 48 });
 const saving = ref(false);
 const saveError = ref("");
 const saved = ref("");
 
-watch(data, (d) => { if (d) form.value = { voice: d.voice, speed: d.speed, mp3Kbps: d.mp3Kbps }; }, { immediate: true });
+watch(data, (d) => { if (d) form.value = { voice: d.voice, voiceEs: d.voiceEs ?? "", speed: d.speed, mp3Kbps: d.mp3Kbps }; }, { immediate: true });
 const dirty = computed(() => isDirty(data.value, form.value));
+const enVoices = computed(() => voicesFor(data.value?.voices, "en"));
+const esVoices = computed(() => voicesFor(data.value?.voices, "es"));
 const size = computed(() => mbPerMinute(Number(form.value.mp3Kbps)));
 
 async function save() {
@@ -41,9 +44,15 @@ async function save() {
     <StateBlock :loading="loading" :error="error" loading-label="Loading settings" @retry="reload">
       <form v-if="data" class="card form" novalidate @submit.prevent="save">
         <div class="field">
-          <label for="s-voice">Voice</label>
+          <label for="s-voice">English voice</label>
           <select id="s-voice" v-model="form.voice" class="input">
-            <option v-for="v in data.voices" :key="v.id" :value="v.id">{{ v.label }}</option>
+            <option v-for="v in enVoices" :key="v.id" :value="v.id">{{ v.label }}</option>
+          </select>
+        </div>
+        <div v-if="esVoices.length" class="field">
+          <label for="s-voice-es">Spanish voice</label>
+          <select id="s-voice-es" v-model="form.voiceEs" class="input">
+            <option v-for="v in esVoices" :key="v.id" :value="v.id">{{ v.label }}</option>
           </select>
         </div>
         <div class="field">

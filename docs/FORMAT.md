@@ -33,7 +33,7 @@ ReadWorks' passages are one product JSON document each, with audio referenced by
 ## `{voiceId}.timing.json`
 ```json
 {
-  "id": "...", "title": "...", "engine": "kokoro", "voice": "af_heart", "pairId": "<other voice's id> (optional)",
+  "id": "...", "title": "...", "language": "en", "engine": "kokoro", "voice": "af_heart", "pairId": "<other voice's id> (optional)",
   "duration_ms": 136500,
   "vocab": { "<senseId>": { "word": "nature", "definition": "...", "partOfSpeech": "noun", "examples": ["..."], "spanish": ["naturaleza"] } },
   "words": [ { "i": 0, "text": "Lots", "start_ms": 275, "end_ms": 600, "sentence": 0, "paragraph": 0, "aligned": true, "vocabId": "2753102" } ],
@@ -44,7 +44,9 @@ ReadWorks' passages are one product JSON document each, with audio referenced by
 ```
 - `words` come from the passage's rendered HTML, one entry per displayed word, with a stable index `i`. Figures, captions and credits are skipped. A dash joins no words ("good—and" is two entries).
 - `aligned: false` means the time is estimated (the recognizer did not match the word); the reader disables "Hear this word" for it.
-- Large timing files may be stored gzipped; the format is unchanged.
+- In S3 the timing file is stored gzipped with `Content-Encoding: gzip`, so `fetch()` returns the JSON unchanged.
+- `language` is `en` or `es`. Spanish word times come from a speech-recognition pass (Kokoro gives none for Spanish), so they are
+  recognizer-derived and have no independent check.
 
 ## What the frontend does
 1. Read the product JSON; if `features` contains `sa`, read `{id}.soundalong.json`'s `soundAlong`.

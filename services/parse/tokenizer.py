@@ -15,7 +15,10 @@ from typing import Optional
 
 BLOCK_TAGS = {"p", "h1", "h2", "h3", "h4", "li", "blockquote"}
 SKIP_TAGS = {"figure", "figcaption", "script", "style"}
-ABBREVIATIONS = {"mr.", "mrs.", "ms.", "dr.", "st.", "jr.", "sr.", "vs.", "etc.", "u.s.", "no."}
+ABBREVIATIONS = {
+    "mr.", "mrs.", "ms.", "dr.", "st.", "jr.", "sr.", "vs.", "etc.", "u.s.", "no.",
+    "sra.", "srta.", "dra.", "ud.", "uds.", "av.", "pág.", "núm.",  # Spanish
+}
 _SENTENCE_END = re.compile(r"[.!?]+[\"')”’]*$")
 _TOKEN = re.compile(r"\S+")
 

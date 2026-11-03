@@ -1,6 +1,7 @@
 <script setup>
 import Icon from "./Icon.vue";
 import { formatCount, formatDuration } from "../format.js";
+import { isSpanish } from "../language.js";
 import { readTarget, voiceLabel } from "../voices.js";
 
 defineProps({
@@ -14,7 +15,8 @@ defineProps({
   <article class="pcard" :class="{ list }" :aria-labelledby="`p-${passage.id}`">
     <div class="top">
       <span class="badge" :class="passage.source === 'generated' ? 'teal' : ''">{{ passage.source === "generated" ? "Generated" : "Sample" }}</span>
-      <span class="badge" title="Narration">{{ passage.humanId ? "Human + AI voice" : voiceLabel(passage.engine) }}</span>
+      <span class="badge" title="Narration">{{ passage.humanId ? "Human + read-aloud voice" : voiceLabel(passage.engine) }}</span>
+      <span v-if="isSpanish(passage)" class="badge hl" lang="es" title="Spanish passage">Español</span>
     </div>
     <h3 :id="`p-${passage.id}`">{{ passage.title }}</h3>
     <dl class="meta">

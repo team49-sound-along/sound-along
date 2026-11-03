@@ -13,7 +13,12 @@ export const formatSpeed = (v) => `${Number(v).toFixed(2)}x`;
 export const snapSpeed = (v) => Math.min(SPEED_MAX, Math.max(SPEED_MIN, Math.round(Number(v) / SPEED_STEP) * SPEED_STEP)).toFixed(2) * 1;
 
 /** Body for PUT /api/settings from form state. */
-export const settingsPayload = ({ voice, speed, mp3Kbps }) => ({ voice, speed: snapSpeed(speed), mp3Kbps: Number(mp3Kbps) });
+export const settingsPayload = ({ voice, voiceEs, speed, mp3Kbps }) => ({
+  voice,
+  ...(voiceEs ? { voiceEs } : {}),
+  speed: snapSpeed(speed),
+  mp3Kbps: Number(mp3Kbps),
+});
 
 export const isDirty = (saved, form) =>
-  !saved || saved.voice !== form.voice || snapSpeed(saved.speed) !== snapSpeed(form.speed) || saved.mp3Kbps !== Number(form.mp3Kbps);
+  !saved || saved.voice !== form.voice || (saved.voiceEs ?? "") !== (form.voiceEs ?? "") || snapSpeed(saved.speed) !== snapSpeed(form.speed) || saved.mp3Kbps !== Number(form.mp3Kbps);

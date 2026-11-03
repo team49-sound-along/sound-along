@@ -28,7 +28,7 @@ describe("generate with settings snapshot", () => {
     const r = await call("POST", "/api/generate", { title: "T1", text: TEXT });
     assert.equal(r.status, 202);
     const spec = started.at(-1);
-    assert.deepEqual(spec.settings, { voice: "af_heart", speed: 1.05, mp3Kbps: 64 });
+    assert.deepEqual(spec.settings, { voice: "af_heart", voiceEs: "ef_dora", speed: 1.05, mp3Kbps: 64 });
     assert.deepEqual(spec.pronunciations, { gaieties: "gay-uh-teez" });
     assert.equal(spec.recordingId, null);
     assert.equal(spec.humanPassageId, null);
@@ -128,7 +128,7 @@ describe("local runner", () => {
     assert.equal(job.humanPassageId, "h-1");
     const raw = JSON.parse(await readFile(path.join(dir, "raw", `${store.get(job.id).passageId}.json`), "utf8"));
     assert.deepEqual(raw, {
-      uuid: store.get(job.id).passageId, title: "T", content: "<p>One.</p>\n<p>Two.</p>", source: "generated",
+      uuid: store.get(job.id).passageId, title: "T", content: "<p>One.</p>\n<p>Two.</p>", source: "generated", language: "en",
       settings, pronunciations: { a: "b" }, recording: { path: path.join(dir, "raw", `${PID}.audio`) }, humanPassageId: "h-1", qualityCheck: true,
     });
     for (let i = 0; i < 50 && store.get(job.id).status !== "done"; i += 1) await new Promise((r) => setTimeout(r, 20));

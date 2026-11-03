@@ -19,3 +19,10 @@ test("dirty detection", () => {
   assert.equal(isDirty(s, { voice: "a", speed: 0.95, mp3Kbps: "48" }), false);
   assert.equal(isDirty(s, { voice: "b", speed: 0.95, mp3Kbps: 48 }), true);
 });
+
+test("Spanish voice is sent only when chosen and counts for dirty", () => {
+  assert.deepEqual(settingsPayload({ voice: "a", voiceEs: "ef_dora", speed: 1, mp3Kbps: 48 }), { voice: "a", voiceEs: "ef_dora", speed: 1, mp3Kbps: 48 });
+  const s = { voice: "a", voiceEs: "ef_dora", speed: 1, mp3Kbps: 48 };
+  assert.equal(isDirty(s, { ...s, voiceEs: "em_alex" }), true);
+  assert.equal(isDirty(s, { ...s }), false);
+});

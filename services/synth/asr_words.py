@@ -5,6 +5,7 @@ Lives in ``synth`` because the generator Lambda image ships only ``parse`` and `
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 
 import numpy as np
@@ -14,7 +15,11 @@ _NON_ALNUM = re.compile(r"[^0-9a-z]+")
 
 
 def norm(text: str) -> str:
-    return _NON_ALNUM.sub("", text.lower())
+    """Letters and digits only, lower case, accents removed: "¡Allí!" -> "alli", "niños" -> "ninos".
+
+    Accent-insensitive on purpose: a recognizer and a text may disagree on an accent without disagreeing on the word."""
+    decomposed = unicodedata.normalize("NFKD", text.lower())
+    return _NON_ALNUM.sub("", "".join(c for c in decomposed if not unicodedata.combining(c)))
 
 
 # Numbers can be written as digits or words ("3" vs "three"), so both forms are ignored when comparing text to speech.
@@ -70,10 +75,20 @@ def resample_to_16k(audio: np.ndarray, sample_rate: int) -> np.ndarray:
     return np.interp(np.linspace(0, len(audio) - 1, target), np.arange(len(audio)), audio).astype(np.float32)
 
 
-def transcribe(audio: np.ndarray, model_name: str = "small.en") -> list[Heard]:
-    """Word-level transcript of 16 kHz mono float audio (faster-whisper, CPU, int8)."""
+_MODELS: dict[str, object] = {}
+
+
+def model_name_for(language: str) -> str:
+    """English uses the small English-only model; every other language the multilingual small model."""
+    return "small.en" if language == "en" else "small"
+
+
+def transcribe(audio: np.ndarray, language: str = "en", model_name: str | None = None) -> list[Heard]:
+    """Word-level transcript of 16 kHz mono float audio (faster-whisper, CPU, int8). Models load once per process."""
     from faster_whisper import WhisperModel
 
-    model = WhisperModel(model_name, device="cpu", compute_type="int8")
-    segments, _ = model.transcribe(audio, language="en", word_timestamps=True, beam_size=5, condition_on_previous_text=False)
+    name = model_name or model_name_for(language)
+    if name not in _MODELS:
+        _MODELS[name] = WhisperModel(name, device="cpu", compute_type="int8")
+    segments, _ = _MODELS[name].transcribe(audio, language=language, word_timestamps=True, beam_size=5, condition_on_previous_text=False)
     return [Heard(w.word.strip(), float(w.start), float(w.end)) for seg in segments for w in (seg.words or [])]

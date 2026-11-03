@@ -50,12 +50,12 @@ def test_passage_summary_matches_catalog_contract(world):
     h.process(EVENT, make_deps(s3, table))
     item = table.items[("PASSAGE", PASSAGE_ID)]
     timing = json.loads(gzip.decompress(s3.objects[f"data/{PASSAGE_ID}.timing.json"]))
-    expected_keys = {"pk", "sk", "id", "title", "words", "durationMs", "engine", "voice", "createdAt", "source", "vocabCount", "metrics"}
+    expected_keys = {"pk", "sk", "id", "title", "words", "durationMs", "engine", "voice", "createdAt", "source", "vocabCount", "language", "metrics"}
     assert set(item) == expected_keys
     assert item["id"] == PASSAGE_ID and item["title"] == "The Park"
     assert item["words"] == timing["metrics"]["words"] == 8
     assert item["durationMs"] == timing["duration_ms"]
-    assert item["source"] == "generated" and item["vocabCount"] == 0
+    assert item["source"] == "generated" and item["vocabCount"] == 0 and item["language"] == "en"
     assert item["engine"] == "fake" and item["voice"] == "fake_voice"
     assert item["createdAt"].endswith("Z") and "T" in item["createdAt"]
     assert item["metrics"]["characters"] == timing["metrics"]["characters"]
@@ -171,3 +171,54 @@ def test_timing_is_stored_gzipped_with_content_encoding_and_audio_is_not():
     assert s3.content_encodings[f"data/{PASSAGE_ID}.timing.json"] == "gzip"
     assert f"data/{PASSAGE_ID}.mp3" not in s3.content_encodings
     assert s3.objects[f"data/{PASSAGE_ID}.timing.json"][:2] == b"\x1f\x8b"
+
+
+def test_resubmitting_unchanged_input_skips_generation_but_a_changed_setting_regenerates():
+    calls = []
+
+    def factory(passage):
+        calls.append(1)
+        return FakeEngine()
+
+    s3 = FakeS3({EVENT["rawKey"]: raw_v2(qualityCheck=False)})
+    table = FakeTable()
+    deps = make_deps(s3, table, factory)
+    first = h.process(EVENT, deps)
+    second = h.process(EVENT, deps)
+    assert first["status"] == second["status"] == "done" and len(calls) == 1  # the second run did no synthesis
+    assert table.job(JOB_ID)["status"] == "done"
+    s3.objects[EVENT["rawKey"]] = raw_v2(qualityCheck=False, settings={"voice": "af_bella", "speed": 1.0, "mp3Kbps": 64})
+    h.process(EVENT, deps)
+    assert len(calls) == 2  # a changed bitrate regenerates
+    s3.objects[EVENT["rawKey"]] = raw_v2(qualityCheck=False, settings={"voice": "af_bella", "speed": 1.0, "mp3Kbps": 64}, force=True)
+    h.process(EVENT, deps)
+    assert len(calls) == 3  # force always regenerates
+
+
+def test_a_spanish_job_carries_its_language_to_the_engine_and_the_stored_documents():
+    seen = {}
+
+    def factory(passage):
+        seen["language"] = passage.get("language")
+        return FakeEngine()
+
+    raw = raw_v2(language="es", qualityCheck=False, settings={"voice": "af_heart", "voiceEs": "em_alex", "speed": 1.0, "mp3Kbps": 48})
+    s3 = FakeS3({EVENT["rawKey"]: raw})
+    table = FakeTable()
+    deps = make_deps(s3, table, factory)
+    h.process(EVENT, h.Dependencies(deps.clients, factory, fake_encoder, lambda a, **k: [], lambda p, r: np.zeros(10)))
+    timing = json.loads(gzip.decompress(s3.objects[f"data/{PASSAGE_ID}.timing.json"]))
+    assert seen["language"] == "es" and timing["language"] == "es"
+    assert table.items[("PASSAGE", PASSAGE_ID)]["language"] == "es"
+
+
+def test_the_index_document_is_published_gzipped_and_lists_public_fields_only():
+    s3 = FakeS3({EVENT["rawKey"]: raw_v2(qualityCheck=True)})
+    table = FakeTable()
+    h.process(EVENT, v2_deps(s3, table, words_heard(["we", "went", "to", "the", "park", "it", "was", "fun"])))
+    assert s3.content_encodings["data/index.json"] == "gzip"
+    index = json.loads(gzip.decompress(s3.objects["data/index.json"]))
+    assert [e["id"] for e in index] == [PASSAGE_ID]
+    entry = index[0]
+    assert set(entry) >= {"id", "title", "words", "durationMs", "engine", "voice", "createdAt", "source", "vocabCount", "language", "pairId"}
+    assert not ({"pk", "sk", "metrics", "review"} & set(entry))  # internal fields never leave the table
