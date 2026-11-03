@@ -89,3 +89,8 @@ test("the word limit counts dash-joined words the way the tokenizer does", async
   const dashed = "a—b ".repeat(Math.floor(LIMITS.wordsMax / 2) + 1); // few spaces, but each chunk becomes two spoken words
   assert.throws(() => parseGenerateInput({ title: "T", text: dashed }), (err) => err.status === 400);
 });
+
+test("the word limit also splits on U+0085, which Python treats as a space", async () => {
+  const { parseGenerateInput, LIMITS } = await import("../src/validate.js");
+  assert.throws(() => parseGenerateInput({ title: "T", text: "go\u0085".repeat(LIMITS.wordsMax + 1) }), (err) => err.status === 400);
+});
