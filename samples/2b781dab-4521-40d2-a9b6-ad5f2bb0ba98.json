@@ -1,0 +1,53 @@
+{
+ "uuid": "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98",
+ "title": "Let's Meet a Park Caretaker",
+ "source": "Public ReadWorks passage; text is subject to ReadWorks terms of use",
+ "content": "<figure class=\"image image-c\" data-image-id=\"23344\"><img alt=\"a man taking a smiling selfie in the park\" src=\"https://dq5qica5h7eg3.cloudfront.net/CACHE/images/media/image/eb8e184713b44549861b5aeeb3fad231/65829e0147d222608df001380b0bc91d.jpg\"/><figcaption><div class=\"image-credit\"><p>Jill Lauren</p></div><div class=\"image-caption\"><p>Doug Widener is the new president of Piedmont Park.</p></div></figcaption></figure> <p>Lots of people live in big cities. Cities are full of people, cars, and noise. That can feel a little stressful sometimes. So where can people in cities go when they want to find some peace and quiet? They can go to a park!</p> <p>A city park is a fun place to relax, play, and enjoy <span data-vocab-sense-id=\"2753102\" data-vocab-occurrence-id=\"275310200\">nature</span>. In Atlanta, Georgia, there's a big park called Piedmont Park. Over six million people <span data-vocab-sense-id=\"4599101\" data-vocab-occurrence-id=\"459910100\">visit</span> it every year! Many people go to look at the beautiful trees and flowers. Others go to run or do yoga. Lots of people go to play sports.</p> <p>Piedmont Park is very special to people in Georgia. People have been going there for over one hundred years! It takes a lot of work to keep the park nice for that long. People called park caretakers take care of the park so that everyone in Atlanta can use it. Let’s meet Doug Widener, an important park caretaker at Piedmont Park. Because he did such a great job caring for the park, he was hired to be the president of it!</p> <p>A park president has a big job. Every day is <span data-vocab-sense-id=\"1149402\" data-vocab-occurrence-id=\"114940200\">different</span>. Some days, Doug gives tours to visitors to tell them about Piedmont Park’s history. Important events happened at the park, such as peace marches during times of war. Doug also helps care for the plants and trees. He says, “I help to remove weeds that don’t belong so the plants that do belong there can grow strong. I also put something called mulch around the trees. It helps trees soak up the water they need.&rdquo;  Doug also talks to visitors about giving money to help take care of the park.</p><figure class=\"image image-l\" data-image-id=\"23343\"><img alt=\"a wooded area a waterfall and rocks\" src=\"https://dq5qica5h7eg3.cloudfront.net/CACHE/images/media/image/f5e03bc805764e879a426123d7b555ff/e1ddc437a4e0a436de07fc365dd87c9b.jpg\"/><figcaption><div class=\"image-credit\"><p>Jill Lauren</p></div><div class=\"image-caption\"><p>People hike in Six Springs Wetlands.</p></div></figcaption></figure> <p>Doug’s favorite spot in the park is the Six Springs Wetlands. He likes to relax there. There, he can take some deep breaths under the treetops. He can walk along the boardwalk and look at the plants and animals. In that quiet place, Doug thinks about why he loves his job. He says, “Parks are where we can connect to ourselves, each other, and <span data-vocab-sense-id=\"2753102\" data-vocab-occurrence-id=\"275310201\">nature</span>, all for free. I want to help keep this park great for everyone.&rdquo; </p>",
+ "vocab": {
+  "support": {
+   "senses": {
+    "1149402": {
+     "word": "different",
+     "definition": "When two things are different, they are not the exact same thing.  When you walk a different way to school from your sister, it means that you walk one way to school and she walks another.  The paths to school are not the same paths.",
+     "part_of_speech": [
+      "adjective"
+     ],
+     "example_list": [
+      "My best friend moved to another place in the city, so we go to different schools now.",
+      "I'm wearing the same jeans as I wore yesterday, but I'm wearing a different shirt."
+     ],
+     "spanish": [
+      "diferente",
+      "distinto"
+     ]
+    },
+    "2753102": {
+     "word": "nature",
+     "definition": "Nature is everything in the world that is not made by people.  Animals, plants, water, and air are parts of nature.",
+     "part_of_speech": [
+      "noun"
+     ],
+     "example_list": [
+      "Harry loves nature, so he likes to go on hikes in the woods.",
+      "Sam's teacher takes his class outside to study nature once a week."
+     ],
+     "spanish": [
+      "naturaleza"
+     ]
+    },
+    "4599101": {
+     "word": "visit",
+     "definition": "When you visit someone, you go to see them and spend a little time with them.  When you visit a place, you go there and see the things that are there.",
+     "part_of_speech": [
+      "verb"
+     ],
+     "spanish": [
+      "visitar",
+      "ir de visita",
+      "ir"
+     ]
+    }
+   }
+  }
+ }
+}

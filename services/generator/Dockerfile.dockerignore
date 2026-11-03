@@ -1,0 +1,17 @@
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+.git
+.venv
+node_modules
+web
+infra
+data
+eval
+samples
+docs
+services/api
+services/align
+services/publish
+services/generator/tests
+**/test_*.py

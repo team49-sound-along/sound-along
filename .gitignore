@@ -1,0 +1,13 @@
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+.pytest_cache/
+cdk.out/
+dist/
+.env
+*.env
+out/
+# Generated audio, timing and state: rebuild with scripts/build_samples.py. Never commit third-party recordings.
+data/*
+!data/.gitkeep

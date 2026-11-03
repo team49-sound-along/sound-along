@@ -1,0 +1,9 @@
+# Local development, tests and the quality lab. (The Lambda image pins its own list in services/generator/requirements.txt.)
+kokoro==0.9.4
+misaki==0.9.4
+soundfile==0.14.0
+numpy==2.5.4
+torch==2.15.0
+torchaudio==2.11.1          # only for the UTMOS naturalness check; its version differs from torch's
+faster-whisper==1.2.1
+pytest==9.2.0

@@ -1,0 +1,38 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { createApp } from "./src/app.js";
+import { createFileCatalog } from "./src/catalog.js";
+import { createJobStore } from "./src/jobs/jobStore.js";
+import { createLocalRunner } from "./src/jobs/localRunner.js";
+import { createFileStore } from "./src/stores/fileStore.js";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(here, "..", "..");
+const env = process.env;
+
+const config = {
+  port: Number(env.PORT ?? 3101),
+  host: env.HOST ?? "127.0.0.1",
+  dataDir: path.resolve(env.DATA_DIR ?? path.join(root, "data")),
+  webDist: existsSync(path.join(root, "web", "dist")) ? path.join(root, "web", "dist") : null,
+  generationEnabled: (env.GENERATION_ENABLED ?? "true") === "true",
+  generatePerMinute: Number(env.GENERATE_PER_MINUTE ?? 3),
+  maxConcurrentJobs: Number(env.MAX_CONCURRENT_JOBS ?? 1),
+  trustProxy: false,
+};
+const python = env.PYTHON ?? path.join(root, ".venv", "bin", "python");
+const script = path.join(root, "services", "synth", "run_local.py");
+
+const jobs = createJobStore();
+const app = createApp({
+  config,
+  jobs,
+  store: createFileStore(path.join(config.dataDir, "state.json")),
+  catalog: createFileCatalog(config.dataDir),
+  runner: createLocalRunner({ jobs, dataDir: config.dataDir, python, script }),
+});
+
+app.listen(config.port, config.host, () => {
+  process.stdout.write(`Sound Along API on http://${config.host}:${config.port} (data: ${config.dataDir}, ui: ${config.webDist ? "served" : "not built"})\n`);
+});
