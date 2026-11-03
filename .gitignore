@@ -17,3 +17,6 @@ samples/cards/places.raw.json
 samples/cards/places.images.raw.json
 samples/cards/images.candidates/
 samples/cards/images.candidates.json
+
+# one-off photo candidates for word cards (review sheets); only the approved photos in services/synth/word_photos/ are committed
+scripts/_word_photos_work/

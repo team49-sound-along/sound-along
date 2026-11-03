@@ -14,11 +14,11 @@
      "house"
     ]
    },
-   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-casa-39d49ba1.png",
-   "imageAlt": "casa",
-   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-casa-107ec1d3.jpg",
+   "imageAlt": "foto de la casa",
+   "imageCredit": "Foto: John Chang, CC BY-SA 3.0, vía Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 247
   },
   "árboles": {
    "word": "árboles",
@@ -34,11 +34,11 @@
      "trees"
     ]
    },
-   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-rboles-df5a1853.png",
-   "imageAlt": "Árbol caducifolio",
-   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-rboles-ba06a0cd.jpg",
+   "imageAlt": "foto del árbol",
+   "imageCredit": "Foto: menergo, CC BY-SA 3.0, vía Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 372
   },
   "árbol": {
    "word": "árbol",
@@ -54,11 +54,11 @@
      "tree"
     ]
    },
-   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-rbol-df5a1853.png",
-   "imageAlt": "Árbol caducifolio",
-   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-rbol-ba06a0cd.jpg",
+   "imageAlt": "foto del árbol",
+   "imageCredit": "Foto: menergo, CC BY-SA 3.0, vía Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 372
   },
   "libro": {
    "word": "libro",
@@ -74,11 +74,11 @@
      "book"
     ]
    },
-   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-libro-825ed5db.png",
-   "imageAlt": "libro abierto",
-   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-libro-0f8c49b2.jpg",
+   "imageAlt": "foto del libro",
+   "imageCredit": "Foto: NYC Wanderer (Kevin Eng), CC BY-SA 2.0, vía Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 206
   },
   "zorro": {
    "word": "zorro",
@@ -94,11 +94,11 @@
      "fox"
     ]
    },
-   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-zorro-21dd0f1f.png",
-   "imageAlt": "zorro",
-   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-zorro-0d5aa65c.jpg",
+   "imageAlt": "foto de zorro",
+   "imageCredit": "Foto: Joanne Redwood, CC0, vía Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 248
   },
   "frutas": {
    "word": "frutas",
@@ -114,31 +114,11 @@
      "fruits"
     ]
    },
-   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-frutas-42a9e2f4.png",
-   "imageAlt": "Frutas de kiwi",
-   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
-  },
-  "jugo": {
-   "word": "jugo",
-   "syllables": null,
-   "ipa": null,
-   "partOfSpeech": "noun",
-   "definition": "",
-   "example": null,
-   "spanish": [],
-   "translation": {
-    "lang": "en",
-    "words": [
-     "juice"
-    ]
-   },
-   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-jugo-3cc5d7a2.png",
-   "imageAlt": "taza con paja",
-   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-frutas-e5a8283b.jpg",
+   "imageAlt": "Foto de fruta",
+   "imageCredit": "Foto: روتانا, CC BY 4.0, vía Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 315
   },
   "patos": {
    "word": "patos",
@@ -154,11 +134,11 @@
      "ducks"
     ]
    },
-   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-patos-c5c48872.png",
-   "imageAlt": "pato",
-   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-patos-47f4f90c.jpg",
+   "imageAlt": "foto de pato",
+   "imageCredit": "Foto: Mdf, CC BY-SA 3.0, vía Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 220
   },
   "sol": {
    "word": "sol",
@@ -174,11 +154,11 @@
      "sun"
     ]
    },
-   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-sol-d2b237f3.png",
-   "imageAlt": "sol",
-   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-sol-4bc407e2.jpg",
+   "imageAlt": "foto del sol",
+   "imageCredit": "Foto: Matúš Motlo, CC BY-SA 4.0, vía Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 330
   }
  },
  "places": {},

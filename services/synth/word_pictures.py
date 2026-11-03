@@ -1,9 +1,9 @@
 """Pictures for everyday words: any concrete noun (cookies, tea, trees, a dog) can show a small picture on its word card.
 
-The pictures are OpenMoji icons (CC BY-SA 4.0, https://openmoji.org) bundled with the generator (services/synth/emoji/), so this needs NO network:
-it works for every uploaded passage, offline, at no cost per view. `scripts/build_emoji_words.py` builds the word list and the icon folder.
-Only nouns get a picture (spaCy decides; a verb or an adjective never does), named people and places are not nouns here, and a word with no
-matching icon simply has no picture.
+The pictures are real photographs from Wikipedia / Wikimedia Commons (free licences only, author and licence shown on the card), bundled with the
+generator (services/synth/word_photos/), so this needs NO network: it works for every uploaded passage, offline, at no cost per view.
+`scripts/build_word_photos.py` builds the word list and the photo folder (one-off, reviewed by a person). Only nouns get a picture (spaCy decides;
+a verb or an adjective never does), named people and places are not nouns here, and a word with no photo simply has no picture.
 """
 from __future__ import annotations
 
@@ -17,14 +17,14 @@ from typing import Any, Callable, Mapping, Optional
 from place_media import image_ext, image_size, target_name, NAME_PATTERN  # noqa: F401  (NAME_PATTERN re-exported for callers and tests)
 
 LOG = logging.getLogger(__name__)
-EMOJI_DIR = Path(__file__).with_name("emoji")
-TABLE_FILE = Path(__file__).with_name("emoji_words.json")
+PHOTO_DIR = Path(__file__).with_name("word_photos")
+TABLE_FILE = Path(__file__).with_name("word_photos.json")
 MAX_WORD_PICTURES = 24
-CREDIT = "Picture: OpenMoji, CC BY-SA 4.0"
 
 
 @lru_cache(maxsize=1)
 def load_table() -> dict[str, dict[str, str]]:
+    """word -> {file, name, credit}."""
     return json.loads(TABLE_FILE.read_text(encoding="utf-8"))["words"]
 
 
@@ -51,12 +51,12 @@ def spacy_nouns(text: str, nlp: Any = None) -> list[tuple[str, str]]:
 
 def word_picture_cards(
     passage_id: str, text: str, nouns: Callable[[str], list[tuple[str, str]]] = spacy_nouns, table: Optional[Mapping[str, Mapping[str, str]]] = None,
-    emoji_dir: Path = EMOJI_DIR, existing: Optional[Mapping[str, Mapping[str, Any]]] = None, limit: int = MAX_WORD_PICTURES,
+    photo_dir: Path = PHOTO_DIR, existing: Optional[Mapping[str, Mapping[str, Any]]] = None, limit: int = MAX_WORD_PICTURES,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, bytes]]:
-    """Cards (word -> card) and picture files (name -> bytes) for the nouns of `text` that have an icon.
+    """Cards (word -> card) and picture files (name -> bytes) for the nouns of `text` that have a photo.
 
     A card for a word that already has a reviewed card keeps its definition and translations and only gains the picture. Never raises:
-    a missing or corrupt icon just means that word has no picture."""
+    a missing or corrupt photo just means that word has no picture."""
     words = load_table() if table is None else table
     cards: dict[str, dict[str, Any]] = {}
     images: dict[str, bytes] = {}
@@ -73,15 +73,15 @@ def word_picture_cards(
         if len(cards) >= limit:
             break
         try:
-            data = (emoji_dir / f"{entry['hex']}.png").read_bytes()
+            data = (photo_dir / entry["file"]).read_bytes()
         except OSError:
             continue
-        if image_ext(data) != "png":
+        if image_ext(data) is None:
             continue
         name = target_name(passage_id, key, data, kind="word")
         images[name] = data
         width, height = image_size(data) or (None, None)
         base = dict(existing[key]) if existing and key in existing else {
             "word": key, "syllables": None, "ipa": None, "partOfSpeech": "noun", "definition": "", "example": None, "spanish": []}
-        cards[key] = {**base, "imageUrl": f"/data/{name}", "imageAlt": entry["name"], "imageCredit": CREDIT, "imageWidth": width, "imageHeight": height}
+        cards[key] = {**base, "imageUrl": f"/data/{name}", "imageAlt": f"photo of {entry['name']}", "imageCredit": entry["credit"], "imageWidth": width, "imageHeight": height}
     return cards, images

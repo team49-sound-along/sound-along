@@ -167,7 +167,7 @@ def test_a_place_picture_is_a_small_real_image_on_our_own_origin_with_alt_text_a
         assert "Wikimedia Commons" in card["imageCredit"] and "http" not in card["imageCredit"]
 
 
-def test_a_word_picture_is_a_small_real_png_on_our_own_origin_with_alt_text_and_the_openmoji_credit(doc) -> None:
+def test_a_word_picture_is_a_small_real_photo_on_our_own_origin_with_alt_text_and_a_free_licence_credit(doc) -> None:
     import place_images as pi
 
     _, _, _, _, cards = doc
@@ -176,9 +176,9 @@ def test_a_word_picture_is_a_small_real_png_on_our_own_origin_with_alt_text_and_
         name = card["imageUrl"].removeprefix("/data/")
         assert card["imageUrl"].startswith("/data/") and pi.NAME_PATTERN.fullmatch(name) and ".word-" in name, f"{key}: bad imageUrl"
         data = (CARDS / "images" / name).read_bytes()
-        assert pi.image_ext(data) == "png" and len(data) <= 20_000, f"{key}: not a small PNG"
+        assert pi.image_ext(data) == "jpg" and len(data) <= 70_000, f"{key}: not a small JPEG photo"
         assert (card["imageWidth"], card["imageHeight"]) == pi.image_size(data), f"{key}: size mismatch"
-        assert card["imageAlt"] and "<" not in card["imageAlt"] and card["imageCredit"] == "Picture: OpenMoji, CC BY-SA 4.0", key
+        assert card["imageAlt"] and "<" not in card["imageAlt"] and card["imageCredit"].startswith("Photo: ") and "via Wikimedia Commons" in card["imageCredit"], key
     assert len(pictured) >= 3, "every text should have a few word pictures"
 
 

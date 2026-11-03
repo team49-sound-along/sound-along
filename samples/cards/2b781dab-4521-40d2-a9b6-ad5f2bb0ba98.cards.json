@@ -396,11 +396,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.word-cities-c9dd386f.png",
-   "imageAlt": "cityscape",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.word-cities-a2686596.jpg",
+   "imageAlt": "photo of city",
+   "imageCredit": "Photo: Benh LIEU SONG (Flickr), CC BY-SA 2.0, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 220
   },
   "cars": {
    "word": "cars",
@@ -410,11 +410,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.word-cars-780ccbc3.png",
-   "imageAlt": "automobile",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.word-cars-a68dcc14.jpg",
+   "imageAlt": "photo of car",
+   "imageCredit": "Photo: ModelTMitch, Public domain, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 247
   },
   "city": {
    "word": "city",
@@ -424,11 +424,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.word-city-c9dd386f.png",
-   "imageAlt": "cityscape",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.word-city-a2686596.jpg",
+   "imageAlt": "photo of city",
+   "imageCredit": "Photo: Benh LIEU SONG (Flickr), CC BY-SA 2.0, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 220
   },
   "trees": {
    "word": "trees",
@@ -438,11 +438,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.word-trees-df5a1853.png",
-   "imageAlt": "deciduous tree",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.word-trees-ba06a0cd.jpg",
+   "imageAlt": "photo of tree",
+   "imageCredit": "Photo: menergo, CC BY-SA 3.0, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 372
   },
   "flowers": {
    "word": "flowers",
@@ -452,25 +452,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.word-flowers-40cd90f6.png",
-   "imageAlt": "cherry blossom",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
-  },
-  "water": {
-   "word": "water",
-   "syllables": null,
-   "ipa": null,
-   "partOfSpeech": "noun",
-   "definition": "",
-   "example": null,
-   "spanish": [],
-   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.word-water-4f581edf.png",
-   "imageAlt": "droplet",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.word-flowers-f4c44ee4.jpg",
+   "imageAlt": "photo of flower",
+   "imageCredit": "Photo: Ianaré Sévi, CC BY-SA 3.0, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 264
   },
   "money": {
    "word": "money",
@@ -480,11 +466,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.word-money-27e00a4f.png",
-   "imageAlt": "money bag",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.word-money-d9944ffc.jpg",
+   "imageAlt": "photo of money",
+   "imageCredit": "Photo: Avij (talk · contribs), Public domain, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 220
   }
  },
  "places": {

@@ -106,7 +106,7 @@ function nextQ() {
           <template v-else>
             <p class="small muted">{{ starredCount }} saved &middot; {{ queue.length }} to practise now</p>
             <div v-if="current" class="flash" aria-live="polite">
-              <figure v-if="current.imageUrl" class="fpic"><img :src="current.imageUrl" alt="" width="120" height="120" /></figure>
+              <figure v-if="current.imageUrl" class="fpic"><img :src="current.imageUrl" alt="" :width="current.imageWidth || undefined" :height="current.imageHeight || undefined" /></figure>
               <p v-if="!revealed" class="prompt">{{ current.imageUrl ? "What is this? Say the word." : current.definition ? current.definition : "Say what this word means." }}</p>
               <template v-else>
                 <p class="answer"><strong :lang="lang">{{ current.word }}</strong></p>
@@ -158,7 +158,7 @@ function nextQ() {
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s3); display: grid; gap: var(--s2); }
 .flash { display: grid; gap: var(--s1); justify-items: start; }
 .fpic { margin: 0; }
-.fpic img { width: 120px; height: 120px; object-fit: contain; background: var(--border); border-radius: 12px; padding: 8px; box-sizing: border-box; }
+.fpic img { display: block; width: auto; max-width: 100%; height: auto; max-height: 200px; background: var(--border); border-radius: 12px; }
 .prompt { font-size: 20px; }
 .answer { font-size: 28px; }
 .row { display: flex; flex-wrap: wrap; gap: var(--s1); }

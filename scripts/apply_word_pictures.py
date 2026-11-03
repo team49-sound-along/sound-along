@@ -26,6 +26,8 @@ def main() -> int:
     for path in sorted(CARDS.glob("*.cards.json")):
         passage_id = path.name.removesuffix(".cards.json")
         passage = json.loads((SAMPLES / f"{passage_id}.json").read_text(encoding="utf-8"))
+        if (passage.get("language") or "en") != "en":  # the photo table is English: Spanish cards get theirs by translating the English ones (see build_translations.py)
+            continue
         text = " ".join(t.text for t in tokenize_html(passage["content"]))
         document = json.loads(path.read_text(encoding="utf-8"))
         words = {k: {f: v for f, v in c.items() if not f.startswith("image")} for k, c in document["words"].items()}  # start without pictures: idempotent
@@ -34,7 +36,8 @@ def main() -> int:
             stale.unlink()
         for name, data in images.items():
             (images_dir / name).write_bytes(data)
-        document["words"] = {**words, **new_cards}
+        merged = {**words, **new_cards}
+        document["words"] = {k: c for k, c in merged.items() if (c.get("definition") or "").strip() or c.get("imageUrl")}  # a card with neither is empty: drop it
         path.write_text(json.dumps(document, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
         print(f"{passage_id[:8]}: {len(new_cards)} word pictures ({', '.join(new_cards)})")
     return 0

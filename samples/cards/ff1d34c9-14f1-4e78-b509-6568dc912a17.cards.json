@@ -267,11 +267,11 @@
    "spanish": [
     "jardín"
    ],
-   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-garden-a5242e66.png",
-   "imageAlt": "house with garden",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-garden-f018d8d0.jpg",
+   "imageAlt": "photo of garden",
+   "imageCredit": "Photo: King of Hearts, CC BY-SA 3.0, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 219
   },
   "regard": {
    "word": "regard",
@@ -361,25 +361,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-house-39d49ba1.png",
-   "imageAlt": "house",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
-  },
-  "door": {
-   "word": "door",
-   "syllables": null,
-   "ipa": null,
-   "partOfSpeech": "noun",
-   "definition": "",
-   "example": null,
-   "spanish": [],
-   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-door-d62d5826.png",
-   "imageAlt": "door",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-house-107ec1d3.jpg",
+   "imageAlt": "photo of house",
+   "imageCredit": "Photo: John Chang, CC BY-SA 3.0, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 247
   },
   "trees": {
    "word": "trees",
@@ -389,11 +375,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-trees-df5a1853.png",
-   "imageAlt": "deciduous tree",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-trees-ba06a0cd.jpg",
+   "imageAlt": "photo of tree",
+   "imageCredit": "Photo: menergo, CC BY-SA 3.0, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 372
   },
   "building": {
    "word": "building",
@@ -403,11 +389,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-building-cf8fca46.png",
-   "imageAlt": "classical building",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-building-af209563.jpg",
+   "imageAlt": "photo of building",
+   "imageCredit": "Photo: Moh hakem, CC BY-SA 4.0, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 204
   },
   "shoes": {
    "word": "shoes",
@@ -417,25 +403,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-shoes-0306c4ed.png",
-   "imageAlt": "man’s shoe",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
-  },
-  "church": {
-   "word": "church",
-   "syllables": null,
-   "ipa": null,
-   "partOfSpeech": "noun",
-   "definition": "",
-   "example": null,
-   "spanish": [],
-   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-church-82eca767.png",
-   "imageAlt": "church",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-shoes-9cb1ef0b.jpg",
+   "imageAlt": "photo of shoe",
+   "imageCredit": "Photo: Unknown author, CC BY 3.0 no, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 266
   }
  },
  "places": {

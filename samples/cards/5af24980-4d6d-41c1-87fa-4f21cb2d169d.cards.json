@@ -386,11 +386,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-tea-04a6a591.png",
-   "imageAlt": "teacup without handle",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-tea-aef4ab4b.jpg",
+   "imageAlt": "photo of tea",
+   "imageCredit": "Photo: Difference engine, CC BY-SA 4.0, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 330
   },
   "cup": {
    "word": "cup",
@@ -400,11 +400,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-cup-04a6a591.png",
-   "imageAlt": "teacup without handle",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-cup-4db93419.jpg",
+   "imageAlt": "photo of cup",
+   "imageCredit": "Photo: Vincennes Porcelain (France, circa 1739–1756), Francois Binet (France, active 17, Public domain, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 289
   },
   "money": {
    "word": "money",
@@ -414,11 +414,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-money-27e00a4f.png",
-   "imageAlt": "money bag",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-money-d9944ffc.jpg",
+   "imageAlt": "photo of money",
+   "imageCredit": "Photo: Avij (talk · contribs), Public domain, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 220
   },
   "cookies": {
    "word": "cookies",
@@ -428,11 +428,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-cookies-1c240c5c.png",
-   "imageAlt": "cookie",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-cookies-e9b01ec5.jpg",
+   "imageAlt": "photo of cookie",
+   "imageCredit": "Photo: Mshuang2, CC0, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 247
   },
   "pen": {
    "word": "pen",
@@ -442,25 +442,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-pen-ed8b281a.png",
-   "imageAlt": "pen",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
-  },
-  "picture": {
-   "word": "picture",
-   "syllables": null,
-   "ipa": null,
-   "partOfSpeech": "noun",
-   "definition": "",
-   "example": null,
-   "spanish": [],
-   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-picture-c2c27627.png",
-   "imageAlt": "framed picture",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-pen-8e980235.jpg",
+   "imageAlt": "photo of pen",
+   "imageCredit": "Photo: Vadim Zhuravlev, Public domain, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 330
   },
   "ship": {
    "word": "ship",
@@ -470,11 +456,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-ship-a04b3c7e.png",
-   "imageAlt": "ship",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-ship-753a21e3.jpg",
+   "imageAlt": "photo of ship",
+   "imageCredit": "Photo: Ajepbah, CC BY-SA 3.0 de, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 220
   },
   "ships": {
    "word": "ships",
@@ -484,25 +470,11 @@
    "definition": "",
    "example": null,
    "spanish": [],
-   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-ships-a04b3c7e.png",
-   "imageAlt": "ship",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
-  },
-  "night": {
-   "word": "night",
-   "syllables": null,
-   "ipa": null,
-   "partOfSpeech": "noun",
-   "definition": "",
-   "example": null,
-   "spanish": [],
-   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-night-6599af20.png",
-   "imageAlt": "bridge at night",
-   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
-   "imageWidth": 72,
-   "imageHeight": 72
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.word-ships-753a21e3.jpg",
+   "imageAlt": "photo of ship",
+   "imageCredit": "Photo: Ajepbah, CC BY-SA 3.0 de, via Wikimedia Commons",
+   "imageWidth": 330,
+   "imageHeight": 220
   }
  },
  "places": {

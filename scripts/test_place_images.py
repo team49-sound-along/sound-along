@@ -110,7 +110,7 @@ def test_image_size_is_read_from_real_files():
     from pathlib import Path
 
     folder = Path(__file__).resolve().parent.parent / "samples" / "cards" / "images"
-    sizes = {p.name.split(".place-")[1].rsplit("-", 1)[0]: pi.image_size(p.read_bytes()) for p in folder.glob("*.jpg")}
+    sizes = {p.name.split(".place-")[1].rsplit("-", 1)[0]: pi.image_size(p.read_bytes()) for p in folder.glob("*.place-*.jpg")}
     assert sizes["piedmont-park"] == (500, 625) and sizes["great-britain"] == (500, 803) and sizes["london"] == (500, 281)
 
 
