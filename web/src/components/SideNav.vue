@@ -5,11 +5,17 @@ import { role } from "../session.js";
 import { computed } from "vue";
 
 const emit = defineEmits(["navigate"]);
+const teacherItems = [
+  { name: "settings", href: "#/settings", label: "Settings", icon: "settings" },
+  { name: "pronunciations", href: "#/pronunciations", label: "Pronunciations", icon: "speak" },
+  { name: "review", href: "#/review", label: "Pronunciation review", icon: "review" },
+];
 const items = computed(() => [
   { name: "library", href: "#/library", label: "Library", icon: "library" },
   { name: "assignments", href: "#/assignments", label: role.value === "student" ? "My assignments" : "Assignments", icon: "assign" },
   { name: "generate", href: "#/generate", label: "Generate", icon: "generate" },
   { name: "insights", href: "#/insights", label: "Insights", icon: "insights" },
+  ...(role.value === "teacher" ? teacherItems : []),
 ]);
 const activeName = computed(() => (route.value.name === "read" ? "library" : route.value.name));
 </script>

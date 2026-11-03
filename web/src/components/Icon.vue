@@ -18,6 +18,9 @@ const PATHS = {
   list: "M4 6h16M4 12h16M4 18h16",
   keyboard: "M3 7h18v10H3zM7 11h.01M11 11h.01M15 11h.01M7 14h10",
   book: "M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20",
+  settings: "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4",
+  speak: "M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM6 11a6 6 0 0 0 12 0M12 17v4",
+  review: "M5 4h14v16H5zM9 9l2 2 4-4M9 15h6",
   alert: "M12 4l9 16H3zM12 10v4M12 17v.01",
 };
 </script>

@@ -22,3 +22,19 @@ test("validateTiming flags bad data", () => {
   assert.deepEqual(validateTiming(words), []);
   assert.equal(validateTiming([{ i: 0, start_ms: 5, end_ms: 1 }]).length, 1);
 });
+
+import { wordSlice } from "./timing.js";
+test("wordSlice pads the word and converts to seconds", () => {
+  assert.deepEqual(wordSlice(words, 1), { startSec: 0.41, endSec: 0.88 });
+  assert.deepEqual(wordSlice(words, 1, { padBeforeMs: 0, padAfterMs: 0 }), { startSec: 0.45, endSec: 0.8 });
+});
+test("wordSlice clamps the start at zero", () => {
+  assert.equal(wordSlice([{ i: 0, start_ms: 10, end_ms: 200 }], 0).startSec, 0);
+});
+test("wordSlice rejects bad index and unaligned words", () => {
+  assert.equal(wordSlice(words, -1), null);
+  assert.equal(wordSlice(words, 3), null);
+  assert.equal(wordSlice(words, 1.5), null);
+  assert.equal(wordSlice([{ i: 0, start_ms: 100, end_ms: 200, aligned: false }], 0), null);
+  assert.notEqual(wordSlice([{ i: 0, start_ms: 100, end_ms: 200, aligned: true }], 0), null);
+});

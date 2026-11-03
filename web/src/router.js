@@ -1,6 +1,11 @@
 // Minimal hash router (pure parse + reactive current route).
 import { ref, readonly } from "vue";
 
+const PAGES = ["library", "assignments", "generate", "insights", "settings", "pronunciations", "review"];
+/** Screens only a teacher may open (the API has no real auth; this is the demo role guard). */
+export const TEACHER_ONLY = ["settings", "pronunciations", "review"];
+export const isTeacherOnly = (name) => TEACHER_ONLY.includes(name);
+
 export function parseHash(hash) {
   const raw = String(hash || "").replace(/^#\/?/, "");
   const [path, queryString = ""] = raw.split("?");
@@ -8,7 +13,7 @@ export function parseHash(hash) {
   const query = Object.fromEntries(new URLSearchParams(queryString));
   const [name = "library", id] = parts;
   if (name === "read" && id) return { name: "read", params: { id }, query };
-  if (["library", "assignments", "generate", "insights"].includes(name)) return { name, params: {}, query };
+  if (PAGES.includes(name)) return { name, params: {}, query };
   return { name: "library", params: {}, query: {} };
 }
 

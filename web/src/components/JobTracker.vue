@@ -1,10 +1,11 @@
 <script setup>
-import { computed } from "vue";
+import { computed, useId } from "vue";
 import Icon from "./Icon.vue";
 import { elapsedSeconds, stepStates } from "../jobSteps.js";
 import { formatCount, formatMinutes, formatRtf, formatSeconds } from "../format.js";
 
 const props = defineProps({ job: { type: Object, required: true }, now: { type: Number, required: true } });
+const headId = useId();
 const steps = computed(() => stepStates(props.job));
 const elapsed = computed(() => elapsedSeconds(props.job.startedAt, props.job.finishedAt, props.now));
 const m = computed(() => props.job.metrics ?? {});
@@ -18,9 +19,9 @@ const summary = computed(() => [
 </script>
 
 <template>
-  <section class="card tracker" aria-labelledby="job-h">
+  <section class="card tracker" :aria-labelledby="headId">
     <div class="head">
-      <h3 id="job-h">{{ job.title }}</h3>
+      <h3 :id="headId">{{ job.title }}</h3>
       <span class="elapsed num" aria-label="Elapsed time">{{ elapsed === null ? "—" : `${elapsed}s` }} elapsed</span>
     </div>
     <ol class="steps">
@@ -47,7 +48,11 @@ const summary = computed(() => [
         <div v-for="x in summary" :key="x.label"><dt>{{ x.label }}</dt><dd class="num">{{ x.value }}</dd></div>
       </dl>
       <p class="small muted">Source: job metrics from GET /api/jobs/{{ job.id }}.</p>
-      <a v-if="job.passageId" class="btn primary" :href="`#/read/${encodeURIComponent(job.passageId)}`">Open in reader</a>
+      <div v-if="job.humanPassageId && job.passageId" class="open-row">
+        <a class="btn primary" :href="`#/read/${encodeURIComponent(job.humanPassageId)}`">Open with human narrator</a>
+        <a class="btn" :href="`#/read/${encodeURIComponent(job.passageId)}`">Open with AI voice</a>
+      </div>
+      <a v-else-if="job.passageId" class="btn primary" :href="`#/read/${encodeURIComponent(job.passageId)}`">Open in reader</a>
     </div>
     <p v-else class="small muted" role="status">Working&hellip; this page updates automatically.</p>
   </section>
@@ -70,6 +75,7 @@ li.done .dot { border-color: var(--primary); background: var(--primary); color: 
 .metrics dt { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; color: var(--muted); }
 .metrics dd { margin: 0; font-size: 22px; font-weight: 700; }
 .result { display: grid; gap: var(--s2); justify-items: start; }
+.open-row { display: flex; gap: var(--s1); flex-wrap: wrap; }
 .result .notice, .result .metrics { width: 100%; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--hl) 45%, transparent); } }
 @media (max-width: 760px) { .steps { grid-template-columns: minmax(0, 1fr); } }

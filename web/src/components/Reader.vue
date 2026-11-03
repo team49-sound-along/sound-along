@@ -2,8 +2,9 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import Icon from "./Icon.vue";
 import AudioBar from "./AudioBar.vue";
+import WordHelp from "./WordHelp.vue";
 import { api, audioUrl } from "../api.js";
-import { findActiveIndex, seekSeconds } from "../timing.js";
+import { findActiveIndex, seekSeconds, wordSlice } from "../timing.js";
 import { route } from "../router.js";
 import { isHuman, resumeIndex, voiceLabel } from "../voices.js";
 
@@ -23,7 +24,9 @@ const currentMs = ref(0);
 const speed = ref(1);
 const wordHelp = ref(true);
 const vocabNote = ref(null);
+const selectedIndex = ref(-1);
 let frame = 0;
+let stopAtSec = null; // set while "Hear this word" is playing a single word
 
 const words = computed(() => props.timing.words ?? []);
 const paragraphs = computed(() =>
@@ -33,6 +36,8 @@ const paragraphs = computed(() =>
     return next;
   }, []).filter(Boolean),
 );
+const selectedWord = computed(() => words.value[selectedIndex.value] ?? null);
+const canHear = computed(() => selectedWord.value !== null && wordSlice(words.value, selectedIndex.value) !== null);
 const progress = computed(() => (words.value.length ? Math.round(((activeIndex.value + 1) / words.value.length) * 100) : 0));
 
 onBeforeUnmount(() => cancelAnimationFrame(frame));
@@ -81,6 +86,11 @@ function revealActive(index) {
 function tick() {
   const el = audio.value;
   if (!el) return;
+  if (stopAtSec !== null && el.currentTime >= stopAtSec) {
+    stopAtSec = null;
+    el.pause(); // onPause runs tick() again to settle the highlight
+    return;
+  }
   currentMs.value = el.currentTime * 1000;
   const index = findActiveIndex(words.value, currentMs.value);
   if (index !== activeIndex.value) {
@@ -119,6 +129,7 @@ function onEnded() {
 function toggle() {
   const el = audio.value;
   if (!el) return;
+  stopAtSec = null;
   if (el.paused) startAudio(el);
   else el.pause();
 }
@@ -126,8 +137,10 @@ function toggle() {
 function playFrom(index) {
   const el = audio.value;
   if (!el || !props.soundAlong) return;
+  stopAtSec = null;
   el.currentTime = seekSeconds(words.value, index);
   focusIndex.value = index;
+  selectedIndex.value = index;
   activeIndex.value = index;
   const note = vocabFor(words.value[index]);
   if (note) vocabNote.value = note;
@@ -135,7 +148,20 @@ function playFrom(index) {
   startAudio(el);
 }
 
+// Plays only the selected word. The existing requestAnimationFrame loop (tick) stops it, so it works at any speed.
+function hearWord() {
+  const el = audio.value;
+  const slice = wordSlice(words.value, selectedIndex.value);
+  if (!el || !slice) return;
+  stopAtSec = slice.endSec;
+  el.currentTime = slice.startSec;
+  startAudio(el);
+  cancelAnimationFrame(frame);
+  frame = requestAnimationFrame(tick);
+}
+
 function seekTo(ms) {
+  stopAtSec = null;
   audio.value.currentTime = ms / 1000;
   tick();
 }
@@ -153,6 +179,11 @@ async function moveFocus(next) {
   document.getElementById(`w-${clamped}`)?.focus();
 }
 
+function hearFocused() {
+  selectedIndex.value = focusIndex.value;
+  hearWord();
+}
+
 function onKey(event) {
   if (!props.soundAlong) return;
   const handlers = {
@@ -162,6 +193,8 @@ function onKey(event) {
     End: () => moveFocus(words.value.length - 1),
     Enter: () => playFrom(focusIndex.value),
     " ": () => playFrom(focusIndex.value),
+    h: hearFocused,
+    H: hearFocused,
   };
   const handler = handlers[event.key];
   if (handler) {
@@ -202,7 +235,7 @@ function onKey(event) {
 
     <p v-if="soundAlong" id="reader-help" class="hint small muted">
       <Icon name="keyboard" :size="18" />
-      <span>Tap or click any word to hear it from there. Keyboard: arrow keys move between words, Enter or Space plays.</span>
+      <span>Tap or click any word to hear it from there. Keyboard: arrow keys move between words, Enter or Space plays, H plays just that word.</span>
     </p>
     <div class="passage" role="group" aria-label="Passage text" :aria-describedby="soundAlong ? 'reader-help' : undefined" @keydown="onKey">
       <p v-for="(para, n) in paragraphs" :key="n">
@@ -213,22 +246,13 @@ function onKey(event) {
             :tabindex="soundAlong && w.i === focusIndex ? 0 : -1"
             :role="soundAlong ? 'button' : undefined"
             @click="playFrom(w.i)"
+            @focus="selectedIndex = w.i"
           >{{ w.text }}</span>{{ " " }}
         </template>
       </p>
     </div>
 
-    <div v-if="soundAlong && wordHelp" class="help" role="region" aria-label="Word help">
-      <div aria-live="polite" aria-atomic="true">
-        <template v-if="vocabNote">
-          <div class="note-head"><strong>{{ vocabNote.word }}</strong><span v-if="vocabNote.partOfSpeech" class="badge">{{ vocabNote.partOfSpeech }}</span></div>
-          <p class="note-def">{{ vocabNote.definition }}</p>
-          <p v-for="e in vocabNote.examples" :key="e" class="note-extra"><span class="label">Example</span> {{ e }}</p>
-          <p v-if="vocabNote.spanish.length" class="note-extra"><span class="label">En español</span> <span lang="es">{{ vocabNote.spanish.join(", ") }}</span></p>
-        </template>
-        <span v-else class="muted">Underlined words have a short definition. It appears here as the word is read.</span>
-      </div>
-    </div>
+    <WordHelp v-if="soundAlong" :note="vocabNote" :show-note="wordHelp" :word="selectedWord?.text ?? ''" :can-hear="canHear" @hear="hearWord" />
   </article>
 </template>
 
@@ -246,12 +270,6 @@ function onKey(event) {
 .w.vocab { text-decoration: underline dotted; text-decoration-thickness: 2px; text-underline-offset: 6px; }
 .w.active, .w.active:hover { background: var(--hl); color: var(--on-hl); box-shadow: 0 0 0 2px var(--hl); }
 .w:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
-.help { position: sticky; bottom: var(--s2); z-index: 10; background: var(--surface); border: 1px solid var(--border); border-left: 6px solid var(--hl); border-radius: var(--r); padding: 12px var(--s2); font-size: 18px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.08); }
-.help strong { margin-right: 8px; font-size: 20px; }
-.note-head { display: flex; align-items: center; gap: 8px; }
-.note-def { margin-top: 4px; }
-.note-extra { margin-top: 6px; font-size: 16px; color: var(--muted); }
-.note-extra .label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-right: 6px; }
 .voice { display: inline-flex; gap: 8px; margin-top: var(--s1); }
 .voice .btn[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--on-primary); opacity: 1; }
 .notice { align-items: center; }

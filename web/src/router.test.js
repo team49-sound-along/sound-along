@@ -12,3 +12,14 @@ test("unknown or empty falls back to library", () => {
   assert.equal(parseHash("#/nope").name, "library");
   assert.equal(parseHash("#/read").name, "library");
 });
+
+import { isTeacherOnly } from "./router.js";
+test("teacher screens parse and are guarded", () => {
+  for (const n of ["settings", "pronunciations", "review"]) {
+    assert.equal(parseHash(`#/${n}`).name, n);
+    assert.equal(isTeacherOnly(n), true);
+  }
+  assert.equal(parseHash("#/pronunciations?word=gaieties").query.word, "gaieties");
+  assert.equal(isTeacherOnly("library"), false);
+  assert.equal(isTeacherOnly("generate"), false);
+});

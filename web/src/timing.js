@@ -33,3 +33,16 @@ export function validateTiming(words) {
   });
   return problems;
 }
+
+/**
+ * Playback window for "Hear this word": start a little before the word and stop a little after it.
+ * Returns {startSec, endSec}, or null when the word is missing or its time is only estimated (aligned === false),
+ * because an estimated slice would cut the word off or play its neighbours.
+ */
+export function wordSlice(words, index, { padBeforeMs = 40, padAfterMs = 80 } = {}) {
+  if (!Number.isInteger(index) || index < 0 || index >= words.length) return null;
+  const w = words[index];
+  if (w.aligned === false) return null;
+  if (!Number.isFinite(w.start_ms) || !Number.isFinite(w.end_ms)) return null;
+  return { startSec: Math.max(0, w.start_ms - padBeforeMs) / 1000, endSec: (w.end_ms + padAfterMs) / 1000 };
+}
