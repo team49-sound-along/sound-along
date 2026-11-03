@@ -24,4 +24,15 @@ Both reviewers sent the same clips back in the same order, so the result is cons
 - **Kept:** af_heart ranked first by both reviewers.
 - **Also rated well:** Phonon Everly and Hadley (top 3 for both). Phonon Spencer was called human but with a strong British accent.
 - **ReadWorks' human clip** was rated "not good" by one reviewer (more treble, male voice, recording noise), so it is not a gold standard.
-- Phonon is English only here (Spanish models are non-commercial), and it is not wired in yet.
+- Phonon is English only here (Spanish models are non-commercial).
+
+## Phonon is now offered (2026-11-03)
+Hadley and Everly (`phonon_hadley`, `phonon_everly`) are selectable English voices, run by `services/synth/phonon_engine.py`.
+- Chosen by voice id: the generator picks the engine from the voice, so selecting a voice in Settings is enough.
+- No speed control in the model: the Settings speed does not apply to them (students still change playback speed in the reader).
+- No word times from the model: Whisper supplies them (as for Spanish), so a word can occasionally be unaligned. The Insights
+  quality numbers and the per-passage review show this honestly. Number words ("twenty", "one hundred") are the usual unmatched ones.
+- Pronunciation fixes: plain respellings work, `/phoneme/` entries are Kokoro-only and are skipped.
+- Image: the model (f32, about 99 MB) and the two voice files are baked into the generator image at pinned revisions and loaded
+  from `/opt/phonon`, so nothing is downloaded at run time. The default stays `af_heart`.
+- Labels come from the voice catalog's own metadata (gender, age, description).

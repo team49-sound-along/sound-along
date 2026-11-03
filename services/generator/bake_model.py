@@ -33,12 +33,32 @@ MODELS = (
 )
 
 
+# Phonon (Apache-2.0): the English model and only the two offered voices, as plain folders the `ptts` runtime loads from disk
+# (PHONON_MODEL_DIR / PHONON_VOICES_DIR), so nothing is downloaded at run time. Revisions match services/synth/phonon_engine.py.
+PHONON_DIR = Path("/opt/phonon")
+PHONON = (
+    ("gradium/phonon-31m-en", "8c64b55ec301728e2d1695bfea87a08a267d0c2d", "model", None),
+    (
+        "gradium/phonon-voices",
+        "da6c9ec0d47be8df5c87c730a3aa97187f3229c3",
+        "voices",
+        ["voices.jsonl", "voices/bXwrkHhURL1VFJdG.safetensors", "voices/vjFyp2BcCyTlUmYb.safetensors"],  # Hadley, Everly
+    ),
+)
+
+
+def bake_phonon() -> None:
+    for repo, revision, folder, files in PHONON:
+        snapshot_download(repo, revision=revision, local_dir=str(PHONON_DIR / folder), allow_patterns=files)
+
+
 def main() -> None:
     for repo, revision, files in MODELS:
         snapshot_download(repo, revision=revision, allow_patterns=files)
         refs = Path(HF_HUB_CACHE) / f"models--{repo.replace('/', '--')}" / "refs"
         refs.mkdir(parents=True, exist_ok=True)
         (refs / "main").write_text(revision)
+    bake_phonon()
 
 
 if __name__ == "__main__":

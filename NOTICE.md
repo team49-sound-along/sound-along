@@ -6,6 +6,7 @@ license for the version you install.
 | Component | Use | License (as stated by the project; verify) |
 |---|---|---|
 | Kokoro-82M model and `kokoro` library | Text-to-speech | Apache-2.0 |
+| Phonon `phonon-31m-en` model, `gradium/phonon-voices` and the `ptts` runtime | Text-to-speech (voices Hadley and Everly) | Apache-2.0 (runtime: MIT or Apache-2.0) |
 | faster-whisper / Whisper models | Word timing for existing human audio; quality checks | MIT |
 | UTMOS22 via `tarepan/SpeechMOS` | Predicted naturalness in the quality lab | Check upstream |
 | spaCy `en_core_web_sm` | Text processing used by the TTS library | MIT |

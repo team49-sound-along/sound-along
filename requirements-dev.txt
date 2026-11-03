@@ -7,3 +7,4 @@ torch==2.15.0
 torchaudio==2.11.1          # only for the UTMOS naturalness check; its version differs from torch's
 faster-whisper==1.2.1
 pytest==9.2.0
+ptts==0.6.0   # Phonon voices (MIT or Apache-2.0); Rust wheel, no PyTorch

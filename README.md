@@ -6,7 +6,7 @@ A student presses play and every word is highlighted as it is spoken. Tapping an
 
 ## What it does
 - **Any teacher content, on demand.** Paste a passage or upload a `.txt`/`.md` file, optionally with your own recording. Parsing, narration, word timing and publishing run automatically. A recording is aligned into a linked human-narrated variant.
-- **English and Spanish.** Kokoro speaks both. It gives word timing for English only, so Spanish word times come from a multilingual Whisper pass.
+- **English and Spanish.** Kokoro speaks both, and two Phonon voices (Hadley, Everly) are offered in English. It gives word timing for English only, so Spanish word times come from a multilingual Whisper pass.
 - **Nothing hardcoded for voice and pronunciation.** Voice, speed and MP3 quality are stored Settings. Pronunciation fixes are stored data a teacher edits. An automatic check lists candidate mispronounced words for review (candidates, not confirmed mistakes), and a fix plus "regenerate" closes the loop.
 - **Word-level timing and live highlighting.** Tap a word to play from it. "Hear this word" plays just that word. Arrow keys move between words (one tab stop), Enter or Space plays.
 - **Existing human recordings get highlighting** with no regeneration (Whisper alignment), plus a Recorded narrator / read-aloud voice toggle that keeps the reader's place.
@@ -20,7 +20,7 @@ A student presses play and every word is highlighted as it is spoken. Tapping an
 Browser (Vue 3) -> CloudFront (OAC) -+- /app/*  -> S3 (static web app)
                                      +- /data/* -> S3 (MP3 + timing JSON)
                                      +- /api/*  -> API Lambda (Express 4, Node 18.x) -> DynamoDB
-API Lambda -> Step Functions -> Generator Lambda (container, arm64, Kokoro baked in, no internet needed)
+API Lambda -> Step Functions -> Generator Lambda (container, arm64, Kokoro and Phonon baked in, no internet needed)
                                   parse -> synthesize per sentence -> align words -> master audio -> publish to S3
 ```
 Details: `docs/AWS.md` (AWS contract), `docs/API.md` (HTTP contract), `docs/FORMAT.md` (file format for ReadWorks' frontend), `docs/COST.md` (long-run cost), `docs/DEPLOY.md` (deploy-day runbook), `infra/README.md` (infrastructure).

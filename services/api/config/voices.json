@@ -2,21 +2,37 @@
  {
   "id": "af_heart",
   "label": "Heart (US female)",
-  "lang": "en"
+  "lang": "en",
+  "engine": "kokoro"
+ },
+ {
+  "id": "phonon_hadley",
+  "label": "Hadley (US female, even-toned and kind)",
+  "lang": "en",
+  "engine": "phonon"
+ },
+ {
+  "id": "phonon_everly",
+  "label": "Everly (US female, soft and relaxed)",
+  "lang": "en",
+  "engine": "phonon"
  },
  {
   "id": "ef_dora",
   "label": "Dora (Spanish female, not graded)",
-  "lang": "es"
+  "lang": "es",
+  "engine": "kokoro"
  },
  {
   "id": "em_alex",
   "label": "Alex (Spanish male, not graded)",
-  "lang": "es"
+  "lang": "es",
+  "engine": "kokoro"
  },
  {
   "id": "em_santa",
   "label": "Santa (Spanish male, not graded)",
-  "lang": "es"
+  "lang": "es",
+  "engine": "kokoro"
  }
 ]

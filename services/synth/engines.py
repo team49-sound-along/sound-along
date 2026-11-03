@@ -1,10 +1,18 @@
-"""Engine selection: TTS_ENGINE=kokoro (default, open source) or polly (AWS-native fallback)."""
+"""Engine selection: kokoro (default, open source), phonon (chosen by a phonon_* voice) or polly (AWS-native fallback, TTS_ENGINE=polly)."""
 from __future__ import annotations
 
 import os
 from typing import Any, Mapping
 
 from engine import Engine
+from pronunciations import load_respellings
+
+
+def engine_for_voice(voice: str | None) -> str | None:
+    """The engine a voice belongs to when it is not Kokoro's, so choosing a voice in Settings is enough."""
+    from phonon_engine import PHONON_VOICES
+
+    return "phonon" if voice in PHONON_VOICES else None
 
 
 def create_engine(
@@ -19,10 +27,18 @@ def create_engine(
         raise ValueError(f"Unsupported language {language!r}. Use 'en' or 'es'.")
     chosen = (name or os.environ.get("TTS_ENGINE") or "kokoro").lower()
     options = settings or {}
+    voice_key = "voice" if language == "en" else "voiceEs"
+    if chosen == "kokoro" and engine_for_voice(options.get(voice_key)):
+        if language != "en":
+            raise ValueError(f"{options.get(voice_key)!r} is an English voice; choose a Spanish voice for Spanish text.")
+        chosen = engine_for_voice(options.get(voice_key))  # type: ignore[assignment]
+    if chosen == "phonon":
+        from phonon_engine import PhononEngine
+
+        return PhononEngine(voice=options.get("voice"), respellings=load_respellings() if respellings is None else respellings)
     if chosen == "kokoro":
         from engine import KokoroEngine
 
-        voice_key = "voice" if language == "en" else "voiceEs"
         return KokoroEngine(
             voice=options.get(voice_key) or None,
             speed=float(options.get("speed") or 0.95),
@@ -37,4 +53,4 @@ def create_engine(
         client = boto3.client("polly", region_name=os.environ.get("AWS_REGION", "us-west-2"))
         voice = os.environ.get("POLLY_VOICE", "Joanna") if language == "en" else os.environ.get("POLLY_VOICE_ES", "Lupe")
         return PollyEngine(client, voice=voice)
-    raise ValueError(f"Unknown TTS_ENGINE {chosen!r}. Use 'kokoro' or 'polly'.")
+    raise ValueError(f"Unknown TTS_ENGINE {chosen!r}. Use 'kokoro', 'phonon' or 'polly'.")

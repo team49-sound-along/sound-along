@@ -25,5 +25,11 @@ from flow import run_flow
 es = run_flow({'uuid': 'es', 'title': 'T', 'language': 'es', 'content': '<p>Los niños van al parque. Allí juegan con sus amigos.</p>'},
               create_engine('kokoro', settings={'voiceEs': 'em_alex'}, language='es'))
 assert es.ai.timing['language'] == 'es' and es.ai.timing['metrics']['unalignedWords'] == 0, es.ai.timing['metrics']
-print('OK: handler imports, offline synthesis, 2 extra voices, offline recognition, Spanish with recognizer timing;', len(result.words), 'English words, 0 unaligned')
+# Phonon: baked model and both voices load from disk with no network; word times come from the recognizer
+for voice in ('phonon_hadley', 'phonon_everly'):
+    ph = run_flow({'uuid': 'ph', 'title': 'T', 'content': '<p>The class walked to the library. Maya found a book about three red birds.</p>'},
+                  create_engine(settings={'voice': voice}))
+    assert ph.ai.timing['engine'] == 'phonon' and ph.ai.timing['voice'] == voice, ph.ai.timing['engine']
+    assert ph.ai.timing['metrics']['unalignedWords'] <= 0.2 * len(ph.ai.timing['words']), (voice, ph.ai.timing['metrics'])  # recognizer-timed: a short clip may drop a word
+print('OK: handler imports, offline synthesis, 2 extra voices, offline recognition, Spanish with recognizer timing, Phonon (2 voices) offline;', len(result.words), 'English words, 0 unaligned')
 "
