@@ -68,6 +68,9 @@ class FakeEngine:
     name = "fake"
     voice = "fake_voice"
 
+    def __init__(self, *_args, **_kwargs) -> None:  # the handler passes the job input; the fake ignores it
+        pass
+
     def synthesize(self, sentence: str) -> SentenceAudio:
         words = sentence.split()
         tokens = tuple(EngineToken(w, i * 0.2, i * 0.2 + 0.15) for i, w in enumerate(words))
@@ -75,7 +78,7 @@ class FakeEngine:
         return SentenceAudio(audio, tokens)
 
 
-def fake_encoder(audio: np.ndarray, sample_rate: int) -> bytes:
+def fake_encoder(audio: np.ndarray, sample_rate: int, kbps: int = 48) -> bytes:
     return b"MP3:" + str(len(audio)).encode()
 
 

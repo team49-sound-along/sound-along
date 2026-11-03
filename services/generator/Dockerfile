@@ -22,11 +22,10 @@ COPY services/generator/bake_model.py /tmp/bake_model.py
 RUN python /tmp/bake_model.py && rm /tmp/bake_model.py
 ENV HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 
-COPY services/parse/tokenizer.py ${LAMBDA_TASK_ROOT}/parse/
-COPY services/synth/engine.py services/synth/pipeline.py services/synth/word_mapper.py services/synth/artifacts.py \
-     services/synth/mastering.py services/synth/pronunciations.py services/synth/pronunciations.json \
-     services/synth/engines.py services/synth/polly_engine.py ${LAMBDA_TASK_ROOT}/synth/
-COPY services/generator/_bootstrap.py services/generator/audio.py services/generator/clients.py services/generator/dynamo.py \
-     services/generator/engine_cache.py services/generator/handler.py services/generator/summary.py ${LAMBDA_TASK_ROOT}/
+# Whole directories, not file lists: a new module can no longer be forgotten (tests and caches are excluded by
+# Dockerfile.dockerignore). The synth and parse folders are the same code the local CLI runs.
+COPY services/parse/ ${LAMBDA_TASK_ROOT}/parse/
+COPY services/synth/ ${LAMBDA_TASK_ROOT}/synth/
+COPY services/generator/*.py ${LAMBDA_TASK_ROOT}/
 
 CMD ["handler.handler"]

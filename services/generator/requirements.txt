@@ -8,3 +8,4 @@ numpy==2.5.4
 huggingface_hub==2.4.0
 transformers==5.22.1
 lameenc==1.9.0
+faster-whisper==1.2.1   # recording alignment and the pronunciation check (brings ctranslate2 and PyAV, which decodes mp3/wav/m4a)

@@ -12,26 +12,34 @@ from typing import Any, Callable
 
 import numpy as np
 
-from artifacts import Artifacts, generate_artifacts
-from audio import encode_mp3
+from asr_words import decode_audio, transcribe
 from clients import Clients, create_clients
 from dynamo import JobTracker, now_iso, put_passage_summary
 from engine import SAMPLE_RATE
-from engine_cache import get_engine
+from engines import create_engine
+from flow import Variant, run_flow
+from mp3 import encode_mp3, resolve_kbps
 from summary import passage_summary
 
 LOG = logging.getLogger()
 LOG.setLevel(logging.INFO)
 
 FRIENDLY_ERROR = "We could not generate audio for this text. Try shorter text or remove unusual symbols."
-Encoder = Callable[[np.ndarray, int], bytes]
+Encoder = Callable[[np.ndarray, int, int], bytes]  # (audio, sample_rate, kbps) -> mp3 bytes
+
+
+def engine_for(passage: dict[str, Any]) -> Any:
+    """Build the engine from THIS job's stored settings and pronunciation fixes (nothing is baked into the image)."""
+    return create_engine(settings=passage.get("settings"), respellings=passage.get("pronunciations"))
 
 
 @dataclass(frozen=True)
 class Dependencies:
     clients: Clients
-    engine_factory: Callable[[], Any]
+    engine_factory: Callable[[dict[str, Any]], Any] = engine_for
     encoder: Encoder = encode_mp3
+    transcribe_fn: Callable[..., Any] = transcribe
+    decode_fn: Callable[..., Any] = decode_audio
 
 
 def _read_raw(clients: Clients, raw_key: str) -> dict[str, Any]:
@@ -43,27 +51,46 @@ def _put(clients: Clients, key: str, body: bytes, content_type: str) -> None:
     clients.s3.put_object(Bucket=clients.bucket, Key=key, Body=body, ContentType=content_type)
 
 
-def _publish(deps: Dependencies, passage_id: str, artifacts: Artifacts, workdir: Path) -> dict[str, Any]:
-    mp3_path = workdir / f"{passage_id}.mp3"
-    mp3_path.write_bytes(deps.encoder(artifacts.audio, SAMPLE_RATE))
-    timing_path = workdir / f"{passage_id}.timing.json"
-    timing_path.write_text(json.dumps(artifacts.timing, ensure_ascii=False), encoding="utf-8")
-    _put(deps.clients, f"data/{passage_id}.mp3", mp3_path.read_bytes(), "audio/mpeg")
-    _put(deps.clients, f"data/{passage_id}.timing.json", timing_path.read_bytes(), "application/json")
-    summary = passage_summary(artifacts.timing, now_iso())
+def _publish(deps: Dependencies, variant: Variant, kbps: int, source: str, workdir: Path) -> dict[str, Any]:
+    mp3_path = workdir / f"{variant.id}.mp3"
+    mp3_path.write_bytes(deps.encoder(variant.audio, SAMPLE_RATE, kbps))
+    timing_path = workdir / f"{variant.id}.timing.json"
+    timing_path.write_text(json.dumps(variant.timing, ensure_ascii=False), encoding="utf-8")
+    _put(deps.clients, f"data/{variant.id}.mp3", mp3_path.read_bytes(), "audio/mpeg")
+    _put(deps.clients, f"data/{variant.id}.timing.json", timing_path.read_bytes(), "application/json")
+    summary = passage_summary(variant.timing, now_iso(), source)
     put_passage_summary(deps.clients.table, summary)
     return summary
+
+
+def _fetch_recording(clients: Clients, key: str, workdir: Path) -> str:
+    target = workdir / "recording.audio"
+    target.write_bytes(clients.s3.get_object(Bucket=clients.bucket, Key=key)["Body"].read())
+    return str(target)
 
 
 def _run(event: dict[str, Any], deps: Dependencies, tracker: JobTracker) -> dict[str, Any]:
     passage_id = event["passageId"]
     raw = _read_raw(deps.clients, event["rawKey"])
     passage = {**raw, "uuid": passage_id, "title": raw.get("title") or event.get("title")}
-    artifacts = generate_artifacts(passage, deps.engine_factory(), tracker.step)
-    tracker.step("publish")
+    if event.get("humanPassageId") and not passage.get("humanPassageId"):
+        passage = {**passage, "humanPassageId": event["humanPassageId"]}
+    recording_key = (passage.get("recording") or {}).get("key")
+    kbps = resolve_kbps((passage.get("settings") or {}).get("mp3Kbps"))
+    source = passage.get("source") or "generated"
     with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
-        _publish(deps, passage_id, artifacts, Path(tmp))
-    return artifacts.metrics
+        workdir = Path(tmp)
+        recording_path = _fetch_recording(deps.clients, recording_key, workdir) if recording_key else None
+        result = run_flow(
+            passage, deps.engine_factory(passage), tracker.step,
+            recording_path=recording_path, transcribe_fn=deps.transcribe_fn, decode_fn=deps.decode_fn,
+        )
+        tracker.step("publish")
+        _publish(deps, result.ai, kbps, source, workdir)
+        if result.human:
+            _publish(deps, result.human, kbps, source, workdir)
+        _put(deps.clients, f"data/{result.ai.id}.soundalong.json", json.dumps(result.soundalong, ensure_ascii=False).encode("utf-8"), "application/json")
+    return result.ai.timing["metrics"]
 
 
 def process(event: dict[str, Any], deps: Dependencies) -> dict[str, Any]:
@@ -94,4 +121,4 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     except Exception:
         LOG.exception("generator configuration error")
         return {"status": "failed", "jobId": event.get("jobId", "")}
-    return process(event, Dependencies(clients=clients, engine_factory=get_engine))
+    return process(event, Dependencies(clients=clients))
