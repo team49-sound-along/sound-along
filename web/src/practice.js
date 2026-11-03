@@ -84,53 +84,6 @@ export function dueWords(state, now, anyway = false) {
     .map(([key]) => key);
 }
 
-/** Last 8 hex digits of a picture's file name (its content hash), or null. Two cards with the same hash show the same picture. */
-export function pictureHash(card) {
-  return /-([0-9a-f]{8})\.(?:png|jpe?g)$/.exec(String(card?.imageUrl ?? ""))?.[1] ?? null;
-}
-
-/** A crude singular/plural key (English and Spanish) so "cookie" and "cookies", "city" and "cities" count as one word. */
-export function lemmaKey(word) {
-  let w = String(word ?? "").toLowerCase();
-  if (w.length > 4 && w.endsWith("ies")) return `${w.slice(0, -3)}y`;
-  if (w.length > 3 && w.endsWith("ie")) return `${w.slice(0, -2)}y`;
-  if (w.length > 3 && w.endsWith("s")) w = w.slice(0, -1);
-  return w;
-}
-
-const sameLook = (a, b) => {
-  const ha = pictureHash(a);
-  return (ha !== null && ha === pictureHash(b)) || lemmaKey(a.word) === lemmaKey(b.word);
-};
-
-/** Cards that have a picture, with duplicates removed (shared picture or same lemma), so no two answers can look identical. */
-export function pictureWords(words) {
-  const out = [];
-  for (const card of Object.values(words ?? {})) {
-    if (card?.imageUrl && !out.some((c) => sameLook(c, card))) out.push(card);
-  }
-  return out;
-}
-
-const shuffled = (items, rng) => {
-  const a = [...items];
-  for (let i = a.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rng() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
-
-/** One "which picture is X?" question: the right picture plus up to three that look different. Null when fewer than three different pictures exist. */
-export function buildPictureRound(words, targetKey, rng = Math.random) {
-  const target = words?.[targetKey];
-  if (!target?.imageUrl) return null;
-  const others = pictureWords(words).filter((c) => !sameLook(c, target));
-  if (others.length < 2) return null;
-  const choices = shuffled([target, ...shuffled(others, rng).slice(0, 3)], rng);
-  return { target, choices, answerIndex: choices.indexOf(target) };
-}
-
 /** Index of the first word with this key that has trustworthy timing (aligned), or null: then there is no audio button. */
 export function firstAlignedIndex(words, key) {
   const index = Array.isArray(words) ? words.findIndex((w) => w?.aligned === true && wordKey(w.text) === key) : -1;

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  DAY, approvedQuestions, buildPictureRound, clearState, dueWords, emptyState, firstAlignedIndex, lemmaKey, loadState, pictureHash, pictureWords, review, saveState,
+  DAY, approvedQuestions, clearState, dueWords, emptyState, firstAlignedIndex, loadState, review, saveState,
   storageKey, toggleStar,
 } from "./practice.js";
 
@@ -71,39 +71,6 @@ test("only words that are due are offered, soonest first, and 'practise now anyw
   assert.deepEqual(dueWords(s, t), ["b", "c"]);
   assert.deepEqual(dueWords(s, t, true).sort(), ["a", "b", "c"]);
   assert.deepEqual(dueWords(emptyState(), t), []);
-});
-
-test("the picture's content hash comes from its file name, and plural or singular forms share a lemma", () => {
-  assert.equal(pictureHash(card("tea", "0a1b2c3d")), "0a1b2c3d");
-  assert.equal(pictureHash(card("tea", null)), null);
-  assert.equal(pictureHash({ imageUrl: "/data/x.jpg" }), null);
-  assert.equal(lemmaKey("cookies"), lemmaKey("cookie"));
-  assert.equal(lemmaKey("cities"), lemmaKey("city"));
-  assert.equal(lemmaKey("trees"), lemmaKey("tree"));
-  assert.equal(lemmaKey("galletas"), lemmaKey("galleta"));
-  assert.notEqual(lemmaKey("tea"), lemmaKey("tree"));
-});
-
-test("words that share a picture or a lemma count once, so a quiz can never show two identical answers", () => {
-  const words = { tea: card("tea", "aaaaaaaa"), cup: card("cup", "aaaaaaaa"), city: card("city", "bbbbbbbb"), cities: card("cities", "bbbbbbbb"), dog: card("dog", "cccccccc"), plain: card("plain", null) };
-  assert.deepEqual(pictureWords(words).map((c) => c.word).sort(), ["city", "dog", "tea"]);
-});
-
-test("a picture round has the answer once, no duplicate pictures among the choices, and a fixed shuffle for a fixed rng", () => {
-  const words = Object.fromEntries(["tea", "dog", "tree", "bread", "milk"].map((w, i) => [w, card(w, `0000000${i}`)]));
-  const round = buildPictureRound(words, "dog", () => 0.3);
-  assert.equal(round.choices.length, 4);
-  assert.equal(round.choices[round.answerIndex].word, "dog");
-  assert.equal(new Set(round.choices.map((c) => pictureHash(c))).size, 4);
-  assert.equal(new Set(round.choices.map((c) => lemmaKey(c.word))).size, 4);
-  assert.deepEqual(buildPictureRound(words, "dog", () => 0.3).choices.map((c) => c.word), round.choices.map((c) => c.word));
-});
-
-test("the quiz is hidden when there are not enough different pictures", () => {
-  const two = { tea: card("tea", "aaaaaaaa"), dog: card("dog", "bbbbbbbb"), cup: card("cup", "aaaaaaaa") };
-  assert.equal(buildPictureRound(two, "dog"), null);
-  assert.equal(buildPictureRound({}, "dog"), null);
-  assert.equal(buildPictureRound({ tea: card("tea", "aaaaaaaa"), dog: card("dog", "bbbbbbbb"), tree: card("tree", "cccccccc") }, "missing"), null);
 });
 
 test("audio comes from the first word that is truly aligned, otherwise there is no audio", () => {

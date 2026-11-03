@@ -1,12 +1,12 @@
 <script setup>
-// Practice: "My words" flashcards (answer first, then reveal; spaced review) and a picture-match quiz. Progress stays in this browser only.
+// Practice: "My words" flashcards (answer first, then reveal; spaced review) and practice questions a person approved. Progress stays in this browser only.
 import { computed, onBeforeUnmount, ref } from "vue";
 import StateBlock from "../components/StateBlock.vue";
 import { audioUrl, fetchCards, fetchTiming } from "../api.js";
 import { findWordCard } from "../cards.js";
 import { route } from "../router.js";
 import { useResource } from "../useResource.js";
-import { approvedQuestions, buildPictureRound, clearState, dueWords, firstAlignedIndex, loadState, pictureWords, review, saveState } from "../practice.js";
+import { approvedQuestions, clearState, dueWords, firstAlignedIndex, loadState, review, saveState } from "../practice.js";
 
 const id = route.value.params.id;
 
@@ -77,28 +77,6 @@ function clearAll() {
   announce.value = "Your saved words were cleared on this device.";
 }
 
-// ---- picture match ---------------------------------------------------------------------------------------------------------------
-const keys = computed(() => pictureWords(data.value?.cards?.words).map((c) => c.word));
-const round = ref(null);
-const picked = ref(null);
-function nextRound() {
-  picked.value = null;
-  const words = data.value?.cards?.words;
-  const options = keys.value.map((k) => buildPictureRound(words, k)).filter(Boolean);
-  round.value = options.length ? options[Math.floor(Math.random() * options.length)] : null;
-}
-const canQuiz = computed(() => keys.value.length >= 3 && keys.value.some((k) => buildPictureRound(data.value?.cards?.words, k)));
-function pick(i) {
-  if (picked.value !== null) return;
-  picked.value = i;
-  announce.value = i === round.value.answerIndex ? "Correct!" : `Not quite. The picture of ${round.value.target.word} was the other one.`;
-}
-const started = ref(false);
-function startQuiz() {
-  started.value = true;
-  nextRound();
-}
-
 // ---- practice questions (only ones a person approved) ------------------------------------------------------------------------------
 const qIndex = ref(0);
 const qPicked = ref(null);
@@ -159,23 +137,6 @@ function nextQ() {
           </p>
         </section>
 
-        <section v-if="canQuiz" class="card" aria-labelledby="pm">
-          <h3 id="pm">Picture match</h3>
-          <button v-if="!started" type="button" class="btn primary" @click="startQuiz">Start</button>
-          <div v-else-if="round">
-            <p class="prompt">Which picture is <strong :lang="lang">{{ round.target.word }}</strong>?</p>
-            <div class="choices" role="group" aria-label="Pictures">
-              <button v-for="(c, i) in round.choices" :key="c.imageUrl" type="button" class="choice" :disabled="picked !== null" :aria-label="`Picture ${i + 1}`" @click="pick(i)">
-                <img :src="c.imageUrl" alt="" width="96" height="96" />
-                <span v-if="picked !== null && i === round.answerIndex" class="mark">&#10003; Correct answer</span>
-                <span v-else-if="picked === i" class="mark">&#10007; Your choice</span>
-              </button>
-            </div>
-            <p v-if="picked !== null" class="feedback">{{ picked === round.answerIndex ? "Correct!" : `Not quite: the right picture is marked.` }}
-              <button type="button" class="btn primary" @click="nextRound">Next</button></p>
-          </div>
-        </section>
-
         <section v-if="question" class="card" aria-labelledby="pq">
           <h3 id="pq">Practice questions</h3>
           <p class="small muted">Checked by a person before you see them.</p>
@@ -201,11 +162,6 @@ function nextQ() {
 .prompt { font-size: 20px; }
 .answer { font-size: 28px; }
 .row { display: flex; flex-wrap: wrap; gap: var(--s1); }
-.choices { display: flex; flex-wrap: wrap; gap: var(--s2); }
-.choice { display: grid; gap: 4px; justify-items: center; padding: 8px; border: 2px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; }
-.choice:focus-visible { outline: 3px solid var(--accent, #2c6e63); outline-offset: 2px; }
-.choice img { background: var(--border); border-radius: 8px; padding: 6px; box-sizing: border-box; }
-.mark { font-size: 14px; font-weight: 700; }
 .qchoices { display: grid; gap: var(--s1); justify-items: start; }
 .label { font-weight: 700; }
 </style>
