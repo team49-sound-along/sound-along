@@ -1,6 +1,6 @@
 # Sound Along infrastructure (AWS CDK v2, Python)
 
-One stack, `SoundAlongStack`, in us-west-2, single account. Contract: `docs/AWS.md`.
+One stack, `SoundAlongStack`, in us-west-2, single account.
 Pinned: `aws-cdk-lib==2.273.0`, `constructs==10.5.0`, CDK CLI `aws-cdk@2` (tested with 2.1147.0), esbuild 0.25.10.
 
 **Python 3.14** (the customer's requirement) works: `uv venv --python 3.14`, then `pip install -r requirements-dev.txt`
