@@ -84,7 +84,7 @@ const emit = defineEmits(["hear", "star"]);
 .pic figcaption { margin-top: 4px; font-size: 12px; color: var(--muted); }
 .wpic { margin: 8px 0 0; }
 .wpic[hidden] { display: none; }
-.wpic img { display: block; width: 120px; height: 120px; object-fit: contain; border-radius: 12px; background: var(--border); padding: 8px; box-sizing: border-box; }
+.wpic img { display: block; width: auto; max-width: 100%; height: auto; max-height: 200px; border-radius: 12px; background: var(--border); }
 .wpic figcaption { margin-top: 4px; font-size: 12px; color: var(--muted); }
 .hear { display: flex; align-items: center; gap: var(--s1) var(--s2); flex-wrap: wrap; }
 .hear .btn { max-width: 100%; overflow-wrap: anywhere; }
