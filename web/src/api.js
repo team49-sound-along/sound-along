@@ -95,7 +95,7 @@ export async function fetchCards(id, fetchFn = globalThis.fetch) {
     if (!res.ok) return null;
     const doc = await res.json();
     const isMap = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
-    return isMap(doc) ? { words: isMap(doc.words) ? doc.words : {}, places: isMap(doc.places) ? doc.places : {} } : null;
+    return isMap(doc) ? { words: isMap(doc.words) ? doc.words : {}, places: isMap(doc.places) ? doc.places : {}, figures: Array.isArray(doc.figures) ? doc.figures : [] } : null;
   } catch {
     return null;
   }

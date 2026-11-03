@@ -9,7 +9,7 @@ import hashlib
 import html
 import re
 
-NAME_PATTERN = re.compile(r"[0-9a-f-]{36}\.(?:place|word)-[a-z0-9-]{1,60}-[0-9a-f]{8}\.(?:jpg|png)")
+NAME_PATTERN = re.compile(r"[0-9a-f-]{36}\.(?:place|word|figure)-[a-z0-9-]{1,60}-[0-9a-f]{8}\.(?:jpg|png)")
 MAX_ALT = 125  # a screen reader reads alt text in one go; longer belongs in the caption
 MAX_BYTES = 400_000
 THUMB_WIDTH = 500
@@ -86,8 +86,8 @@ def target_name(passage_id: str, place: str, data: bytes, kind: str = "place") -
     ext = image_ext(data)
     if ext is None:
         raise ValueError("not a JPEG or PNG image")
-    if kind not in ("place", "word"):
-        raise ValueError("kind must be place or word")
+    if kind not in ("place", "word", "figure"):
+        raise ValueError("kind must be place, word or figure")
     return f"{passage_id}.{kind}-{slug(place)}-{hashlib.sha256(data).hexdigest()[:8]}.{ext}"
 
 

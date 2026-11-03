@@ -66,3 +66,10 @@ def test_translation_links_must_resolve_both_ways():
     assert v.translation_link_problems([{"id": "a", "translations": {"es": "gone"}}])
     assert v.translation_link_problems([{"id": "a", "translations": {"es": "b"}}, {"id": "b"}])
     assert v.translation_link_problems([{"id": "a"}, {"id": "b", "translationOf": "a"}])
+
+
+def test_figures_count_as_pictures_and_must_be_on_our_own_origin():
+    doc = {"words": {"a": {"imageUrl": "/data/w.png"}}, "places": {}, "figures": [{"imageUrl": "/data/f.jpg"}]}
+    assert v.image_urls(doc) == ["/data/w.png", "/data/f.jpg"]
+    bad = {**doc, "figures": [{"imageUrl": "https://dq5qica5h7eg3.cloudfront.net/x.jpg"}]}
+    assert "own origin" in v.cards_problem(bad)

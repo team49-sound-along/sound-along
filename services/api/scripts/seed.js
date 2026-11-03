@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { reviewOf, summarizePassage } from "../src/passageSummary.js";
 
 const TIMING = /^([0-9a-f-]{36})\.timing\.json$/;
-const PLACE_PICTURE = /^[0-9a-f-]{36}\.(?:place|word)-[a-z0-9-]{1,60}-[0-9a-f]{8}\.(?:jpg|png)$/;
+const PLACE_PICTURE = /^[0-9a-f-]{36}\.(?:place|word|figure)-[a-z0-9-]{1,60}-[0-9a-f]{8}\.(?:jpg|png)$/;
 
 const exists = (file) => access(file).then(() => true, () => false);
 

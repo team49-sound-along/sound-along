@@ -21,6 +21,7 @@ import urllib.request
 import uuid
 
 import ab_clips
+import apply_figures
 import build_translations
 import cards_files
 from datetime import datetime, timezone
@@ -130,6 +131,11 @@ def main(skip_mos: bool) -> int:
         log("  making the other-language version of each text (Spanish for the English texts, English for the Spanish one)")
         if build_translations.main() != 0:
             log("  WARNING: a translation failed; the originals are fine (see the messages above)")
+        log("  adding ReadWorks' own pictures between paragraphs (downloaded into data/ only, never into the repository)")
+        try:
+            apply_figures.main()  # last, because the two steps above rewrite the cards documents
+        except Exception as err:  # noqa: BLE001 (pictures are a bonus: a blocked network must not fail the build)
+            log(f"  WARNING: pictures skipped ({err})")
 
         log("3/5 checking English passages against an independent Whisper transcript")
         rows, pooled = [], []

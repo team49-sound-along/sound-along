@@ -18,6 +18,7 @@ from tokenizer import tokenize_html  # noqa: E402
 
 SAMPLES = ROOT / "samples"
 CARDS = SAMPLES / "cards"
+SPANISH_PARK = "5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70"  # the Spanish sample: its cards are the source for the English copy
 EXPECTED = (  # the three English texts (AI passage ids), see docs/BACKEND_HANDOFF.md
     "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98",
     "5af24980-4d6d-41c1-87fa-4f21cb2d169d",
@@ -66,7 +67,7 @@ def test_every_english_text_has_a_cards_file(passage_id: str) -> None:
 
 
 def test_there_are_no_stray_cards_files() -> None:
-    assert {p.name for p in card_files()} <= {f"{i}.cards.json" for i in EXPECTED}
+    assert {p.name for p in card_files()} <= {f"{i}.cards.json" for i in (*EXPECTED, SPANISH_PARK)}
 
 
 @pytest.fixture(params=EXPECTED)
@@ -221,5 +222,5 @@ def test_the_real_cards_publish_into_data(tmp_path) -> None:
     import cards_files
 
     copied = cards_files.publish_cards(CARDS, tmp_path)
-    assert [n for n in copied if n.endswith(".cards.json")] == sorted(f"{i}.cards.json" for i in EXPECTED)
+    assert [n for n in copied if n.endswith(".cards.json")] == sorted(f"{i}.cards.json" for i in (*EXPECTED, SPANISH_PARK))
     assert len([n for n in copied if ".place-" in n or ".word-" in n]) == len(list((CARDS / "images").glob("*.*")))

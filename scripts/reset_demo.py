@@ -80,7 +80,7 @@ def plan(data: Path, samples: Path = SAMPLES) -> dict:
             wanted.append(tid)
             doomed.add(tid)
     files = [p for i in wanted for p in [data / "raw" / f"{i}.json", *(data / f"{i}{s}" for s in GENERATED_SUFFIXES),
-                                         *sorted(data.glob(f"{i}.place-*")), *sorted(data.glob(f"{i}.word-*"))] if p.exists()]
+                                         *sorted(data.glob(f"{i}.place-*")), *sorted(data.glob(f"{i}.word-*")), *sorted(data.glob(f"{i}.figure-*"))] if p.exists()]
     return {
         "events": state.get("events", ZERO_EVENTS),
         "assignments": len(state.get("assignments", [])),
