@@ -58,3 +58,11 @@ def test_image_urls_are_collected_from_place_cards_only_and_must_stay_on_our_own
 def test_draft_locations_cover_data_and_raw_paths_for_the_passage():
     paths = v.draft_paths("abc")
     assert "/data/abc.draft.json" in paths and "/raw/questions/abc.draft.json" in paths and all("abc" in p for p in paths)
+
+
+def test_translation_links_must_resolve_both_ways():
+    ok = [{"id": "a", "translations": {"es": "b"}}, {"id": "b", "translationOf": "a"}]
+    assert v.translation_link_problems(ok) == []
+    assert v.translation_link_problems([{"id": "a", "translations": {"es": "gone"}}])
+    assert v.translation_link_problems([{"id": "a", "translations": {"es": "b"}}, {"id": "b"}])
+    assert v.translation_link_problems([{"id": "a"}, {"id": "b", "translationOf": "a"}])

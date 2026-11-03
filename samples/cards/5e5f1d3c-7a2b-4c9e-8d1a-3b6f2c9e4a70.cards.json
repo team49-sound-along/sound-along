@@ -1,0 +1,188 @@
+{
+ "words": {
+  "casa": {
+   "word": "casa",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "translation": {
+    "lang": "en",
+    "words": [
+     "house"
+    ]
+   },
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-casa-39d49ba1.png",
+   "imageAlt": "casa",
+   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  },
+  "árboles": {
+   "word": "árboles",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "translation": {
+    "lang": "en",
+    "words": [
+     "trees"
+    ]
+   },
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-rboles-df5a1853.png",
+   "imageAlt": "Árbol caducifolio",
+   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  },
+  "árbol": {
+   "word": "árbol",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "translation": {
+    "lang": "en",
+    "words": [
+     "tree"
+    ]
+   },
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-rbol-df5a1853.png",
+   "imageAlt": "Árbol caducifolio",
+   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  },
+  "libro": {
+   "word": "libro",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "translation": {
+    "lang": "en",
+    "words": [
+     "book"
+    ]
+   },
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-libro-825ed5db.png",
+   "imageAlt": "libro abierto",
+   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  },
+  "zorro": {
+   "word": "zorro",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "translation": {
+    "lang": "en",
+    "words": [
+     "fox"
+    ]
+   },
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-zorro-21dd0f1f.png",
+   "imageAlt": "zorro",
+   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  },
+  "frutas": {
+   "word": "frutas",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "translation": {
+    "lang": "en",
+    "words": [
+     "fruits"
+    ]
+   },
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-frutas-42a9e2f4.png",
+   "imageAlt": "Frutas de kiwi",
+   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  },
+  "jugo": {
+   "word": "jugo",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "translation": {
+    "lang": "en",
+    "words": [
+     "juice"
+    ]
+   },
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-jugo-3cc5d7a2.png",
+   "imageAlt": "taza con paja",
+   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  },
+  "patos": {
+   "word": "patos",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "translation": {
+    "lang": "en",
+    "words": [
+     "ducks"
+    ]
+   },
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-patos-c5c48872.png",
+   "imageAlt": "pato",
+   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  },
+  "sol": {
+   "word": "sol",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "translation": {
+    "lang": "en",
+    "words": [
+     "sun"
+    ]
+   },
+   "imageUrl": "/data/5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.word-sol-d2b237f3.png",
+   "imageAlt": "sol",
+   "imageCredit": "Imagen: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  }
+ },
+ "places": {},
+ "reviewed": false,
+ "source": "translated",
+ "machineTranslated": true
+}

@@ -95,6 +95,27 @@ def cards_problem(doc: Any) -> Optional[str]:
     return None
 
 
+def translation_link_problems(catalog: list[dict[str, Any]]) -> list[str]:
+    """Every translation link in the catalog must resolve both ways (source lists translation; translation points back)."""
+    by_id = {p["id"]: p for p in catalog}
+    problems: list[str] = []
+    for p in catalog:
+        for lang, tid in (p.get("translations") or {}).items():
+            target = by_id.get(tid)
+            if target is None:
+                problems.append(f"{p['id']} links to {lang} translation {tid}, which is not in the catalog")
+            elif target.get("translationOf") not in {p["id"], p.get("pairId")} - {None}:  # a human variant shares its AI twin's translation
+                problems.append(f"{tid} does not point back to {p['id']}")
+        source = p.get("translationOf")
+        if source:
+            origin = by_id.get(source)
+            if origin is None:
+                problems.append(f"{p['id']} is a translation of {source}, which is not in the catalog")
+            elif not ({p["id"]} & set((origin.get("translations") or {}).values())):
+                problems.append(f"{source} does not list {p['id']} as a translation")
+    return problems
+
+
 class Report:
     def __init__(self) -> None:
         self.failed = 0
@@ -167,6 +188,12 @@ def run(site: str, generate: bool, language: str, timeout_s: int) -> int:
                 pictures += 1
         return f"{len(wanted)} English sample text(s) each have a valid cards document; {pictures} place picture(s) load as images"
 
+    def translation_links() -> str:
+        problems = translation_link_problems(state["catalog"])
+        assert not problems, "; ".join(problems[:3])
+        linked = sum(1 for p in state["catalog"] if p.get("translationOf"))
+        return f"{linked} translated passage(s), every link resolves both ways"
+
     def drafts_unreachable() -> str:
         """A question draft a student could fetch is exactly the failure the review step guards against."""
         for url in draft_paths(state["passage"]):
@@ -196,7 +223,7 @@ def run(site: str, generate: bool, language: str, timeout_s: int) -> int:
         return "a trial is available" if trial else "no clips yet (run scripts/build_samples.py, then seed)"
 
     for name, fn in (("site loads", page), ("API health", health), ("passage list", passages), ("timing document", timing),
-                     ("audio range request (seeking)", audio_range), ("word and place cards", cards), ("question drafts are not served", drafts_unreachable), ("write through the front door", signed_write),
+                     ("audio range request (seeking)", audio_range), ("word and place cards", cards), ("translation links", translation_links), ("question drafts are not served", drafts_unreachable), ("write through the front door", signed_write),
                      ("security headers", security_headers), ("insights", insights), ("listening test clips", listening)):
         if "passage" not in state and name in ("timing document", "audio range request (seeking)", "word and place cards", "question drafts are not served"):
             report.emit("SKIP", name, "no passage to test")
