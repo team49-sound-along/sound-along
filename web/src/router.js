@@ -12,7 +12,7 @@ export function parseHash(hash) {
   const parts = path.split("/").filter(Boolean).map(decodeURIComponent);
   const query = Object.fromEntries(new URLSearchParams(queryString));
   const [name = "library", id] = parts;
-  if (name === "read" && id) return { name: "read", params: { id }, query };
+  if ((name === "read" || name === "practice") && id) return { name, params: { id }, query };
   if (PAGES.includes(name)) return { name, params: {}, query };
   return { name: "library", params: {}, query: {} };
 }

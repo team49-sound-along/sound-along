@@ -1,24 +1,60 @@
 <script setup>
-// Word-help panel: the vocabulary note (when Word help is on) plus the "Hear this word" control.
+// Word card: shown for the word the reader tapped or focused. It never opens by itself while audio plays
+// (interactive extras that interrupt reading distracted young readers in the research). Shows a place card
+// when the tapped word is part of a named place. Fields are optional: a card from the passage vocabulary has no IPA.
 defineProps({
-  note: { type: Object, default: null },
+  card: { type: Object, default: null },
+  place: { type: Object, default: null },
   showNote: Boolean,
   word: { type: String, default: "" },
   canHear: Boolean,
+  starred: Boolean,
 });
-const emit = defineEmits(["hear"]);
+const emit = defineEmits(["hear", "star"]);
 </script>
 
 <template>
   <div class="help" role="region" aria-label="Word help">
-    <div v-if="showNote" aria-live="polite" aria-atomic="true">
-      <template v-if="note">
-        <div class="note-head"><strong>{{ note.word }}</strong><span v-if="note.partOfSpeech" class="badge">{{ note.partOfSpeech }}</span></div>
-        <p class="note-def">{{ note.definition }}</p>
-        <p v-for="e in note.examples" :key="e" class="note-extra"><span class="label">Example</span> {{ e }}</p>
-        <p v-if="note.spanish.length" class="note-extra"><span class="label">En español</span> <span lang="es">{{ note.spanish.join(", ") }}</span></p>
-      </template>
-      <span v-else class="muted">Underlined words have a short definition. It appears here as the word is read.</span>
+    <div v-if="showNote" aria-live="polite" aria-atomic="true" class="cards">
+      <article v-if="card" class="card-body" aria-label="Word card">
+        <div class="head">
+          <strong class="w">{{ card.word }}</strong>
+          <span v-if="card.partOfSpeech" class="badge">{{ card.partOfSpeech }}</span>
+        </div>
+        <figure v-if="card.imageUrl" :key="card.imageUrl" class="wpic">
+          <img
+            :src="card.imageUrl" :alt="card.imageAlt || ''" :width="card.imageWidth || undefined" :height="card.imageHeight || undefined"
+            decoding="async" @error="$event.target.closest('figure').hidden = true"
+          />
+          <figcaption v-if="card.imageCredit">{{ card.imageCredit }}</figcaption>
+        </figure>
+        <p v-if="card.syllables || card.ipa" class="say muted">
+          <span v-if="card.syllables">{{ card.syllables }}</span>
+          <span v-if="card.syllables && card.ipa" aria-hidden="true"> &middot; </span>
+          <span v-if="card.ipa"><span class="sr-only">Pronounced </span>{{ card.ipa }}</span>
+        </p>
+        <p v-if="card.definition" class="def">{{ card.definition }}</p>
+        <p v-if="card.example" class="extra"><span class="label">Example</span> {{ card.example }}</p>
+        <p v-if="card.translation?.words?.length" class="extra"><span class="label">{{ card.translation.lang === "es" ? "En español" : "In English" }}</span> <span :lang="card.translation.lang">{{ card.translation.words.join(", ") }}</span></p>
+        <p v-if="card.spanish?.length" class="extra"><span class="label">En español</span> <span lang="es">{{ card.spanish.join(", ") }}</span></p>
+      </article>
+      <article v-if="place" class="card-body place" aria-label="Place card">
+        <div class="head"><strong class="w">{{ place.name }}</strong><span class="badge">Place</span></div>
+        <figure v-if="place.imageUrl" :key="place.imageUrl" class="pic">
+          <img
+            :src="place.imageUrl" :alt="place.imageAlt || ''" :width="place.imageWidth || undefined" :height="place.imageHeight || undefined"
+            decoding="async" @error="$event.target.closest('figure').hidden = true"
+          />
+          <figcaption v-if="place.imageCredit">{{ place.imageCredit }}</figcaption>
+        </figure>
+        <figure v-else class="pic nopic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="40" height="40" focusable="false"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+        </figure>
+        <p class="def">{{ place.summary }}</p>
+        <p v-if="place.attribution" class="extra">{{ place.attribution }}</p>
+      </article>
+      <p v-if="card" class="save"><button type="button" class="btn" :aria-pressed="starred" @click="emit('star')">{{ starred ? "&#9733; Saved to My words" : "&#9734; Save word" }}</button></p>
+      <p v-if="!card && !place" class="muted">Tap a word to hear it from there. Underlined words have a short definition.</p>
     </div>
     <div class="hear">
       <button
@@ -32,12 +68,24 @@ const emit = defineEmits(["hear"]);
 </template>
 
 <style scoped>
-.help { position: sticky; bottom: var(--s2); z-index: 10; display: grid; gap: var(--s1); background: var(--surface); border: 1px solid var(--border); border-left: 6px solid var(--hl); border-radius: var(--r); padding: 12px var(--s2); font-size: 18px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.08); min-width: 0; }
-.help strong { margin-right: 8px; font-size: 20px; }
-.note-head { display: flex; align-items: center; gap: 8px; }
-.note-def { margin-top: 4px; }
-.note-extra { margin-top: 6px; font-size: 16px; color: var(--muted); }
-.note-extra .label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-right: 6px; }
+.help { display: grid; gap: var(--s2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s3); font-size: 18px; min-width: 0; }
+.cards { display: grid; gap: var(--s2); }
+.head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.w { font-size: 24px; margin-right: 4px; }
+.say { margin-top: 2px; font-size: 16px; }
+.def { margin-top: 6px; }
+.extra { margin-top: 6px; font-size: 16px; color: var(--muted); }
+.extra .label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-right: 6px; }
+.place { border-top: 1px solid var(--border); padding-top: var(--s2); }
+.pic { margin: 8px 0 0; }
+.pic[hidden] { display: none; }
+.pic img { display: block; width: 100%; height: auto; max-height: 280px; object-fit: contain; border-radius: 12px; background: var(--border); }
+.nopic { display: grid; place-items: center; height: 72px; border-radius: 12px; background: var(--border); color: var(--muted); }
+.pic figcaption { margin-top: 4px; font-size: 12px; color: var(--muted); }
+.wpic { margin: 8px 0 0; }
+.wpic[hidden] { display: none; }
+.wpic img { display: block; width: 120px; height: 120px; object-fit: contain; border-radius: 12px; background: var(--border); padding: 8px; box-sizing: border-box; }
+.wpic figcaption { margin-top: 4px; font-size: 12px; color: var(--muted); }
 .hear { display: flex; align-items: center; gap: var(--s1) var(--s2); flex-wrap: wrap; }
 .hear .btn { max-width: 100%; overflow-wrap: anywhere; }
 </style>

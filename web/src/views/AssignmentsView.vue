@@ -23,6 +23,7 @@ const creating = ref(false);
 const formError = ref("");
 const actionError = ref("");
 const flash = ref("");
+const showForm = ref(Boolean(route.value.query?.passageId));
 
 async function create(body) {
   creating.value = true;
@@ -36,6 +37,7 @@ async function create(body) {
   } finally {
     creating.value = false;
   }
+  if (!formError.value) showForm.value = false;
 }
 
 async function toggle(assignment, soundAlong) {
@@ -67,30 +69,37 @@ async function remove(assignment) {
   <div class="page">
     <div class="page-head">
       <div>
-        <h2>{{ isTeacher ? "Assignments" : "My assignments" }}</h2>
-        <p v-if="isTeacher">Assign a passage to a class and choose whether students get audio. Changes apply immediately.</p>
+        <h2 class="title">{{ isTeacher ? "Assignments" : "My assignments" }}</h2>
+        <p v-if="isTeacher">Switch Sound Along off for a class and its students see the text without audio.</p>
         <p v-else>Passages your teacher has assigned to you.</p>
       </div>
+      <button
+        v-if="isTeacher && data" class="btn primary" type="button"
+        :aria-expanded="showForm" aria-controls="assign-form" @click="showForm = !showForm"
+      >New assignment</button>
     </div>
 
     <StateBlock :loading="loading" :error="error" loading-label="Loading assignments" @retry="reload">
       <template v-if="data">
-        <AssignmentForm
-          v-if="isTeacher" :passages="data.passages" :classes="data.classes"
-          :preset-passage-id="route.query.passageId || ''" :busy="creating" :error="formError" @submit="create"
-        />
+        <div v-if="isTeacher && showForm" id="assign-form">
+          <AssignmentForm
+            :passages="data.passages" :classes="data.classes"
+            :preset-passage-id="route.query.passageId || ''" :busy="creating" :error="formError" @submit="create"
+          />
+        </div>
         <p class="sr-only" role="status" aria-live="polite">{{ flash }}</p>
         <p v-if="flash" class="notice ok">{{ flash }}</p>
         <p v-if="actionError" class="notice error" role="alert">{{ actionError }}</p>
 
         <section aria-labelledby="cur-h" class="stack">
-          <h3 id="cur-h">{{ isTeacher ? "Current assignments" : "To read" }} ({{ items.length }})</h3>
+          <h3 id="cur-h" :class="{ 'sr-only': isTeacher }">{{ isTeacher ? "Current assignments" : "To read" }} ({{ items.length }})</h3>
           <div v-if="!items.length" class="card muted">
-            {{ isTeacher ? "No assignments yet. Create one above." : "Nothing assigned yet. You can still read anything in the Library." }}
+            {{ isTeacher ? "No assignments yet. Choose New assignment to create one." : "Nothing assigned yet. You can still read anything in the Library." }}
           </div>
-          <div v-else-if="isTeacher" class="card flush">
-            <AssignmentsTable :items="items" :busy-id="busyId" @toggle="toggle" @remove="remove" />
-          </div>
+          <template v-else-if="isTeacher">
+            <AssignmentsTable :items="items" :classes="data.classes" :busy-id="busyId" @toggle="toggle" @remove="remove" />
+            <p class="small muted note">Students in a class with Sound Along off see the passage text without audio and without tap-to-replay.</p>
+          </template>
           <ul v-else class="cards">
             <li v-for="a in items" :key="a.id" class="card">
               <h4>{{ a.passageTitle }}</h4>
@@ -110,4 +119,7 @@ async function remove(assignment) {
 .cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--s2); }
 .cards .card { display: grid; gap: 12px; justify-items: start; }
 h4 { margin: 0; font-size: 18px; }
+.title { font-size: 32px; line-height: 1.15; letter-spacing: -0.03em; font-weight: 700; }
+.note { max-width: 62ch; }
+@media (max-width: 480px) { .title { font-size: 28px; } }
 </style>

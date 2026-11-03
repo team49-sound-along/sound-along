@@ -1,6 +1,5 @@
 <script setup>
 import { computed } from "vue";
-import Icon from "../components/Icon.vue";
 import StateBlock from "../components/StateBlock.vue";
 import Reader from "../components/Reader.vue";
 import { api, fetchTiming } from "../api.js";
@@ -26,7 +25,6 @@ const classId = computed(() => data.value?.assignments.find((a) => ids.value.inc
 
 <template>
   <div class="page reader-page">
-    <a class="btn ghost back" href="#/library"><Icon name="back" :size="18" /> All passages</a>
     <StateBlock :loading="loading" :error="error" loading-label="Loading passage" @retry="reload">
       <Reader v-if="data" :passage-id="id" :timing="data.timing" :sound-along="soundAlong" :class-id="classId" />
     </StateBlock>
@@ -34,6 +32,5 @@ const classId = computed(() => data.value?.assignments.find((a) => ids.value.inc
 </template>
 
 <style scoped>
-.reader-page { max-width: 880px; padding-top: var(--s2); gap: var(--s2); }
-.back { justify-self: start; margin-left: -12px; }
+.reader-page { max-width: 1120px; padding-top: var(--s3); gap: var(--s2); }
 </style>

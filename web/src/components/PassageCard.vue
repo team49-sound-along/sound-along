@@ -1,29 +1,28 @@
 <script setup>
+import { computed } from "vue";
 import Icon from "./Icon.vue";
-import { formatCount, formatDuration } from "../format.js";
 import { isSpanish } from "../language.js";
-import { readTarget, voiceLabel } from "../voices.js";
+import { passageSummary } from "../libraryMeta.js";
+import { readTarget } from "../voices.js";
 
-defineProps({
+const props = defineProps({
   passage: { type: Object, required: true },
   canAssign: Boolean,
   list: Boolean,
 });
+const summary = computed(() => passageSummary(props.passage));
 </script>
 
 <template>
-  <article class="pcard" :class="{ list }" :aria-labelledby="`p-${passage.id}`">
-    <div class="top">
-      <span class="badge" :class="passage.source === 'generated' ? 'teal' : ''">{{ passage.source === "generated" ? "Generated" : "Sample" }}</span>
-      <span class="badge" title="Narration">{{ passage.humanId ? "Human + read-aloud voice" : voiceLabel(passage.engine) }}</span>
-      <span v-if="isSpanish(passage)" class="badge hl" lang="es" title="Spanish passage">Español</span>
+  <article class="pcard" :class="{ list }" :aria-labelledby="`p-${passage.id}`" :aria-describedby="`s-${passage.id}`">
+    <div class="text">
+      <h3 :id="`p-${passage.id}`">
+        {{ passage.title }}
+        <span v-if="isSpanish(passage)" class="badge teal" lang="es" title="Spanish passage">Español</span>
+        <span v-if="passage.translationLangs?.length" class="badge teal" title="Also available in another language">Also in {{ passage.translationLangs.map((l) => (l === "es" ? "Español" : "English")).join(", ") }}</span>
+      </h3>
+      <p :id="`s-${passage.id}`" class="summary">{{ summary }}</p>
     </div>
-    <h3 :id="`p-${passage.id}`">{{ passage.title }}</h3>
-    <dl class="meta">
-      <div><dt>Words</dt><dd class="num">{{ formatCount(passage.words) }}</dd></div>
-      <div><dt>Duration</dt><dd class="num">{{ formatDuration(passage.durationMs) }}</dd></div>
-      <div><dt>Vocab</dt><dd class="num">{{ formatCount(passage.vocabCount) }}</dd></div>
-    </dl>
     <div class="actions">
       <a class="btn primary" :href="`#/read/${encodeURIComponent(readTarget(passage))}`" :aria-label="`Read ${passage.title}`">
         <Icon name="book" :size="18" /> Read
@@ -36,19 +35,19 @@ defineProps({
 </template>
 
 <style scoped>
-.pcard { display: flex; flex-direction: column; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s3); }
-.top { display: flex; gap: 8px; flex-wrap: wrap; }
-h3 { font-size: 18px; line-height: 1.3; }
-.meta { display: flex; gap: var(--s3); margin: 0; }
-.meta dt { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
-.meta dd { margin: 0; font-weight: 600; font-size: 18px; }
-.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
-.pcard.list { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--s2); padding: var(--s2) var(--s3); }
-.pcard.list .top { grid-column: 1; order: 2; }
-.pcard.list h3 { grid-column: 1; order: 1; }
-.pcard.list .meta { grid-column: 2; grid-row: 1 / span 2; }
-.pcard.list .actions { grid-column: 3; grid-row: 1 / span 2; margin-top: 0; }
-@media (max-width: 720px) {
-  .pcard.list { display: flex; }
+.pcard { display: flex; flex-direction: column; gap: var(--s2); height: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s3); }
+.text { display: grid; gap: 4px; min-width: 0; }
+h3 { font-size: 20px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; }
+h3 .badge { vertical-align: middle; margin-left: 4px; }
+.summary { color: var(--muted); font-size: 14px; line-height: 1.5; }
+.actions { display: flex; gap: var(--s1); flex-wrap: wrap; margin-top: auto; }
+.pcard.list { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--s3); height: auto; padding: var(--s2) var(--s3); }
+.pcard.list .text { flex: 1 1 auto; }
+.pcard.list .actions { flex: none; margin-top: 0; flex-wrap: nowrap; }
+@media (max-width: 560px) {
+  .pcard { padding: var(--s2); }
+  .pcard.list { flex-direction: column; align-items: stretch; gap: var(--s2); }
+  .pcard.list .actions { flex-wrap: wrap; }
+  .actions .btn { flex: 1 1 auto; }
 }
 </style>

@@ -9,15 +9,17 @@ defineProps({
   speed: { type: Number, default: 1 },
   wordHelp: Boolean,
 });
-const emit = defineEmits(["toggle", "seek", "speed", "update:wordHelp"]);
+const emit = defineEmits(["toggle", "seek", "speed", "skip", "update:wordHelp"]);
 const SPEEDS = [0.75, 1, 1.25, 1.5];
 </script>
 
 <template>
   <div class="bar" role="group" aria-label="Audio controls">
-    <button class="btn primary play" type="button" :aria-label="playing ? 'Pause' : 'Play'" @click="emit('toggle')">
+    <button class="btn step" type="button" aria-label="Back one sentence" @click="emit('skip', -1)"><Icon name="skipBack" :size="20" /></button>
+    <button class="btn primary play" type="button" :aria-label="playing ? 'Pause audio and highlight' : 'Play'" @click="emit('toggle')">
       <Icon :name="playing ? 'pause' : 'play'" :size="22" />
     </button>
+    <button class="btn step" type="button" aria-label="Forward one sentence" @click="emit('skip', 1)"><Icon name="skipForward" :size="20" /></button>
     <div class="scrub">
       <label class="sr-only" for="scrub">Position in passage</label>
       <input
@@ -40,7 +42,8 @@ const SPEEDS = [0.75, 1, 1.25, 1.5];
 
 <style scoped>
 .bar { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; padding: 12px var(--s2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); }
-.play { width: 52px; height: 52px; border-radius: 50%; padding: 0; }
+.play { width: 56px; height: 56px; border-radius: 50%; padding: 0; }
+.step { width: 44px; height: 44px; border-radius: 50%; padding: 0; }
 .scrub { flex: 1 1 220px; min-width: 0; display: grid; gap: 2px; }
 .time { font-size: 13px; color: var(--muted); }
 input[type="range"] { width: 100%; height: 44px; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }

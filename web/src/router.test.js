@@ -28,3 +28,9 @@ test("listening test route exists and is open to both roles", () => {
   assert.equal(parseHash("#/listening").name, "listening");
   assert.equal(isTeacherOnly("listening"), false);
 });
+
+test("the practice screen is a route with a passage id, and a missing id falls back to the library", async () => {
+  const { parseHash } = await import("./router.js");
+  assert.deepEqual(parseHash("#/practice/abc"), { name: "practice", params: { id: "abc" }, query: {} });
+  assert.equal(parseHash("#/practice").name, "library");
+});
