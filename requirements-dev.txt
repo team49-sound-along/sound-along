@@ -8,3 +8,4 @@ torchaudio==2.11.1          # only for the UTMOS naturalness check; its version 
 faster-whisper==1.2.1
 pytest==9.2.0
 ptts==0.6.0   # Phonon voices (MIT or Apache-2.0); Rust wheel, no PyTorch
+sentencepiece==0.2.2   # tokenizer for the Opus-MT translation models (Apache-2.0)

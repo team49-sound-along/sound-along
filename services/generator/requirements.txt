@@ -10,3 +10,4 @@ transformers==5.22.1
 lameenc==1.9.0
 faster-whisper==1.2.1   # recording alignment and the pronunciation check (brings ctranslate2 and PyAV, which decodes mp3/wav/m4a)
 ptts==0.6.0   # Phonon voices (MIT or Apache-2.0): abi3 wheel for linux/aarch64, works on any CPython 3.9+
+sentencepiece==0.2.2   # Opus-MT translation tokenizer (Apache-2.0); cp314 manylinux aarch64 wheel exists

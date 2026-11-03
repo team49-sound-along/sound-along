@@ -52,6 +52,20 @@ PHONON = (
 )
 
 
+# Opus-MT English<->Spanish (Apache-2.0), pinned by full commit hash, loaded from disk (TRANSLATE_MODELS_DIR) with local_files_only.
+TRANSLATE_DIR = Path("/opt/translate")
+TRANSLATE = (
+    ("Helsinki-NLP/opus-mt-en-es", "5bc4493d463cf000c1f0b50f8d56886a392ed4ab", "en-es"),
+    ("Helsinki-NLP/opus-mt-es-en", "c96e2c5399ebfae4fc43d9669556b9afa74bb69d", "es-en"),
+)
+TRANSLATE_FILES = ["config.json", "generation_config.json", "pytorch_model.bin", "source.spm", "target.spm", "tokenizer_config.json", "vocab.json"]
+
+
+def bake_translation() -> None:
+    for repo, revision, folder in TRANSLATE:
+        snapshot_download(repo, revision=revision, local_dir=str(TRANSLATE_DIR / folder), allow_patterns=TRANSLATE_FILES)
+
+
 def bake_phonon() -> None:
     for repo, revision, folder, files in PHONON:
         snapshot_download(repo, revision=revision, local_dir=str(PHONON_DIR / folder), allow_patterns=files)
@@ -64,6 +78,7 @@ def main() -> None:
         refs.mkdir(parents=True, exist_ok=True)
         (refs / "main").write_text(revision)
     bake_phonon()
+    bake_translation()
 
 
 if __name__ == "__main__":
