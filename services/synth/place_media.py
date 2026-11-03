@@ -49,6 +49,33 @@ def image_ext(data: bytes) -> str | None:
     return None
 
 
+def image_size(data: bytes) -> tuple[int, int] | None:
+    """(width, height) read from the file header of a JPEG or PNG, or None. Lets the reader reserve the picture's space and fit it without cropping."""
+    if image_ext(data) == "png":
+        if len(data) >= 24 and data[12:16] == b"IHDR":
+            return int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+        return None
+    if image_ext(data) != "jpg":
+        return None
+    i = 2
+    while i + 9 < len(data):
+        if data[i] != 0xFF:
+            return None
+        marker = data[i + 1]
+        if marker == 0xFF:  # fill byte
+            i += 1
+            continue
+        if marker in (0x01, 0xD8) or 0xD0 <= marker <= 0xD7:
+            i += 2
+            continue
+        if marker in (0xD9, 0xDA):
+            return None
+        if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):
+            return int.from_bytes(data[i + 7:i + 9], "big"), int.from_bytes(data[i + 5:i + 7], "big")
+        i += 2 + int.from_bytes(data[i + 2:i + 4], "big")
+    return None
+
+
 def slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60].strip("-") or "place"
 

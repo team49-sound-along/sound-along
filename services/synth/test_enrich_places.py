@@ -98,7 +98,7 @@ def test_only_real_places_with_a_description_become_cards_and_everything_is_one_
 def test_a_card_has_the_contract_fields_a_description_summary_and_is_marked_unreviewed():
     out = ep.enrich_places(PASSAGE, FakeHttp(wiki([PARK]), [commons("Lake.jpg")]))
     card = out.cards["places"]["Piedmont Park"]
-    assert set(card) == {"name", "summary", "attribution", "imageUrl", "imageAlt", "imageCredit"}
+    assert set(card) == {"name", "summary", "attribution", "imageUrl", "imageAlt", "imageCredit", "imageWidth", "imageHeight"}
     assert card["summary"] == "Urban park in Atlanta, Georgia." and card["attribution"] == "Wikipedia, CC BY-SA"
     assert out.cards["words"] == {} and out.cards["reviewed"] is False and out.cards["source"] == "wikipedia"
 
@@ -180,6 +180,57 @@ def test_write_enriched_puts_the_cards_and_pictures_in_the_data_folder_and_never
 def test_a_place_after_a_capitalised_sentence_opener_is_still_found():
     got = ep.place_candidates(tokens("<p>Then Paris was lovely. Soon London called.</p>"))
     assert "Paris" in got and "London" in got
+
+
+# ---- the local publish path (the demo app's upload) -----------------------------------------------------------------------------
+def test_run_local_writes_cards_for_a_generated_passage_and_survives_failures(tmp_path):
+    import run_local
+
+    out = ep.enrich_places(PASSAGE, FakeHttp(wiki([PARK]), [commons("Lake.jpg")]))
+    assert run_local.publish_cards({**PASSAGE, "source": "generated"}, tmp_path, lambda p: out) is True
+    assert (tmp_path / f"{PID}.cards.json").exists() and any(".place-piedmont-park-" in f.name for f in tmp_path.iterdir())
+
+    def boom(passage):
+        raise RuntimeError("offline")
+
+    assert run_local.publish_cards(PASSAGE, tmp_path / "other", boom) is False  # never raises
+    assert run_local.publish_cards(PASSAGE, tmp_path / "none", lambda p: None) is False
+
+
+def sent_titles(http):
+    first = next(u for u in http.urls if "en.wikipedia.org" in u)
+    return urllib.parse.parse_qs(urllib.parse.urlparse(first).query)["titles"][0].split("|")
+
+
+def test_with_a_place_detector_only_places_it_finds_are_ever_sent_never_other_capitalised_words_or_names():
+    passage = {**PASSAGE, "content": "<p>Maya and Daniel Smith visited London with Ms Rivera. Then Maya saw Berlin.</p>"}
+    pages = [{"title": "London", "coordinates": [{}], "description": "Capital of England"}, {"title": "Berlin", "coordinates": [{}], "description": "Capital of Germany"}]
+    http = FakeHttp(wiki(pages))
+    out = ep.enrich_places(passage, http, ner=lambda text: ["London", "Berlin"])
+    assert sent_titles(http) == ["London", "Berlin"]  # no "Maya", "Daniel Smith" or "Rivera" ever leaves the generator
+    assert sorted(out.cards["places"]) == ["Berlin", "London"]
+
+
+def test_if_the_detector_finds_nothing_or_is_unavailable_nothing_is_sent_at_all():
+    http = FakeHttp(wiki([PARK]))
+    assert ep.enrich_places(PASSAGE, http, ner=lambda text: []) is None and http.urls == []
+
+
+def test_detector_places_lose_a_leading_the_are_unique_and_must_really_appear_in_the_text():
+    passage = {**PASSAGE, "content": "<p>They ate lunch near the River Thames, then went to Lake Windermere.</p>"}
+    http = FakeHttp(wiki([{"title": "River Thames", "coordinates": [{}], "description": "River in England"},
+                          {"title": "Lake Windermere", "coordinates": [{}], "description": "Lake in England"}]))
+    out = ep.enrich_places(passage, http, ner=lambda text: ["the River Thames", "The Lake Windermere", "Lake Windermere", "Atlantis"])
+    assert sorted(sent_titles(http)) == ["Lake Windermere", "River Thames"] and sorted(out.cards["places"]) == ["Lake Windermere", "River Thames"]
+
+
+def test_a_teacher_can_switch_place_lookups_off_for_a_passage_or_the_whole_deployment(monkeypatch):
+    http = FakeHttp(wiki([PARK]))
+    assert ep.enrich_places({**PASSAGE, "settings": {"placeCards": False}}, http, ner=lambda t: ["Piedmont Park"]) is None and http.urls == []
+    monkeypatch.setenv("PLACE_CARDS", "off")
+    assert ep.enrich_places(PASSAGE, http, ner=lambda t: ["Piedmont Park"]) is None and http.urls == []
+    monkeypatch.delenv("PLACE_CARDS")
+    assert ep.enrich_places({**PASSAGE, "settings": {"placeCards": True}}, FakeHttp(wiki([PARK])), ner=lambda t: ["Piedmont Park"]) is not None
 
 
 # ---- the local publish path (the demo app's upload) -----------------------------------------------------------------------------

@@ -97,3 +97,38 @@ def test_apply_refuses_a_candidate_that_is_not_a_real_image_or_has_a_bad_licence
             (cards / "images.candidates" / "x.jpg").write_bytes(JPEG)
         with pytest.raises(ValueError, match=message):
             pi.apply(cards)
+
+
+# ---- picture dimensions (so the reader can fit the picture and reserve its space) -----------------------------------------------
+def _png(width, height):
+    import struct
+
+    return b"\x89PNG\r\n\x1a\n" + struct.pack(">I", 13) + b"IHDR" + struct.pack(">II", width, height) + b"\x08\x02\x00\x00\x00" + b"\x00" * 4
+
+
+def test_image_size_is_read_from_real_files():
+    from pathlib import Path
+
+    folder = Path(__file__).resolve().parent.parent / "samples" / "cards" / "images"
+    sizes = {p.name.split(".place-")[1].rsplit("-", 1)[0]: pi.image_size(p.read_bytes()) for p in folder.glob("*.jpg")}
+    assert sizes["piedmont-park"] == (500, 625) and sizes["great-britain"] == (500, 803) and sizes["london"] == (500, 281)
+
+
+def test_image_size_for_png_and_for_bytes_that_are_not_images():
+    assert pi.image_size(_png(640, 480)) == (640, 480)
+    for bad in (b"", b"\xff\xd8\xff", b"\xff\xd8\xff\xe0" + b"0" * 10, b"\x89PNG\r\n\x1a\n", b"<svg>", JPEG):
+        assert pi.image_size(bad) is None
+
+
+def test_apply_stores_the_picture_size_and_places_without_a_picture_get_none(tmp_path):
+    pid = "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98"
+    cards = tmp_path / "cards"
+    (cards / "images.candidates").mkdir(parents=True)
+    (cards / f"{pid}.cards.json").write_text(json.dumps({"words": {}, "places": {"Piedmont Park": {"name": "Piedmont Park"}, "Atlanta": {"name": "Atlanta"}}}))
+    (cards / "images.candidates" / "piedmont-park.png").write_bytes(_png(500, 625))
+    (cards / "images.json").write_text(json.dumps({"images": [{"passageId": pid, "place": "Piedmont Park", "candidate": "piedmont-park.png",
+        "alt": "A lake with a skyline.", "artist": "A", "license": "CC0", "page": "p"}]}))
+    pi.apply(cards)
+    out = json.loads((cards / f"{pid}.cards.json").read_text())["places"]
+    assert (out["Piedmont Park"]["imageWidth"], out["Piedmont Park"]["imageHeight"]) == (500, 625)
+    assert (out["Atlanta"]["imageWidth"], out["Atlanta"]["imageHeight"]) == (None, None)

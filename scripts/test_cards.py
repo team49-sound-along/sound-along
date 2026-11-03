@@ -25,7 +25,7 @@ EXPECTED = (  # the three English texts (AI passage ids), see docs/BACKEND_HANDO
 )
 POS = {"noun", "verb", "adjective", "adverb"}
 WORD_FIELDS = {"word", "syllables", "ipa", "partOfSpeech", "definition", "example", "spanish"}
-PLACE_FIELDS = {"name", "summary", "attribution", "imageUrl", "imageAlt", "imageCredit"}
+PLACE_FIELDS = {"name", "summary", "attribution", "imageUrl", "imageAlt", "imageCredit", "imageWidth", "imageHeight"}
 
 
 def word_key(text: str) -> str:
@@ -150,7 +150,7 @@ def test_a_place_picture_is_a_small_real_image_on_our_own_origin_with_alt_text_a
     _, _, _, _, cards = doc
     for key, card in cards["places"].items():
         if card["imageUrl"] is None:
-            assert card["imageAlt"] is None and card["imageCredit"] is None, f"{key}: alt and credit without a picture"
+            assert card["imageAlt"] is None and card["imageCredit"] is None and card["imageWidth"] is None, f"{key}: alt and credit without a picture"
             continue
         name = card["imageUrl"].removeprefix("/data/")
         assert card["imageUrl"].startswith("/data/") and pi.NAME_PATTERN.fullmatch(name), f"{key}: imageUrl must be /data/<uuid>.place-<slug>-<hash>.jpg|png, never an absolute URL"
@@ -158,6 +158,7 @@ def test_a_place_picture_is_a_small_real_image_on_our_own_origin_with_alt_text_a
         assert pi.image_ext(data) == name.rsplit(".", 1)[1], f"{key}: file is not really a {name.rsplit('.', 1)[1]}"
         assert len(data) <= 150_000, f"{key}: {len(data)} bytes is over the 150 KB budget"
         assert name.split("-")[-1].split(".")[0] == pi.hashlib.sha256(data).hexdigest()[:8], f"{key}: file name hash does not match the content"
+        assert (card["imageWidth"], card["imageHeight"]) == pi.image_size(data), f"{key}: width and height must match the file"
         assert pi.alt_problem(card["imageAlt"], key) is None, f"{key}: {pi.alt_problem(card['imageAlt'], key)}"
         assert any(lic in card["imageCredit"] for lic in ("CC BY", "CC0", "Public domain")), f"{key}: credit must name the licence"
         assert "Wikimedia Commons" in card["imageCredit"] and "http" not in card["imageCredit"]

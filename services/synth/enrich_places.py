@@ -5,6 +5,10 @@ places (the article has coordinates, is not a disambiguation page, and has a Wik
 picture when one exists. Everything is written next to the audio as `<id>.cards.json` plus `<id>.place-<slug>-<hash>.jpg|png`, so the
 reader only ever fetches static files from our own origin (no third-party request from a student's browser, no cost per view).
 
+Privacy: the only thing sent off the generator is the NAME of each place the spaCy detector finds (for example "Tower Bridge"), in one query to
+Wikipedia. Never the passage text, never other names, nothing about a reader. If the detector is unavailable nothing is sent. A teacher can switch
+it off per passage (settings.placeCards = false) and an operator for the deployment (PLACE_CARDS=off).
+
 Safe to run on the live path: it never raises. Offline, blocked, slow or garbage replies give None, and audio and timing still publish.
 The result is marked `"reviewed": false`: nobody has looked at these pictures yet (see docs/PLACE_IMAGES.md).
 
@@ -14,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import time
 import urllib.parse
@@ -23,7 +28,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Sequence
 
 from pipeline import tokenize_html
-from place_media import MAX_ALT, MAX_BYTES, NAME_PATTERN, THUMB_WIDTH, alt_problem, clean_artist, credit_line, image_ext, license_ok, slug, target_name
+from place_media import image_size, MAX_ALT, MAX_BYTES, NAME_PATTERN, THUMB_WIDTH, alt_problem, clean_artist, credit_line, image_ext, license_ok, slug, target_name
 
 LOG = logging.getLogger(__name__)
 
@@ -205,11 +210,17 @@ def _pictures(pages: dict[str, dict[str, Any]], passage_id: str, http_get: HttpG
         file = target_name(passage_id, name, data)
         images[file] = data
         summary = _sentence(pages[name]["description"])
+        width, height = image_size(data) or (None, None)
         cards[name] = {
-            "imageUrl": f"/data/{file}", "imageAlt": _alt((meta.get("ImageDescription") or {}).get("value"), name, summary),
+            "imageUrl": f"/data/{file}", "imageWidth": width, "imageHeight": height, "imageAlt": _alt((meta.get("ImageDescription") or {}).get("value"), name, summary),
             "imageCredit": credit_line(clean_artist((meta.get("Artist") or {}).get("value")), str(licence).strip()),
         }
     return cards, images
+
+
+def _switched_off(passage: dict[str, Any]) -> bool:
+    """A teacher can turn place lookups off for one passage (settings.placeCards false), or an operator for the whole deployment (PLACE_CARDS=off)."""
+    return os.environ.get("PLACE_CARDS", "").strip().lower() in ("off", "0", "false", "no") or (passage.get("settings") or {}).get("placeCards") is False
 
 
 def enrich_places(
@@ -217,17 +228,22 @@ def enrich_places(
     clock: Callable[[], float] = time.monotonic, ner: Optional[Callable[[str], list[str]]] = None,
 ) -> Optional[Enriched]:
     """Cards for the real places in an English, teacher-generated passage, or None. Never raises."""
-    if passage.get("source") != "generated" or (passage.get("language") or "en") != "en":
+    if passage.get("source") != "generated" or (passage.get("language") or "en") != "en" or _switched_off(passage):
         return None
     try:
         tokens = tokenize_html(passage.get("content") or "")
         plain = " ".join(t.text for t in tokens)
-        found = place_candidates(tokens, MAX_CANDIDATES)
-        for extra in (ner(plain) if ner else []):
-            extra = re.sub(r"^(?:the)\s+", "", _clean(extra), flags=re.IGNORECASE)  # "the River Thames" is the place "River Thames"
-            if extra and extra not in found and re.search(rf"(?<!\w){re.escape(extra)}(?!\w)", plain):
-                found.append(extra)
-        candidates = found[:MAX_CANDIDATES]
+        if ner is None:
+            candidates = place_candidates(tokens, MAX_CANDIDATES)  # tools and tests only: production always passes a place detector
+        else:
+            # PRIVACY: with a detector, only the names of places it finds are ever sent to Wikipedia. Other capitalised words (people,
+            # schools, anything) never leave the generator, and if the detector is unavailable nothing is sent at all.
+            candidates = []
+            for extra in ner(plain):
+                extra = re.sub(r"^(?:the)\s+", "", _clean(extra), flags=re.IGNORECASE)  # "the River Thames" is the place "River Thames"
+                if extra and extra not in candidates and re.search(rf"(?<!\w){re.escape(extra)}(?!\w)", plain):
+                    candidates.append(extra)
+            candidates = candidates[:MAX_CANDIDATES]
         if not candidates:
             return None
         started = clock()
@@ -238,7 +254,7 @@ def enrich_places(
         pictures, images = _pictures(pages, passage["uuid"], http_get, out_of_time)
         places = {
             name: {"name": name, "summary": _sentence(page["description"]), "attribution": "Wikipedia, CC BY-SA",
-                   "imageUrl": None, "imageAlt": None, "imageCredit": None, **pictures.get(name, {})}
+                   "imageUrl": None, "imageAlt": None, "imageCredit": None, "imageWidth": None, "imageHeight": None, **pictures.get(name, {})}
             for name, page in pages.items()
         }
         return Enriched({"words": {}, "places": places, "reviewed": False, "source": "wikipedia"}, images)

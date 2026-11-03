@@ -396,7 +396,9 @@
    "attribution": "Wikipedia, CC BY-SA",
    "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.place-piedmont-park-e96cde8f.jpg",
    "imageAlt": "A calm lake with green trees along the shore and tall city buildings behind, all reflected in the water.",
-   "imageCredit": "Photo: Frank Schulenburg, CC BY-SA 4.0, via Wikimedia Commons"
+   "imageCredit": "Photo: Frank Schulenburg, CC BY-SA 4.0, via Wikimedia Commons",
+   "imageWidth": 500,
+   "imageHeight": 625
   },
   "Atlanta": {
    "name": "Atlanta",
@@ -404,7 +406,9 @@
    "attribution": "Wikipedia, CC BY-SA",
    "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.place-atlanta-44f8df63.jpg",
    "imageAlt": "Tall skyscrapers in a city downtown with a highway and green trees, seen from above under a cloudy sky.",
-   "imageCredit": "Photo: AtlChampion, CC BY-SA 4.0, via Wikimedia Commons"
+   "imageCredit": "Photo: AtlChampion, CC BY-SA 4.0, via Wikimedia Commons",
+   "imageWidth": 500,
+   "imageHeight": 276
   },
   "Georgia": {
    "name": "Georgia",
@@ -412,7 +416,9 @@
    "attribution": "Wikipedia, CC BY-SA",
    "imageUrl": null,
    "imageAlt": null,
-   "imageCredit": null
+   "imageCredit": null,
+   "imageWidth": null,
+   "imageHeight": null
   }
  }
 }

@@ -27,7 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "services" / "synth"))
 from place_media import (  # noqa: E402  (shared with the live publish step)
-    MAX_ALT, MAX_BYTES, NAME_PATTERN, PACE_SECONDS, THUMB_WIDTH, USER_AGENT, alt_problem, clean_artist, credit_line, image_ext, license_ok, slug, target_name,
+    image_size, MAX_ALT, MAX_BYTES, NAME_PATTERN, PACE_SECONDS, THUMB_WIDTH, USER_AGENT, alt_problem, clean_artist, credit_line, image_ext, license_ok, slug, target_name,
 )
 
 CARDS = Path(__file__).resolve().parent.parent / "samples" / "cards"
@@ -56,6 +56,10 @@ def apply(cards: Path = CARDS) -> list[str]:
 
     images = cards / "images"
     images.mkdir(exist_ok=True)
+    sizes = {name: image_size(data) for name, data in files.items()}
+    for key, card in chosen.items():
+        name = card["imageUrl"].removeprefix("/data/")
+        card["imageWidth"], card["imageHeight"] = sizes[name] or (None, None)
     for stale in images.iterdir():
         if stale.is_file() and stale.name not in files:
             stale.unlink()
@@ -66,7 +70,7 @@ def apply(cards: Path = CARDS) -> list[str]:
         document = json.loads(path.read_text(encoding="utf-8"))
         passage_id = path.name.removesuffix(".cards.json")
         places = {
-            key: {**place, **{"imageUrl": None, "imageAlt": None, "imageCredit": None}, **chosen.get((passage_id, key), {})}
+            key: {**place, **{"imageUrl": None, "imageAlt": None, "imageCredit": None, "imageWidth": None, "imageHeight": None}, **chosen.get((passage_id, key), {})}
             for key, place in document.get("places", {}).items()
         }
         path.write_text(json.dumps({**document, "places": places}, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
