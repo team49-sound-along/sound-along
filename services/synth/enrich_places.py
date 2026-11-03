@@ -33,7 +33,7 @@ from place_media import image_size, MAX_ALT, MAX_BYTES, NAME_PATTERN, THUMB_WIDT
 LOG = logging.getLogger(__name__)
 
 MAX_CANDIDATES = 25  # one MediaWiki query takes up to 50 titles; a short passage never needs more
-MAX_IMAGES = 6
+MAX_IMAGES = 10
 BUDGET_SECONDS = 25.0
 REQUEST_TIMEOUT = 8
 USER_AGENT = "SoundAlongCards/1.0 (https://github.com/rohanreigns007/sound-along; live content step, no personal data)"
@@ -177,45 +177,141 @@ def _alt(description: Optional[str], name: str, summary: str) -> str:
     return fallback if len(fallback) <= MAX_ALT else fallback[: MAX_ALT - 1].rstrip() + "…"
 
 
-def _pictures(pages: dict[str, dict[str, Any]], passage_id: str, http_get: HttpGet, out_of_time: Callable[[], bool]) -> tuple[dict[str, dict[str, Any]], dict[str, bytes]]:
-    """Licence-gated small pictures for the places that have one. A place that fails any check simply has no picture."""
-    wanted = {name: page["pageimage"] for name, page in pages.items() if isinstance(page.get("pageimage"), str)}
-    if not wanted or out_of_time():
-        return {}, {}
-    titles = "|".join("File:" + f for f in wanted.values())
-    reply = http_get(_query(COMMONS, prop="imageinfo", iiprop="url|size|mime|extmetadata", iiurlwidth=str(THUMB_WIDTH),
-                            iiextmetadatafilter="LicenseShortName|Artist|ImageDescription", titles=titles))
-    infos = {}
+_UNHELPFUL = re.compile(
+    r"flag|coat[ _]of[ _]arms|emblem|(?:^|[ _.-])seal(?:[ _.-]|$)|logo|icon|symbol|banner|signature|stamp|crest|wordmark|ambox|edit-|"
+    r"question|padlock|disambig|commons-|wikt|portal|\.(?:ogg|oga|webm|pdf|tiff?|gif)$", re.IGNORECASE)
+_ALLOWED_FILE = re.compile(r"\.(?:jpe?g|png|svg)$", re.IGNORECASE)
+_MAP_NAME = re.compile(r"orthographic|locator|location|globe|\bmap\b|_map|map_", re.IGNORECASE)
+_BIG_PLACE = re.compile(r"\b(?:country|continent|state|island|province|territory|region|nation)\b", re.IGNORECASE)
+_MIN_WIDTH = 300
+ALTERNATES_PER_PLACE = 12
+
+
+def _norm_file(name: str) -> str:
+    return name.removeprefix("File:").replace("_", " ").strip()
+
+
+def _commons_infos(files: list[str], http_get: HttpGet) -> dict[str, dict[str, Any]]:
+    """Commons image info (size, type, licence, thumbnail) for many files, 40 per request."""
+    out: dict[str, dict[str, Any]] = {}
+    unique = list(dict.fromkeys(files))
+    for start in range(0, len(unique), 40):
+        reply = http_get(_query(COMMONS, prop="imageinfo", iiprop="url|size|mime|extmetadata", iiurlwidth=str(THUMB_WIDTH),
+                                iiextmetadatafilter="LicenseShortName|Artist|ImageDescription",
+                                titles="|".join("File:" + f for f in unique[start:start + 40])))
+        for page in _pages(reply).values():
+            info = (page.get("imageinfo") or [None])[0]
+            if isinstance(info, dict):
+                out[_norm_file(str(page.get("title", "")))] = info
+    return out
+
+
+def _usable(file_name: str, info: Optional[dict[str, Any]], prefer_map: bool = False) -> Optional[int]:
+    """None if this picture may not be used, otherwise its preference rank: photo (0) before PNG (1) before a map drawn as SVG (2).
+    Flags, emblems and logos are never used. An SVG original is fine only because Commons serves a PNG thumbnail of it; the bytes are
+    checked again after download."""
+    if not info or _UNHELPFUL.search(file_name) or not _ALLOWED_FILE.search(file_name) or not info.get("thumburl"):
+        return None
+    meta = info.get("extmetadata") or {}
+    if not license_ok((meta.get("LicenseShortName") or {}).get("value")):
+        return None
+    mime = info.get("mime")
+    if mime not in ("image/jpeg", "image/png", "image/svg+xml"):
+        return None
+    if mime != "image/svg+xml" and int(info.get("width") or 0) < _MIN_WIDTH:
+        return None
+    if prefer_map and _MAP_NAME.search(file_name):
+        return -1  # a location map is the best picture of a country, state or continent
+    return {"image/jpeg": 0, "image/png": 1, "image/svg+xml": 2}[mime]
+
+
+def _prefers_map(description: Optional[str]) -> bool:
+    """Countries, states, continents and islands are best shown on a location map: a photo of "China" is whatever the article happens to
+    contain (a portrait, a bird). Cities, landmarks, parks and rivers get photographs."""
+    return bool(description and _BIG_PLACE.search(description))
+
+
+def _map_names(title: str) -> list[str]:
+    """Standard Commons location-map file names for a place. A title with a qualifier ("Georgia (U.S. state)") must NEVER use the plain-name
+    maps: "Georgia (orthographic projection).svg" is the country in the Caucasus, a different place. Only US states are handled specially."""
+    short, _, qualifier = title.partition(" (")
+    short = short.strip()
+    if qualifier:
+        return [f"{short} in United States.svg"] if qualifier.lower().startswith("u.s. state") else []
+    return [f"{short} (orthographic projection).svg", f"Location {short}.svg", f"{short} in the world.svg"]
+
+
+def _article_images(titles: list[str], http_get: HttpGet) -> dict[str, list[str]]:
+    reply = http_get(_query(WIKIPEDIA, redirects="1", titles="|".join(titles), prop="images", imlimit="max"))
+    query = reply.get("query", {}) if isinstance(reply, dict) else {}
+    out: dict[str, list[str]] = {}
     for page in _pages(reply).values():
-        info = (page.get("imageinfo") or [None])[0]
-        if isinstance(info, dict):
-            infos[str(page.get("title", "")).removeprefix("File:").replace("_", " ")] = info
+        files = [_norm_file(str(i.get("title", ""))) for i in (page.get("images") or []) if isinstance(i, dict)]
+        out[str(page.get("title"))] = [f for f in files if f and not _UNHELPFUL.search(f) and _ALLOWED_FILE.search(f)]
+    return out
+
+
+def _pictures(pages: dict[str, dict[str, Any]], passage_id: str, http_get: HttpGet, out_of_time: Callable[[], bool]) -> tuple[dict[str, dict[str, Any]], dict[str, bytes], dict[str, dict[str, str]]]:
+    """A licence-gated small picture for every place that has ANY usable one: the article's lead image first, then its other pictures
+    (photos before maps). A place is text-only only when nothing in its whole article qualifies."""
+    if out_of_time():
+        return {}, {}, {}
+    leads = {name: _norm_file(page["pageimage"]) for name, page in pages.items() if isinstance(page.get("pageimage"), str)}
+    wants_map = {name: _prefers_map(page.get("description")) for name, page in pages.items()}
+    # Commons names its location maps in a standard way, so for countries, states and continents try those names directly.
+    probes = {name: _map_names(str(pages[name]["title"])) for name in pages if wants_map[name]}
+    infos = _commons_infos([*leads.values(), *(f for files in probes.values() for f in files)], http_get) if (leads or probes) else {}
+    ranked: dict[str, list[tuple[int, int, str]]] = {name: [] for name in pages}
+    for name, file_name in leads.items():
+        rank = _usable(file_name, infos.get(file_name), wants_map[name])
+        if rank is not None:
+            ranked[name].append((rank, 0, file_name))
+    for name, files in probes.items():
+        for file_name in files:
+            rank = _usable(file_name, infos.get(file_name), True)
+            if rank is not None:
+                ranked[name].append((rank, 0, file_name))
+    needy = [name for name in pages if not ranked[name]]
+    if needy and not out_of_time():
+        by_title = _article_images([str(pages[n]["title"]) for n in needy], http_get)
+        extra = {n: by_title.get(str(pages[n]["title"]), [])[:ALTERNATES_PER_PLACE] for n in needy}
+        more = _commons_infos([f for files in extra.values() for f in files if f not in infos], http_get)
+        infos.update(more)
+        for name, files in extra.items():
+            for order, file_name in enumerate(files, start=1):
+                rank = _usable(file_name, infos.get(file_name), wants_map[name])
+                if rank is not None:
+                    ranked[name].append((rank, order, file_name))
     cards: dict[str, dict[str, Any]] = {}
     images: dict[str, bytes] = {}
-    for name, file_name in wanted.items():
+    sources: dict[str, dict[str, str]] = {}  # where each picture came from (for people who review it)
+    for name in pages:
         if len(images) >= MAX_IMAGES or out_of_time():
             break
-        info = infos.get(file_name.replace("_", " "))
-        meta = (info or {}).get("extmetadata") or {}
-        licence = (meta.get("LicenseShortName") or {}).get("value")
-        if not info or info.get("mime") not in ("image/jpeg", "image/png") or not license_ok(licence) or not info.get("thumburl"):
-            continue
-        try:
-            data = http_get(info["thumburl"], binary=True)
-        except (OSError, ValueError) as err:
-            LOG.info("picture for %s skipped: %s", name, err)
-            continue
-        if image_ext(data) is None:
-            continue
-        file = target_name(passage_id, name, data)
-        images[file] = data
-        summary = _sentence(pages[name]["description"])
-        width, height = image_size(data) or (None, None)
-        cards[name] = {
-            "imageUrl": f"/data/{file}", "imageWidth": width, "imageHeight": height, "imageAlt": _alt((meta.get("ImageDescription") or {}).get("value"), name, summary),
-            "imageCredit": credit_line(clean_artist((meta.get("Artist") or {}).get("value")), str(licence).strip()),
-        }
-    return cards, images
+        for _, _, file_name in sorted(ranked[name])[:3]:  # best first; a download that fails the byte check falls to the next one
+            info = infos[file_name]
+            try:
+                data = http_get(info["thumburl"], binary=True)
+            except (OSError, ValueError) as err:
+                LOG.info("picture for %s skipped: %s", name, err)
+                continue
+            if image_ext(data) is None:
+                continue
+            meta = info.get("extmetadata") or {}
+            licence = str(meta["LicenseShortName"]["value"]).strip()
+            file = target_name(passage_id, name, data)
+            images[file] = data
+            width, height = image_size(data) or (None, None)
+            summary = _sentence(pages[name]["description"])
+            artist = clean_artist((meta.get("Artist") or {}).get("value"))
+            credit = credit_line(artist, licence)
+            if info.get("mime") == "image/svg+xml":
+                credit = credit.replace("Photo:", "Image:", 1)  # a map, not a photograph
+            sources[name] = {"file": file_name, "artist": artist, "license": licence, "page": "https://commons.wikimedia.org/wiki/File:" + urllib.parse.quote(file_name.replace(" ", "_"))}
+            cards[name] = {"imageUrl": f"/data/{file}", "imageWidth": width, "imageHeight": height,
+                           "imageAlt": _alt((meta.get("ImageDescription") or {}).get("value"), name, summary), "imageCredit": credit}
+            break
+    return cards, images, sources
 
 
 def _switched_off(passage: dict[str, Any]) -> bool:
@@ -251,7 +347,7 @@ def enrich_places(
         pages = _real_places(candidates, http_get)
         if not pages:
             return None
-        pictures, images = _pictures(pages, passage["uuid"], http_get, out_of_time)
+        pictures, images, _ = _pictures(pages, passage["uuid"], http_get, out_of_time)
         places = {
             name: {"name": name, "summary": _sentence(page["description"]), "attribution": "Wikipedia, CC BY-SA",
                    "imageUrl": None, "imageAlt": None, "imageCredit": None, "imageWidth": None, "imageHeight": None, **pictures.get(name, {})}

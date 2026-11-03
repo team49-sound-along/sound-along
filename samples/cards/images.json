@@ -1,5 +1,5 @@
 {
- "_note": "Curated by looking at each picture. Only entries listed here are used. Rejected on purpose: Georgia, England, China, India and North America (SVG flags or locator maps), and Boston Harbor (dense topographic map, too large and not readable for young readers).",
+ "_note": "Curated by looking at each picture. Only entries listed here are used. Countries, states and continents use Commons location maps (a map is a better picture of China than whatever photo an article happens to contain); photos for cities, parks and landmarks. A same-name trap was caught: the plain 'Georgia' map is the country in the Caucasus, so the US state uses 'Georgia in United States'.",
  "images": [
   {
    "passageId": "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98",
@@ -60,6 +60,71 @@
    "artist": "Ilya Grigorik",
    "license": "CC BY-SA 3.0",
    "alt": "Tower Bridge lit up at sunset over the River Thames, with tall buildings of London in the distance."
+  },
+  {
+   "passageId": "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98",
+   "place": "Georgia",
+   "candidate": "georgia.png",
+   "file": "Georgia in United States.svg",
+   "page": "https://commons.wikimedia.org/wiki/File:Georgia_in_United_States.svg",
+   "artist": "TUBS",
+   "license": "CC BY-SA 3.0",
+   "alt": "A map of the United States with the state of Georgia coloured red, in the south-east.",
+   "map": true
+  },
+  {
+   "passageId": "5af24980-4d6d-41c1-87fa-4f21cb2d169d",
+   "place": "England",
+   "candidate": "england.png",
+   "file": "England (orthographic projection).svg",
+   "page": "https://commons.wikimedia.org/wiki/File:England_%28orthographic_projection%29.svg",
+   "artist": "Rob",
+   "license": "CC BY-SA 3.0",
+   "alt": "A globe with England coloured green, beside the rest of Europe in the north Atlantic.",
+   "map": true
+  },
+  {
+   "passageId": "5af24980-4d6d-41c1-87fa-4f21cb2d169d",
+   "place": "China",
+   "candidate": "china.png",
+   "file": "China (orthographic projection).svg",
+   "page": "https://commons.wikimedia.org/wiki/File:China_%28orthographic_projection%29.svg",
+   "artist": "Ssolbergj",
+   "license": "CC BY-SA 4.0",
+   "alt": "A globe centred on Asia with China coloured dark green.",
+   "map": true
+  },
+  {
+   "passageId": "5af24980-4d6d-41c1-87fa-4f21cb2d169d",
+   "place": "India",
+   "candidate": "india.png",
+   "file": "India (orthographic projection).svg",
+   "page": "https://commons.wikimedia.org/wiki/File:India_%28orthographic_projection%29.svg",
+   "artist": "Ssolbergj (talk)",
+   "license": "CC BY-SA 3.0",
+   "alt": "A globe centred on the Indian Ocean with India coloured dark green.",
+   "map": true
+  },
+  {
+   "passageId": "5af24980-4d6d-41c1-87fa-4f21cb2d169d",
+   "place": "North America",
+   "candidate": "north-america.png",
+   "file": "Location North America.svg",
+   "page": "https://commons.wikimedia.org/wiki/File:Location_North_America.svg",
+   "artist": "Bosonic dressing",
+   "license": "CC BY-SA 3.0",
+   "alt": "A globe with the continent of North America coloured green.",
+   "map": true
+  },
+  {
+   "passageId": "5af24980-4d6d-41c1-87fa-4f21cb2d169d",
+   "place": "Boston Harbor",
+   "candidate": "boston-harbor-alt2.jpg",
+   "file": "2017 Boston skyline from Boston Harbor 5 .jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:2017_Boston_skyline_from_Boston_Harbor_5_.jpg",
+   "artist": "Beyond My Ken",
+   "license": "CC BY-SA 4.0",
+   "alt": "Tall city buildings along the edge of Boston Harbor, with sailboats on the water."
   }
  ]
 }

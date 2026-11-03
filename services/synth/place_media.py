@@ -35,8 +35,9 @@ def clean_artist(value: str | None) -> str:
     return text[:80].strip() or "Unknown author"
 
 
-def credit_line(artist: str, license_name: str) -> str:
-    kind = "Image" if license_name.strip().upper().startswith(("PUBLIC DOMAIN", "PD", "CC0")) else "Photo"
+def credit_line(artist: str, license_name: str, kind: str | None = None) -> str:
+    """"Photo: ..." for photographs, "Image: ..." for maps and anything in the public domain."""
+    kind = kind or ("Image" if license_name.strip().upper().startswith(("PUBLIC DOMAIN", "PD", "CC0")) else "Photo")
     return f"{kind}: {artist}, {license_name}, via Wikimedia Commons"
 
 

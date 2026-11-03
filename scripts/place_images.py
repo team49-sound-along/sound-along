@@ -51,7 +51,7 @@ def apply(cards: Path = CARDS) -> list[str]:
         files[name] = data
         chosen[(entry["passageId"], entry["place"])] = {
             "imageUrl": f"/data/{name}", "imageAlt": entry["alt"].strip(),
-            "imageCredit": credit_line(clean_artist(entry.get("artist")), entry["license"].strip()),
+            "imageCredit": credit_line(clean_artist(entry.get("artist")), entry["license"].strip(), "Image" if entry.get("map") else None),
         }
 
     images = cards / "images"
@@ -106,50 +106,44 @@ def _get(url: str, binary: bool = False, cache: dict | None = None):
 
 
 def fetch(cards: Path = CARDS) -> None:
+    """Candidates for every place in the demo texts, chosen by the SAME chain the live publish step uses (lead picture, then the article's
+    other pictures; photos before maps; never flags). Written to samples/cards/images.candidates/ for a person to look at."""
+    import enrich_places as ep
     from fetch_place_summaries import PLACES
 
-    cache_file = cards / "places.images.raw.json"
-    cache: dict = json.loads(cache_file.read_text(encoding="utf-8")) if cache_file.exists() else {}
     out_dir = cards / "images.candidates"
     out_dir.mkdir(exist_ok=True)
     report = []
+
+    def polite(url: str, binary: bool = False):
+        time.sleep(PACE_SECONDS)
+        return ep.fetch(url, binary)
+
     for passage_id, places in PLACES.items():
+        reply = polite(ep._query(ep.WIKIPEDIA, redirects="1", titles="|".join(places.values()), prop="coordinates|pageprops|description|pageimages",
+                                 colimit="max", piprop="name", ppprop="disambiguation"))
+        by_title = {p.get("title"): p for p in ep._pages(reply).values()}
+        pages = {}
         for place, title in places.items():
-            row = {"passageId": passage_id, "place": place, "title": title}
-            try:
-                q = _get("https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&piprop=name&format=json&titles=" + urllib.parse.quote(title), cache=cache)
-                file_name = next(iter(q["query"]["pages"].values())).get("pageimage")
-                if not file_name:
-                    report.append({**row, "rejected": "the article has no lead image"})
-                    continue
-                c = _get("https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&format=json&iiprop=url|size|mime|extmetadata"
-                         f"&iiurlwidth={THUMB_WIDTH}&iiextmetadatafilter=LicenseShortName|Artist&titles=" + urllib.parse.quote("File:" + file_name), cache=cache)
-                info = next(iter(c["query"]["pages"].values()))["imageinfo"][0]
-                meta = info.get("extmetadata", {})
-                licence = (meta.get("LicenseShortName") or {}).get("value")
-                row.update(file=file_name, license=licence, artist=clean_artist((meta.get("Artist") or {}).get("value")), mime=info.get("mime"),
-                           original=f"{info.get('width')}x{info.get('height')}", page="https://commons.wikimedia.org/wiki/File:" + urllib.parse.quote(file_name.replace(" ", "_")))
-                if info.get("mime") not in ("image/jpeg", "image/png"):
-                    report.append({**row, "rejected": f"not a raster photo ({info.get('mime')})"})
-                    continue
-                if not license_ok(licence):
-                    report.append({**row, "rejected": f"licence {licence!r} is not allowed"})
-                    continue
-                data = _get(info["thumburl"], binary=True)
-                ext = image_ext(data)
-                if ext is None:
-                    report.append({**row, "rejected": "downloaded bytes are not a JPEG or PNG"})
-                    continue
-                candidate = f"{slug(place)}.{ext}"
+            page = by_title.get(ep._resolve(title.replace("_", " "), reply.get("query", {})))
+            if page and not isinstance(page.get("description"), str):
+                page = {**page, "description": ""}
+            if page:
+                pages[place] = {**page, "description": page.get("description") or place}
+        found, images, sources = ep._pictures(pages, passage_id, polite, lambda: False)
+        for place in places:
+            row = {"passageId": passage_id, "place": place}
+            if place in found:
+                data = next(b for n, b in images.items() if n == found[place]["imageUrl"].removeprefix("/data/"))
+                candidate = f"{slug(place)}.{image_ext(data)}"
                 (out_dir / candidate).write_bytes(data)
-                report.append({**row, "candidate": candidate, "bytes": len(data)})
-                print(f"{place:14} {licence:12} {len(data) // 1024:>4} KB  {candidate}")
-            except (urllib.error.URLError, ValueError, KeyError, StopIteration, IndexError, TimeoutError) as err:
-                report.append({**row, "rejected": f"{type(err).__name__}: {err}"})
-                sys.stderr.write(f"  {place}: {err}\n")
-            cache_file.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+                report.append({**row, "candidate": candidate, "bytes": len(data), "autoAlt": found[place]["imageAlt"], **sources[place]})
+                print(f"{place:14} {sources[place]['license']:14} {len(data) // 1024:>4} KB  {candidate}  <- {sources[place]['file'][:50]}")
+            else:
+                report.append({**row, "rejected": "nothing usable in the whole article"})
+                print(f"{place:14} NO PICTURE FOUND")
     (cards / "images.candidates.json").write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"\n{sum(1 for r in report if 'candidate' in r)} candidates, {sum(1 for r in report if 'rejected' in r)} rejected. Open them, then list the accepted ones in images.json.")
+    print(f"\n{sum(1 for r in report if 'candidate' in r)} of {len(report)} places have a candidate. Open them, then list the accepted ones in images.json.")
 
 
 def main(argv: list[str]) -> int:

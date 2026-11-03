@@ -58,7 +58,7 @@ def commons(title, license_name="CC BY-SA 4.0", mime="image/jpeg", description="
     meta = {"LicenseShortName": {"value": license_name}, "Artist": {"value": artist}}
     if description is not None:
         meta["ImageDescription"] = {"value": description}
-    return {"title": "File:" + title, "imageinfo": [{"mime": mime, "thumburl": f"https://upload.wikimedia.org/thumb/{title}", "extmetadata": meta}]}
+    return {"title": "File:" + title, "imageinfo": [{"mime": mime, "width": 800, "height": 600, "thumburl": f"https://upload.wikimedia.org/thumb/{title}", "extmetadata": meta}]}
 
 
 class FakeHttp:
@@ -90,7 +90,7 @@ def test_only_real_places_with_a_description_become_cards_and_everything_is_one_
     passage = {**PASSAGE, "content": "<p>We saw Piedmont Park, Atlanta, Doug Widener, Georgia, Charlotte and Berlin.</p>"}
     out = ep.enrich_places(passage, http)
     assert sorted(out.cards["places"]) == ["Atlanta", "Piedmont Park"]
-    assert sum("en.wikipedia.org" in u for u in http.urls) == 1  # one batch, not one request per place
+    assert sum("en.wikipedia.org" in u and "coordinates" in u for u in http.urls) == 1  # ONE batched place lookup, not one request per place
     q = urllib.parse.parse_qs(urllib.parse.urlparse(http.urls[0]).query)
     assert q["redirects"] == ["1"] and set(q["titles"][0].split("|")) >= {"Piedmont Park", "Atlanta", "Georgia"}
 
@@ -118,7 +118,7 @@ def test_alt_text_falls_back_to_the_description_when_commons_has_none_or_too_lon
         assert alt == "Picture of Piedmont Park: urban park in Atlanta, Georgia." and len(alt) <= 125
 
 
-@pytest.mark.parametrize("kwargs,why", [({"license_name": "CC BY-NC 4.0"}, "non-commercial"), ({"mime": "image/svg+xml"}, "svg"), ({"license_name": "GFDL"}, "gfdl")])
+@pytest.mark.parametrize("kwargs,why", [({"license_name": "CC BY-NC 4.0"}, "non-commercial"), ({"license_name": "GFDL"}, "gfdl"), ({"mime": "image/gif"}, "gif")])
 def test_a_picture_that_fails_the_gate_leaves_a_text_only_card(kwargs, why):
     out = ep.enrich_places(PASSAGE, FakeHttp(wiki([PARK]), [commons("Lake.jpg", **kwargs)]))
     card = out.cards["places"]["Piedmont Park"]
@@ -164,7 +164,7 @@ def test_at_most_a_few_pictures_are_downloaded_per_passage():
     pages = [{"title": f"Place{c}", "coordinates": [{}], "description": "A town", "pageimage": f"{c}.jpg"} for c in "ABCDEFGHIJ"]
     http = FakeHttp(wiki(pages), [commons(f"{c}.jpg") for c in "ABCDEFGHIJ"])
     out = ep.enrich_places({**PASSAGE, "content": "<p>We saw " + " and ".join(f"Place{c}" for c in "ABCDEFGHIJ") + ".</p>"}, http)
-    assert len(out.images) <= ep.MAX_IMAGES == 6
+    assert len(out.images) <= ep.MAX_IMAGES == 10
 
 
 def test_write_enriched_puts_the_cards_and_pictures_in_the_data_folder_and_never_replaces_reviewed_cards(tmp_path):
@@ -255,3 +255,111 @@ def test_spacy_places_are_added_without_a_leading_the_and_never_duplicate_a_run_
     http = FakeHttp(wiki(pages))
     out = ep.enrich_places(passage, http, ner=lambda text: ["the River Thames", "The Lake Windermere", "Lake Windermere"])
     assert sorted(out.cards["places"]) == ["Lake Windermere", "River Thames"]
+
+
+# ---- never blank: SVG maps (rasterised by Commons), unhelpful lead images and the article's other pictures ----------------------------
+class FakeWiki2(FakeHttp):
+    """Also answers Wikipedia's `prop=images` (every picture used in an article) and serves PNG thumbnails for SVG originals."""
+
+    def __init__(self, wikipedia, commons_pages=None, article_images=None, image=JPEG):
+        super().__init__(wikipedia, commons_pages, image)
+        self.article_images = article_images or {}
+
+    def __call__(self, url, binary=False):
+        if not binary and "en.wikipedia.org" in url and "prop=images" in url:
+            self.urls.append(url)
+            pages = [{"title": t, "images": [{"ns": 6, "title": "File:" + f} for f in files]} for t, files in self.article_images.items()]
+            return {"query": {"pages": {str(i): p for i, p in enumerate(pages)}}}
+        return super().__call__(url, binary)
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"p" * 100
+ENGLAND = {"title": "England", "coordinates": [{}], "description": "Country in the United Kingdom", "pageimage": "Flag_of_England.svg"}
+EPASSAGE = {**PASSAGE, "content": "<p>We went to England last year.</p>"}
+
+
+def svg_info(title, license_name="Public domain", description="Location of England within Europe"):
+    info = commons(title, license_name=license_name, mime="image/svg+xml", description=description)
+    info["imageinfo"][0].update(width=800, height=600)
+    return info
+
+
+def test_an_svg_original_is_accepted_when_commons_serves_a_real_png_thumbnail_of_it():
+    http = FakeWiki2(wiki([{**ENGLAND, "pageimage": "England_in_Europe_(orthographic_projection).svg"}]), [svg_info("England_in_Europe_(orthographic_projection).svg")], image=PNG)
+    card = ep.enrich_places(EPASSAGE, http).cards["places"]["England"]
+    assert card["imageUrl"].endswith(".png") and card["imageAlt"] == "Location of England within Europe"
+    assert card["imageCredit"].startswith("Image: ")  # a map, not a photo
+
+
+def test_a_flag_or_emblem_is_never_chosen_and_the_next_picture_in_the_article_is():
+    infos = [svg_info("Flag_of_England.svg"), commons("Durham_Cathedral.jpg", description="Durham Cathedral from the river")]
+    http = FakeWiki2(wiki([ENGLAND]), infos, article_images={"England": ["Flag_of_England.svg", "Coat_of_arms_of_England.svg", "Durham_Cathedral.jpg"]})
+    out = ep.enrich_places(EPASSAGE, http)
+    assert out.cards["places"]["England"]["imageAlt"] == "Durham Cathedral from the river" and len(out.images) == 1
+
+
+def test_for_a_city_or_landmark_photos_are_preferred_over_maps():
+    city = {"title": "Lakeville", "coordinates": [{}], "description": "City in Ohio, United States", "pageimage": "Flag_of_Lakeville.svg"}
+    infos = [svg_info("Locator_map.svg"), commons("Skyline.jpg", description="The downtown skyline at dusk")]
+    http = FakeWiki2(wiki([city]), infos, article_images={"Lakeville": ["Locator_map.svg", "Skyline.jpg"]})
+    out = ep.enrich_places({**PASSAGE, "content": "<p>We drove to Lakeville.</p>"}, http, ner=lambda t: ["Lakeville"])
+    assert out.cards["places"]["Lakeville"]["imageUrl"].endswith(".jpg")
+
+
+def test_for_a_country_state_or_continent_a_location_map_beats_portraits_and_other_photos():
+    infos = [commons("Henry_VIII_portrait.jpg", description="A king"), svg_info("England_in_Europe_(orthographic_projection).svg"), commons("Beach.jpg")]
+    http = FakeWiki2(wiki([ENGLAND]), infos, article_images={"England": ["Henry_VIII_portrait.jpg", "Beach.jpg", "England_in_Europe_(orthographic_projection).svg"]})
+    card = ep.enrich_places(EPASSAGE, http).cards["places"]["England"]
+    assert card["imageUrl"].endswith(".jpg") is False or card["imageAlt"] == "Location of England within Europe"
+    assert card["imageAlt"] == "Location of England within Europe"
+
+
+def test_place_types_that_get_a_map_first():
+    for d in ("Country in East Asia", "Continent in the Northern Hemisphere", "State of the United States", "Island country", "Region in Italy"):
+        assert ep._prefers_map(d), d
+    for d in ("Capital of England", "Urban park in Atlanta, Georgia", "Bridge over the Thames", "Earth's highest mountain", "Major river in Africa", "Ceremonial county in the East of England", "", None):
+        assert not ep._prefers_map(d), d
+
+
+def test_for_a_country_the_standard_commons_location_map_is_tried_by_name_even_when_the_article_lists_it_nowhere():
+    infos = [commons("Some_Photo.jpg", description="A countryside view"), svg_info("England_(orthographic_projection).svg", description="England on a globe")]
+    http = FakeWiki2(wiki([{**ENGLAND, "pageimage": "Some_Photo.jpg"}]), infos)
+    card = ep.enrich_places(EPASSAGE, http).cards["places"]["England"]
+    assert card["imageAlt"] == "England on a globe"
+    commons_queries = " ".join(u for u in http.urls if "commons.wikimedia.org" in u)
+    assert "England_%28orthographic_projection%29.svg" in commons_queries or "England+%28orthographic+projection%29.svg" in commons_queries
+
+
+def test_a_lead_picture_with_a_bad_licence_falls_back_to_another_picture_of_the_article():
+    lead = {**ENGLAND, "pageimage": "Lead.jpg"}
+    infos = [commons("Lead.jpg", license_name="CC BY-NC 4.0"), commons("Other.jpg", description="A village green with a pond")]
+    http = FakeWiki2(wiki([lead]), infos, article_images={"England": ["Lead.jpg", "Other.jpg"]})
+    assert ep.enrich_places(EPASSAGE, http).cards["places"]["England"]["imageAlt"] == "A village green with a pond"
+
+
+def test_a_place_stays_text_only_only_when_nothing_in_the_whole_article_qualifies():
+    infos = [svg_info("Flag_of_England.svg"), commons("Bad.jpg", license_name="All rights reserved")]
+    http = FakeWiki2(wiki([ENGLAND]), infos, article_images={"England": ["Flag_of_England.svg", "Bad.jpg", "Icon.svg", "Song.ogg"]})
+    out = ep.enrich_places(EPASSAGE, http)
+    assert out.cards["places"]["England"]["imageUrl"] is None and out.images == {}
+
+
+def test_thumbnail_bytes_must_really_be_a_jpeg_or_png_even_for_an_svg():
+    http = FakeWiki2(wiki([{**ENGLAND, "pageimage": "Map.svg"}]), [svg_info("Map.svg")], image=b"<svg><script>1</script></svg>")
+    assert ep.enrich_places(EPASSAGE, http).cards["places"]["England"]["imageUrl"] is None
+
+
+def test_every_one_of_many_places_can_get_a_picture_within_the_per_passage_limit():
+    pages = [{"title": f"Place{c}", "coordinates": [{}], "description": "A town", "pageimage": f"{c}.jpg"} for c in "ABCDEFGHIJ"]
+    out = ep.enrich_places({**PASSAGE, "content": "<p>We saw " + " and ".join(f"Place{c}" for c in "ABCDEFGHIJ") + ".</p>"},
+                           FakeWiki2(wiki(pages), [commons(f"{c}.jpg") for c in "ABCDEFGHIJ"]))
+    assert len(out.images) == ep.MAX_IMAGES == 10
+
+
+def test_a_title_with_a_qualifier_never_borrows_the_map_of_its_namesake():
+    """"Georgia (U.S. state)" must not get the standard map named just "Georgia", which is a different place (the country)."""
+    assert ep._map_names("Georgia (U.S. state)") == ["Georgia in United States.svg"]
+    assert ep._map_names("Georgia (country)") == []  # unknown qualifier: no guessing
+    assert ep._map_names("Turkey (bird)") == []
+    assert ep._map_names("China")[0] == "China (orthographic projection).svg"
+    assert all("Georgia" not in n or n == "Georgia in United States.svg" for n in ep._map_names("Georgia (U.S. state)"))

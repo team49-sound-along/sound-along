@@ -414,11 +414,11 @@
    "name": "Georgia",
    "summary": "A state in the southeastern United States. Its capital is Atlanta.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null,
-   "imageAlt": null,
-   "imageCredit": null,
-   "imageWidth": null,
-   "imageHeight": null
+   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.place-georgia-d374f8b9.png",
+   "imageAlt": "A map of the United States with the state of Georgia coloured red, in the south-east.",
+   "imageCredit": "Image: TUBS, CC BY-SA 3.0, via Wikimedia Commons",
+   "imageWidth": 500,
+   "imageHeight": 310
   }
  }
 }

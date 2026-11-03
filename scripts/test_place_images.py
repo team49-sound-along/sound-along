@@ -132,3 +132,8 @@ def test_apply_stores_the_picture_size_and_places_without_a_picture_get_none(tmp
     out = json.loads((cards / f"{pid}.cards.json").read_text())["places"]
     assert (out["Piedmont Park"]["imageWidth"], out["Piedmont Park"]["imageHeight"]) == (500, 625)
     assert (out["Atlanta"]["imageWidth"], out["Atlanta"]["imageHeight"]) == (None, None)
+
+
+def test_a_map_is_credited_as_an_image_not_a_photo_even_under_cc_by_sa():
+    assert pi.credit_line("Domob", "CC BY-SA 3.0", kind="Image") == "Image: Domob, CC BY-SA 3.0, via Wikimedia Commons"
+    assert pi.credit_line("Domob", "CC BY-SA 3.0") == "Photo: Domob, CC BY-SA 3.0, via Wikimedia Commons"

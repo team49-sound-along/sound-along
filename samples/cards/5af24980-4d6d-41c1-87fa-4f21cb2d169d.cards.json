@@ -384,11 +384,11 @@
    "name": "Boston Harbor",
    "summary": "A natural harbor next to the city of Boston, Massachusetts. In this story, the tea was thrown into it.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null,
-   "imageAlt": null,
-   "imageCredit": null,
-   "imageWidth": null,
-   "imageHeight": null
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.place-boston-harbor-04d8f4f8.jpg",
+   "imageAlt": "Tall city buildings along the edge of Boston Harbor, with sailboats on the water.",
+   "imageCredit": "Photo: Beyond My Ken, CC BY-SA 4.0, via Wikimedia Commons",
+   "imageWidth": 500,
+   "imageHeight": 288
   },
   "Boston": {
    "name": "Boston",
@@ -414,41 +414,41 @@
    "name": "England",
    "summary": "A country in the United Kingdom, on the island of Great Britain. Its capital is London.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null,
-   "imageAlt": null,
-   "imageCredit": null,
-   "imageWidth": null,
-   "imageHeight": null
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.place-england-74b3e0d1.png",
+   "imageAlt": "A globe with England coloured green, beside the rest of Europe in the north Atlantic.",
+   "imageCredit": "Image: Rob, CC BY-SA 3.0, via Wikimedia Commons",
+   "imageWidth": 500,
+   "imageHeight": 500
   },
   "China": {
    "name": "China",
    "summary": "A large country in East Asia.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null,
-   "imageAlt": null,
-   "imageCredit": null,
-   "imageWidth": null,
-   "imageHeight": null
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.place-china-f0923fe6.png",
+   "imageAlt": "A globe centred on Asia with China coloured dark green.",
+   "imageCredit": "Image: Ssolbergj, CC BY-SA 4.0, via Wikimedia Commons",
+   "imageWidth": 500,
+   "imageHeight": 500
   },
   "India": {
    "name": "India",
    "summary": "A large country in South Asia.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null,
-   "imageAlt": null,
-   "imageCredit": null,
-   "imageWidth": null,
-   "imageHeight": null
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.place-india-cac76c1c.png",
+   "imageAlt": "A globe centred on the Indian Ocean with India coloured dark green.",
+   "imageCredit": "Image: Ssolbergj (talk), CC BY-SA 3.0, via Wikimedia Commons",
+   "imageWidth": 500,
+   "imageHeight": 500
   },
   "North America": {
    "name": "North America",
    "summary": "A continent in the northern and western parts of the world.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null,
-   "imageAlt": null,
-   "imageCredit": null,
-   "imageWidth": null,
-   "imageHeight": null
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.place-north-america-f6df623a.png",
+   "imageAlt": "A globe with the continent of North America coloured green.",
+   "imageCredit": "Image: Bosonic dressing, CC BY-SA 3.0, via Wikimedia Commons",
+   "imageWidth": 500,
+   "imageHeight": 500
   }
  }
 }

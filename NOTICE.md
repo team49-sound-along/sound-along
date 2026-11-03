@@ -26,15 +26,21 @@ license for the version you install.
   `scripts/fetch_place_summaries.py` shows exactly which articles were read. Word definitions from ReadWorks' own vocabulary data are
   reused only for words ReadWorks already defined. A person must review the cards before students see them
   (`samples/cards/REVIEW.md`).
-- `samples/cards/images/` holds small place pictures from Wikimedia Commons. They are NOT under this repository's MIT licence: each keeps
-  its own free licence (CC0, public domain, CC BY or CC BY-SA), is credited on its place card, and CC BY-SA pictures stay under CC BY-SA
-  if you reuse them. A person looked at each one before it was accepted (`samples/cards/images.json`).
+- `samples/cards/images/` holds small place pictures and location maps from Wikimedia Commons. They are NOT under this repository's MIT licence: each
+  keeps its own free licence (CC0, public domain, CC BY or CC BY-SA), is credited on its place card, and CC BY-SA pictures stay under CC BY-SA if you
+  reuse them. A person looked at each one before it was accepted (`samples/cards/images.json`).
   - Piedmont Park: Frank Schulenburg, CC BY-SA 4.0, <https://commons.wikimedia.org/wiki/File:Piedmont_Park%E2%80%99s_Lake_Clara_Meer_with_Midtown_Atlanta_skyline_%282024%29-104A8428.jpg>
   - Atlanta: AtlChampion, CC BY-SA 4.0, <https://commons.wikimedia.org/wiki/File:A2ATL20250614-0721_%28cropped%29.jpg>
   - Boston: Ian Howard, CC BY 2.5, <https://commons.wikimedia.org/wiki/File:ISH_WC_Boston4.jpg>
   - Great Britain: Jeff Schmaltz, NASA MODIS Rapid Response Team, Public domain, <https://commons.wikimedia.org/wiki/File:MODIS_-_Great_Britain_-_2012-06-04_during_heat_wave_%28cropped%29.jpg>
   - Hertfordshire: Peter O'Connor aka anemoneprojectors, CC BY-SA 2.0, <https://commons.wikimedia.org/wiki/File:GOC_Hexton_007_Chilterns_landscape_%2824372234911%29_%28cropped%29.jpg>
   - London: Ilya Grigorik, CC BY-SA 3.0, <https://commons.wikimedia.org/wiki/File:London_Skyline_%28125508655%29.jpeg>
+  - Georgia: TUBS, CC BY-SA 3.0, <https://commons.wikimedia.org/wiki/File:Georgia_in_United_States.svg>
+  - England: Rob, CC BY-SA 3.0, <https://commons.wikimedia.org/wiki/File:England_%28orthographic_projection%29.svg>
+  - China: Ssolbergj, CC BY-SA 4.0, <https://commons.wikimedia.org/wiki/File:China_%28orthographic_projection%29.svg>
+  - India: Ssolbergj (talk), CC BY-SA 3.0, <https://commons.wikimedia.org/wiki/File:India_%28orthographic_projection%29.svg>
+  - North America: Bosonic dressing, CC BY-SA 3.0, <https://commons.wikimedia.org/wiki/File:Location_North_America.svg>
+  - Boston Harbor: Beyond My Ken, CC BY-SA 4.0, <https://commons.wikimedia.org/wiki/File:2017_Boston_skyline_from_Boston_Harbor_5_.jpg>
 - Headings inside a passage are read aloud (ReadWorks' human recording reads them even though their `text` field omits them).
 - ReadWorks' existing human and Polly recordings are NOT stored in this repository. `scripts/build_samples.py`
   downloads them from ReadWorks' public CDN at build time to align and measure them.
