@@ -83,3 +83,9 @@ test("a passage over the word limit is refused with advice to split it", async (
   assert.equal(ok.title, "T");
   assert.throws(() => parseGenerateInput({ title: "T", text: "go ".repeat(LIMITS.wordsMax + 1).trim() }), (err) => err.status === 400 && /Split it into parts/.test(err.message));
 });
+
+test("the word limit counts dash-joined words the way the tokenizer does", async () => {
+  const { parseGenerateInput, LIMITS } = await import("../src/validate.js");
+  const dashed = "a—b ".repeat(Math.floor(LIMITS.wordsMax / 2) + 1); // few spaces, but each chunk becomes two spoken words
+  assert.throws(() => parseGenerateInput({ title: "T", text: dashed }), (err) => err.status === 400);
+});

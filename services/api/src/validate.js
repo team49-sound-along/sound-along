@@ -42,7 +42,8 @@ export function parseGenerateInput(body) {
   if (title.length < 1 || title.length > LIMITS.titleMax) bad(`Title must be 1 to ${LIMITS.titleMax} characters.`);
   if (text.length < LIMITS.textMin) bad(`Add at least ${LIMITS.textMin} characters of text.`);
   if (text.length > LIMITS.textMax) bad(`Text can be at most ${LIMITS.textMax.toLocaleString("en-US")} characters.`);
-  const words = text.split(/\s+/).length;
+  // Count like the pipeline tokenizer: whitespace (Python also treats \x1c-\x1f as space) and a split after each em/en dash. Slightly over-counts, never under.
+  const words = text.split(/[\s\x1c-\x1f]+/).length + (text.match(/[\u2013\u2014]/g) ?? []).length;
   if (words > LIMITS.wordsMax) bad(`This passage is ${words.toLocaleString("en-US")} words, which is too long to read aloud in one go. Split it into parts of up to ${LIMITS.wordsMax.toLocaleString("en-US")} words.`);
   let recordingId = null;
   if (body.recordingId != null) {
