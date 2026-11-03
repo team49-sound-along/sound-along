@@ -28,7 +28,7 @@ export function createFileManifest(dataDir) {
   };
 }
 
-/** S3 manifest (data/ab/manifest.json) read through an injected client and cached for 60 s. A missing object is an empty manifest. */
+/** S3 manifest (raw/ab/manifest.json) read through an injected client and cached for 60 s. A missing object is an empty manifest. */
 export function createS3Manifest({ s3, bucket, now = Date.now, cacheMs = CACHE_MS }) {
   let cached = null; // { expires, clips }
   return {

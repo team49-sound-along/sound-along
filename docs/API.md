@@ -120,7 +120,7 @@ Written by the API when a job starts. This is the generator's whole input.
 - Pronunciation fixes apply to English passages only (the UI says so).
 
 ## Blind listening test (the vision document's "blind listener rating" metric)
-Clips are short anonymous excerpts (about 30 s) of the SAME text read by different narrators, loudness-matched and encoded identically, built by `scripts/build_samples.py`. The files are `data/ab/<token>.mp3` where `<token>` is 16 random hex characters, so a URL does not reveal which narrator it is. `data/ab/manifest.json` (never served) maps tokens to meaning:
+Clips are short anonymous excerpts (about 30 s) of the SAME text read by different narrators, loudness-matched and encoded identically, built by `scripts/build_samples.py`. The files are `data/ab/<token>.mp3` where `<token>` is 16 random hex characters, so a URL does not reveal which narrator it is. `ab/manifest.json` in the data folder locally and `raw/ab/manifest.json` in S3 (never served) maps tokens to meaning:
 ```json
 [ { "token": "9f3a1c0b5d7e2a46", "passageId": "<uuid>", "title": "Let's Meet a Park Caretaker", "kind": "ai" | "human" | "polly_current" } ]
 ```

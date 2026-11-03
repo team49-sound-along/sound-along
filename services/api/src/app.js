@@ -30,7 +30,7 @@ const SECURITY_HEADERS = {
  *   jobs     job registry (async)      (memory locally, DynamoDB on AWS)
  *   runner   starts generation         (child process locally, Step Functions on AWS)
  *   recordings  human recording slots   (local disk, or S3 presigned PUT)
- *   manifest blind-test clip manifest   (<dataDir>/ab/manifest.json locally, S3 data/ab/manifest.json on AWS)
+ *   manifest blind-test clip manifest   (<dataDir>/ab/manifest.json locally, S3 raw/ab/manifest.json on AWS)
  *   sources  stored job input by id     (raw/<id>.json on disk or S3; used by regenerate)
  */
 export function createApp({ store, catalog, jobs, runner, recordings, sources, config, manifest = config.dataDir ? createFileManifest(config.dataDir) : null, random, logger = console }) {
