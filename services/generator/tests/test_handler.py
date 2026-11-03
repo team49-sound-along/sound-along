@@ -50,7 +50,7 @@ def test_passage_summary_matches_catalog_contract(world):
     h.process(EVENT, make_deps(s3, table))
     item = table.items[("PASSAGE", PASSAGE_ID)]
     timing = json.loads(gzip.decompress(s3.objects[f"data/{PASSAGE_ID}.timing.json"]))
-    expected_keys = {"pk", "sk", "id", "title", "words", "durationMs", "engine", "voice", "createdAt", "source", "vocabCount", "language", "metrics"}
+    expected_keys = {"pk", "sk", "id", "title", "words", "durationMs", "engine", "voice", "createdAt", "source", "vocabCount", "language", "translations", "translationOf", "metrics"}
     assert set(item) == expected_keys
     assert item["id"] == PASSAGE_ID and item["title"] == "The Park"
     assert item["words"] == timing["metrics"]["words"] == 8

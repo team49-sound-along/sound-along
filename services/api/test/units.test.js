@@ -65,3 +65,14 @@ test("vocabCount ignores empty or missing vocabulary and entries without a word"
   assert.equal(count({}), 0);
   assert.equal(count({ 1: { word: "nature" }, 2: { definition: "no word here" }, 3: { word: "  " } }), 1);
 });
+
+test("summaries carry the translation links so the reader can offer a language switch without another request", () => {
+  const timing = { title: "Park", translations: { es: { id: "T1", sentenceMap: [[0]] } }, translationOf: undefined };
+  const s = summarizePassage({ id: "x", timing, mtimeMs: 0, source: "sample" });
+  assert.deepEqual(s.translations, { es: "T1" });
+  assert.equal(s.translationOf, null);
+  const back = summarizePassage({ id: "T1", timing: { title: "Parque", language: "es", translationOf: { id: "x", lang: "en", sentenceMap: [0] } }, mtimeMs: 0 });
+  assert.equal(back.translationOf, "x");
+  assert.deepEqual(back.translations, {});
+  assert.deepEqual(summarizePassage({ id: "z", timing: { title: "T", translations: { es: {}, fr: null } }, mtimeMs: 0 }).translations, {});
+});

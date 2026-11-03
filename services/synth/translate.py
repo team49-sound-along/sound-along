@@ -14,7 +14,7 @@ import html as html_lib
 import os
 import re
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, Sequence
 
 from pipeline import tokenize_html
@@ -35,6 +35,7 @@ class Translated:
     content_html: str
     sentence_map: list[list[int]]  # source sentence i -> target sentence numbers
     unprotected: list[int]  # source sentence numbers whose place names could not be protected
+    localized: dict[str, str] = field(default_factory=dict)  # place name -> its name in the target language (Great Britain -> Gran Bretaña)
 
 
 # ---- placeholders ----------------------------------------------------------------------------------------------------------------
@@ -81,7 +82,8 @@ def _sentence_count(text: str) -> int:
     return max(1, len({t.sentence for t in tokenize_html(f"<p>{html_lib.escape(text, quote=False)}</p>")}))
 
 
-def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Callable[[str], list[str]]) -> Translated:
+def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Callable[[str], list[str]],
+                      localize: Optional[Callable[[list[str]], Any]] = None) -> Translated:
     """Translate title and text. `names_fn(plain_text)` returns the place names to protect (spaCy places for English; capitalised names otherwise)."""
     tokens = tokenize_html(passage.get("content") or "")
     if not tokens:
@@ -101,6 +103,10 @@ def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Cal
     if order != list(range(len(order))):
         raise ValueError("sentence numbers are not contiguous; cannot build a sentence map")
 
+    try:
+        local: dict[str, str] = dict(localize(names)) if (localize and names) else {}
+    except Exception:  # noqa: BLE001 (offline or garbage: keep the original names)
+        local = {}
     masked = [mask(text_of[i], names) for i in order]
     first = _translate_all([m for m, _ in masked], model)
     results: list[str] = []
@@ -111,7 +117,7 @@ def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Cal
             unprotected.append(i)
             restored = raw
         else:
-            restored = unmask(raw, table)
+            restored = unmask(raw, {p: local.get(n, n) for p, n in table.items()})
         restored = " ".join(restored.split())
         results.append(restored if _END.search(restored) else restored + ".")
 
@@ -129,7 +135,7 @@ def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Cal
         cursor += n
     if cursor != len({t.sentence for t in tokenize_html(content)}):
         raise ValueError("the translated sentence count does not match the sentence map")
-    return Translated(title=title, content_html=content, sentence_map=sentence_map, unprotected=unprotected)
+    return Translated(title=title, content_html=content, sentence_map=sentence_map, unprotected=unprotected, localized=local)
 
 
 # ---- the real model --------------------------------------------------------------------------------------------------------------

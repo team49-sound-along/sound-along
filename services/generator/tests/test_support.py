@@ -51,3 +51,13 @@ def test_vocab_count_counts_distinct_words_not_senses():
     assert passage_summary(timing, "2026-11-03T00:00:00Z")["vocabCount"] == 4
     assert passage_summary({"id": "x"}, "t")["vocabCount"] == 0
     assert passage_summary({"id": "x", "vocab": {"1": {"word": "nature"}, "2": {"definition": "no word"}, "3": {"word": "  "}}}, "t")["vocabCount"] == 1
+
+
+def test_summaries_and_index_entries_carry_the_translation_links():
+    from summary import index_entry, passage_summary
+
+    s = passage_summary({"id": "x", "translations": {"es": {"id": "T1", "sentenceMap": [[0]]}, "fr": {}}}, "t")
+    assert s["translations"] == {"es": "T1"} and s["translationOf"] is None
+    back = passage_summary({"id": "T1", "language": "es", "translationOf": {"id": "x", "lang": "en", "sentenceMap": [0]}}, "t")
+    assert back["translationOf"] == "x" and back["translations"] == {}
+    assert index_entry(s)["translations"] == {"es": "T1"} and index_entry({"id": "a"})["translations"] == {} and index_entry({"id": "a"})["translationOf"] is None

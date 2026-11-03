@@ -113,3 +113,17 @@ def test_the_real_model_keeps_place_names_in_a_real_passage():
     out = tr.translate_passage({"title": "Park", "content": HTML}, model, names_fn=names)
     assert "Piedmont Park" in out.content_html and "Atlanta" in out.content_html and out.unprotected == []
     assert "parque" in out.content_html.lower()
+
+
+def test_localised_place_names_are_restored_instead_of_the_original_and_reported():
+    out = tr.translate_passage({"title": "", "content": "<p>We saw Great Britain.</p>"}, lambda xs: ["Vimos " + x.split()[-1] for x in xs], names_fn=lambda t: ["Great Britain"],
+                               localize=lambda names: {"Great Britain": "Gran Bretaña"})
+    assert "Gran Bretaña" in out.content_html and "Great Britain" not in out.content_html and out.localized == {"Great Britain": "Gran Bretaña"}
+
+
+def test_a_failing_localiser_just_keeps_the_original_names():
+    def boom(names):
+        raise RuntimeError("offline")
+
+    out = tr.translate_passage({"title": "", "content": "<p>We saw Great Britain.</p>"}, lambda xs: ["Vimos " + x.split()[-1] for x in xs], names_fn=lambda t: ["Great Britain"], localize=boom)
+    assert "Great Britain" in out.content_html and out.localized == {}

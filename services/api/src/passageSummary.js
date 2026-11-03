@@ -15,6 +15,8 @@ export function summarizePassage({ id, timing, mtimeMs, source }) {
     source: source === "generated" ? "generated" : "sample",
     vocabCount: distinctVocabWords(timing.vocab),
     pairId: timing.pairId ?? null,
+    translations: Object.fromEntries(Object.entries(timing.translations ?? {}).filter(([, t]) => t?.id).map(([lang, t]) => [lang, t.id])),
+    translationOf: timing.translationOf?.id ?? null,
     language: timing.language === "es" ? "es" : "en",
   };
 }
