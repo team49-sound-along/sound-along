@@ -44,3 +44,23 @@ def test_api_role_reads_raw_inputs_and_the_listening_manifest_and_nothing_broade
 
 def test_constants_name_exactly_what_the_api_touches() -> None:
     assert API_RAW_PREFIX == "raw/*" and API_MANIFEST_KEY == "raw/ab/manifest.json"
+
+
+@pytest.mark.parametrize("mode", ["lambda", "ec2"])
+def test_the_generator_can_read_data_so_translation_linking_and_the_unchanged_check_work_on_aws(mode: str) -> None:
+    """process_translation, _previous_timing and _cards_reviewed all READ data/*. Without GetObject (and ListBucket, so a missing key is a 404 and
+    not a 403 that the code swallows) the translation would exist on AWS but never be linked, and translated cards would never be made."""
+    statements = [s for s in _statements(synth(mode)) if any(a in _actions(s) for a in ("s3:GetObject", "s3:PutObject", "s3:ListBucket"))]
+    template = synth(mode)
+    from tests.helpers import actions_for_roles_starting_with  # noqa: F401
+
+    roles = [p for p in template.find_resources("AWS::IAM::Policy").values() if any(r["Ref"].startswith("GeneratorFunctionServiceRole") for r in p["Properties"]["Roles"])]
+    grants = [s for p in roles for s in p["Properties"]["PolicyDocument"]["Statement"]]
+    reads = [s for s in grants if "s3:GetObject" in _actions(s)]
+    assert any("/data/*" in json.dumps(s["Resource"]) for s in reads), "the generator must be able to read data/*"
+    assert any("/raw/*" in json.dumps(s["Resource"]) for s in reads), "and still read its job inputs under raw/*"
+    lists = [s for s in grants if "s3:ListBucket" in _actions(s)]
+    assert lists and "data/*" in json.dumps(lists[0]["Condition"]["StringLike"]["s3:prefix"])
+    assert not [a for s in grants for a in _actions(s) if a in ("s3:*", "s3:Get*", "s3:Put*", "s3:List*", "s3:DeleteObject")]
+    puts = [s for s in grants if "s3:PutObject" in _actions(s)]
+    assert puts and all("raw" not in json.dumps(s["Resource"]) for s in puts), "writes stay on data/* only"

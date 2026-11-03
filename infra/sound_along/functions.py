@@ -84,6 +84,10 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
     )
     props.table.grant_read_write_data(fn)
     fn.add_to_role_policy(object_access(props.bucket, ["s3:GetObject"], "raw/*"))
+    # It also READS what it published: the previous timing (skip unchanged input), reviewed cards (never replace them), and in translate mode the
+    # source timing, cards and pictures it must link and translate. ListBucket makes a missing key a clean 404 instead of a 403 the code would swallow.
+    fn.add_to_role_policy(object_access(props.bucket, ["s3:GetObject"], "data/*"))
+    fn.add_to_role_policy(list_bucket(props.bucket, ["data/*"]))
     fn.add_to_role_policy(object_access(props.bucket, ["s3:PutObject"], "data/*"))
     return fn
 
