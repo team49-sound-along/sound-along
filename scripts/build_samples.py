@@ -75,16 +75,21 @@ def job_input(sample: dict, recording: Path | None) -> dict:
     }
 
 
-def generate(passage_file: Path, recording: Path | None) -> None:
+def generate(passage_file: Path, recording: Path | None, workdir: Path) -> None:
     sample = json.loads(passage_file.read_text())
-    raw = DATA / "raw" / f"{sample['uuid']}.json"
-    raw.parent.mkdir(parents=True, exist_ok=True)
     payload = job_input(sample, recording)
     payload["pronunciations"] = {k: v for k, v in payload["pronunciations"].items() if not k.startswith("_")}
-    # The stored source lets a passage be regenerated later with new settings or pronunciation fixes.
-    stored = {**payload, "recording": None, "humanPassageId": payload["humanPassageId"]}
-    raw.write_text(json.dumps(stored, ensure_ascii=False))
-    subprocess.run([sys.executable, str(ROOT / "services/synth/run_local.py"), str(raw), str(DATA)], check=True, stdout=subprocess.DEVNULL)
+
+    # Stored source, kept so the passage can be regenerated later with new settings or pronunciation fixes. It has no
+    # recording path (that file only exists during this build); regenerating keeps the existing human variant and link.
+    stored = DATA / "raw" / f"{sample['uuid']}.json"
+    stored.parent.mkdir(parents=True, exist_ok=True)
+    stored.write_text(json.dumps({**payload, "recording": None}, ensure_ascii=False))
+
+    # The run itself gets its own input file, WITH the recording, so the human variant is produced.
+    run_input = workdir / f"{sample['uuid']}.run.json"
+    run_input.write_text(json.dumps(payload, ensure_ascii=False))
+    subprocess.run([sys.executable, str(ROOT / "services/synth/run_local.py"), str(run_input), str(DATA)], check=True, stdout=subprocess.DEVNULL)
 
 
 def asr_report(passage_id: str) -> tuple[dict, tuple[float, ...]]:
@@ -114,7 +119,7 @@ def main(skip_mos: bool) -> int:
         human_mp3 = download(HUMAN_PARK_URL, workdir / "park_human.mp3")
         recordings = {PARK: human_mp3, TEA: download(HUMAN_TEA_URL, workdir / "tea_human.mp3")}
         for passage_file in passages:
-            generate(passage_file, recordings.get(passage_file.stem))
+            generate(passage_file, recordings.get(passage_file.stem), workdir)
         log("2/4 done")
 
         log("3/4 checking against an independent Whisper transcript")

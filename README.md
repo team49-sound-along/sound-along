@@ -24,7 +24,7 @@ API Lambda -> Step Functions -> Generator Lambda (container, arm64, Kokoro baked
 Details: `docs/AWS.md` (AWS contract), `docs/API.md` (HTTP contract), `docs/COST.md` (long-run cost), `infra/README.md` (deploy).
 
 ## Run it locally (no AWS needed)
-Prerequisites: Python 3.12, Node 22 or newer, `uv`, `ffmpeg`.
+Prerequisites: Python 3.12, Node 18 or newer (the customer requires 18.x; see `.nvmrc`), and `uv`. No ffmpeg is needed.
 ```bash
 scripts/dev.sh          # installs, builds the samples, serves http://127.0.0.1:3101
 ```
@@ -47,14 +47,14 @@ All from `data/quality-report.json`, written by `scripts/build_samples.py` for t
 
 | Measure | Result |
 |---|---|
-| Word error vs an independent transcript | 1.1% (most differences are British vs American spelling in the Austen text) |
-| Word timing difference, median | 42 ms |
-| Word timing difference, 95th percentile | 223 ms |
-| Words within 100 ms / 250 ms | 82% / 96% |
-| Existing human recording aligned (Park Caretaker) | 356 of 360 words matched exactly |
+| Word error vs an independent transcript | 1.6% (most differences are British vs American spelling in the Austen text) |
+| Word timing difference, median | 60 ms |
+| Word timing difference, 95th percentile | 185 ms |
+| Words within 100 ms / 250 ms | 82% / 97% |
+| Existing human recordings aligned automatically | Park Caretaker 356 of 360 words exact; Tea Party 821 of 830 (the Tea Party audio carries ReadWorks' human-audio flag; I have not listened to confirm) |
 | Predicted naturalness (UTMOS, 1 to 5): our voice | 4.50 (Park Caretaker), 4.51 (Pride and Prejudice) |
-| Same predictor on ReadWorks' current Polly audio | 4.06 (Pride and Prejudice) |
-| Same predictor on the ReadWorks human recording | 3.20 (Park Caretaker; recording noise lowers this score) |
+| Same predictor on ReadWorks' current Polly audio | 4.05 (Pride and Prejudice) |
+| Same predictor on the ReadWorks human recording | 3.19 (Park Caretaker; recording noise lowers this score) |
 
 Honest limits:
 - Naturalness is a **predictor**, not a listening test, and it rewards clean audio. It does not show that the voice feels human to a child. Run a blind listening test with ReadWorks staff before making that claim.
@@ -64,10 +64,16 @@ Honest limits:
 ## Cost
 Reading is served from static files, so the cost that grows with usage is audio delivery. See `docs/COST.md`. The MP3 bitrate is a setting (`SOUND_ALONG_MP3_KBPS`, default 48).
 
-## Deviations from the ReadWorks technical guide
-- **Node 22 instead of 18** for the API (Node 18 is end of life and no longer offered by Lambda).
-- **Python 3.12 instead of 3.14** in the generator container (the published ML wheels we need target 3.12).
-- Vue 3, Express 4, AWS CDK 2.x, Lambda and S3 as requested. Minimal libraries: the web app has one runtime dependency (Vue).
+## Following the ReadWorks technical guide
+| Guide says | What we do |
+|---|---|
+| Python 3.14 for audio generation and product JSON | The generator image runs Python 3.14.10 (the `python3.14` Lambda base image). Kokoro declares support for 3.10 to 3.12 only, so it is installed with `--ignore-requires-python`; `scripts/smoke_generator_image.sh` proves the image works with no network (handler, synthesis, extra voices, recognition). Local development uses 3.12, where Kokoro is officially supported. |
+| Node 18.x, Express 4.x, Vue 3.x | All three. API and web tests pass on Node 18.20.8 (`.nvmrc`). Note that AWS deprecated `nodejs18.x` on Sep 1, 2025 (no security patches); creating Lambda functions with it through CDK stays allowed until Jul 29, 2027. |
+| AWS CDK 2.x, us-west-2, single account | Yes. |
+| Serverless for TTS, VM for content management, browser client | TTS is a Lambda container behind Step Functions. The content-management API runs on an EC2 VM by default; a Lambda option exists for lower idle cost (see `infra/README.md`). |
+| Timing in S3 "in zipped form" | Timing JSON is stored gzipped with `Content-Encoding`, so browsers decompress it transparently. |
+| Frontend reads JSON documents and only presents | The reader reads the S3 documents (`docs/FORMAT.md`). The library list and the teacher screens use the API. |
+| Minimal libraries, JS-native preferred | The web app has one runtime dependency (Vue). |
 
 ## Pronunciation fixes
 Edit `services/synth/pronunciations.json`: a word and a plain-English respelling (or `/phonemes/`). The passage still shows and highlights the original spelling. `scripts/build_samples.py` lists words the independent transcript heard differently, as candidates.

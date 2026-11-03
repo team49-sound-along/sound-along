@@ -3,6 +3,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { access, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { gzipSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { reviewOf, summarizePassage } from "../src/passageSummary.js";
 
@@ -33,7 +34,7 @@ export async function seed({ s3, ddb, bucket, tableName, dataDir, logger = conso
     ]);
     const timing = JSON.parse(timingText);
     await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.mp3`, Body: audio, ContentType: "audio/mpeg" }));
-    await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.timing.json`, Body: timingText, ContentType: "application/json" }));
+    await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.timing.json`, Body: gzipSync(timingText), ContentType: "application/json", ContentEncoding: "gzip" }));
     const item = { pk: "PASSAGE", sk: id, ...summarizePassage({ id, timing, mtimeMs, source }), metrics: timing.metrics ?? {}, ...(reviewOf(timing) && { review: reviewOf(timing) }) };
     await ddb.send(new PutCommand({ TableName: tableName, Item: item }));
     logger.info(`uploaded ${id}: ${item.title} (s3 data/${id}.mp3, data/${id}.timing.json; PASSAGE item)`);

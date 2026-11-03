@@ -1,12 +1,15 @@
 # Build from the project root:  docker build --platform linux/arm64 -f services/generator/Dockerfile -t sound-along-generator .
-FROM public.ecr.aws/lambda/python:3.12
+# ReadWorks' technical document requires Python 3.14 (a supported Lambda runtime). Kokoro declares support for 3.10 to
+# 3.12 only, so it is installed with --ignore-requires-python and proven by scripts/smoke_generator_image.sh.
+ARG PYTHON_VERSION=3.14
+FROM public.ecr.aws/lambda/python:${PYTHON_VERSION}
 
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # CPU-only PyTorch first (official CPU index), then everything else from PyPI.
 COPY services/generator/requirements.txt /tmp/requirements.txt
 RUN pip install --index-url https://download.pytorch.org/whl/cpu torch==2.15.0 \
- && pip install -r /tmp/requirements.txt
+ && pip install --ignore-requires-python -r /tmp/requirements.txt
 
 # spaCy model used by misaki (G2P). Fetched at build time and verified; never downloaded at runtime.
 ARG SPACY_MODEL_URL=https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import _bootstrap  # noqa: F401  (must come before synth imports)
 
+import gzip
 import json
 import logging
 import tempfile
@@ -47,8 +48,13 @@ def _read_raw(clients: Clients, raw_key: str) -> dict[str, Any]:
     return json.loads(body)
 
 
-def _put(clients: Clients, key: str, body: bytes, content_type: str) -> None:
-    clients.s3.put_object(Bucket=clients.bucket, Key=key, Body=body, ContentType=content_type)
+def _put(clients: Clients, key: str, body: bytes, content_type: str, gzipped: bool = False) -> None:
+    """ReadWorks' guide: large word-level timing "can live in S3 in zipped form". Gzipped objects carry
+    Content-Encoding, so a browser's fetch() decompresses them without any client code."""
+    if gzipped:
+        clients.s3.put_object(Bucket=clients.bucket, Key=key, Body=gzip.compress(body, mtime=0), ContentType=content_type, ContentEncoding="gzip")
+    else:
+        clients.s3.put_object(Bucket=clients.bucket, Key=key, Body=body, ContentType=content_type)
 
 
 def _publish(deps: Dependencies, variant: Variant, kbps: int, source: str, workdir: Path) -> dict[str, Any]:
@@ -57,7 +63,7 @@ def _publish(deps: Dependencies, variant: Variant, kbps: int, source: str, workd
     timing_path = workdir / f"{variant.id}.timing.json"
     timing_path.write_text(json.dumps(variant.timing, ensure_ascii=False), encoding="utf-8")
     _put(deps.clients, f"data/{variant.id}.mp3", mp3_path.read_bytes(), "audio/mpeg")
-    _put(deps.clients, f"data/{variant.id}.timing.json", timing_path.read_bytes(), "application/json")
+    _put(deps.clients, f"data/{variant.id}.timing.json", timing_path.read_bytes(), "application/json", gzipped=True)
     summary = passage_summary(variant.timing, now_iso(), source)
     put_passage_summary(deps.clients.table, summary)
     return summary

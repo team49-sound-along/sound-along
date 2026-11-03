@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { webcrypto } from "node:crypto";
 import { sha256Hex } from "./hash.js";
+
+globalThis.crypto ??= webcrypto; // Node 18 has no global crypto; browsers do
 
 test("matches the known SHA-256 of the empty string and of 'abc'", async () => {
   assert.equal(await sha256Hex(""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");

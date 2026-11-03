@@ -3,7 +3,19 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "scripts": { "dev": "vite", "build": "vite build", "test": "node --test src/" },
-  "dependencies": { "vue": "3.5.13" },
-  "devDependencies": { "@vitejs/plugin-vue": "5.2.1", "vite": "6.0.7" }
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "node --test src/"
+  },
+  "dependencies": {
+    "vue": "3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "5.2.1",
+    "vite": "6.0.7"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }

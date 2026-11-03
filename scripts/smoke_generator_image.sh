@@ -2,7 +2,7 @@
 # Build the generator image and prove it works with NO network, using the same code Lambda runs.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-docker build --platform linux/arm64 -f services/generator/Dockerfile -t sound-along-generator .
+docker build --platform linux/arm64 --build-arg "PYTHON_VERSION=${PYTHON_VERSION:-3.14}" -f services/generator/Dockerfile -t sound-along-generator .
 docker run --rm --network none -e PYTHONPATH=/var/task:/var/task/synth:/var/task/parse --entrypoint python sound-along-generator -c "
 import handler  # the real Lambda entry module must import cleanly
 from pipeline import generate

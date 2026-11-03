@@ -1,3 +1,4 @@
+import gzip
 import json
 from decimal import Decimal
 
@@ -26,7 +27,7 @@ def test_success_uploads_objects_with_content_types(world):
     assert result == {"status": "done", "jobId": JOB_ID, "passageId": PASSAGE_ID}
     assert s3.content_types[f"data/{PASSAGE_ID}.mp3"] == "audio/mpeg"
     assert s3.content_types[f"data/{PASSAGE_ID}.timing.json"] == "application/json"
-    timing = json.loads(s3.objects[f"data/{PASSAGE_ID}.timing.json"])
+    timing = json.loads(gzip.decompress(s3.objects[f"data/{PASSAGE_ID}.timing.json"]))
     assert timing["id"] == PASSAGE_ID and timing["title"] == "The Park"
     assert timing["engine"] == "fake" and timing["voice"] == "fake_voice"
     assert [w["text"] for w in timing["words"]][:3] == ["We", "went", "to"]
@@ -48,7 +49,7 @@ def test_passage_summary_matches_catalog_contract(world):
     s3, table = world
     h.process(EVENT, make_deps(s3, table))
     item = table.items[("PASSAGE", PASSAGE_ID)]
-    timing = json.loads(s3.objects[f"data/{PASSAGE_ID}.timing.json"])
+    timing = json.loads(gzip.decompress(s3.objects[f"data/{PASSAGE_ID}.timing.json"]))
     expected_keys = {"pk", "sk", "id", "title", "words", "durationMs", "engine", "voice", "createdAt", "source", "vocabCount", "metrics"}
     assert set(item) == expected_keys
     assert item["id"] == PASSAGE_ID and item["title"] == "The Park"
@@ -136,7 +137,7 @@ def test_review_suspects_are_stored_on_the_timing_and_the_passage_item():
     table = FakeTable()
     spoken = words_heard(["we", "went", "to", "the", "cart", "it", "was", "fun"])
     h.process(EVENT, v2_deps(s3, table, spoken))
-    timing = json.loads(s3.objects[f"data/{PASSAGE_ID}.timing.json"])
+    timing = json.loads(gzip.decompress(s3.objects[f"data/{PASSAGE_ID}.timing.json"]))
     assert timing["review"]["suspects"] == [{"expected": "park", "heard": "cart"}]
     assert table.items[("PASSAGE", PASSAGE_ID)]["review"]["suspects"][0]["expected"] == "park"
 
@@ -148,8 +149,8 @@ def test_a_recording_publishes_a_linked_human_variant_and_both_passage_items():
     spoken = words_heard(["we", "went", "to", "the", "park", "it", "was", "fun"], shift=0.5)
     result = h.process({**EVENT, "humanPassageId": HUMAN_ID}, v2_deps(s3, table, spoken))
     assert result["status"] == "done"
-    human = json.loads(s3.objects[f"data/{HUMAN_ID}.timing.json"])
-    ai = json.loads(s3.objects[f"data/{PASSAGE_ID}.timing.json"])
+    human = json.loads(gzip.decompress(s3.objects[f"data/{HUMAN_ID}.timing.json"]))
+    ai = json.loads(gzip.decompress(s3.objects[f"data/{PASSAGE_ID}.timing.json"]))
     assert human["engine"] == "human" and human["pairId"] == PASSAGE_ID and ai["pairId"] == HUMAN_ID
     assert human["words"][0]["start_ms"] == 500
     assert s3.content_types[f"data/{HUMAN_ID}.mp3"] == "audio/mpeg"
@@ -162,3 +163,11 @@ def test_the_stored_source_label_is_kept_for_regenerated_samples():
     table = FakeTable()
     h.process(EVENT, v2_deps(s3, table, []))
     assert table.items[("PASSAGE", PASSAGE_ID)]["source"] == "sample"
+
+
+def test_timing_is_stored_gzipped_with_content_encoding_and_audio_is_not():
+    s3 = FakeS3({EVENT["rawKey"]: raw_passage()})
+    h.process(EVENT, make_deps(s3, FakeTable()))
+    assert s3.content_encodings[f"data/{PASSAGE_ID}.timing.json"] == "gzip"
+    assert f"data/{PASSAGE_ID}.mp3" not in s3.content_encodings
+    assert s3.objects[f"data/{PASSAGE_ID}.timing.json"][:2] == b"\x1f\x8b"
