@@ -100,7 +100,7 @@ def test_a_card_has_the_contract_fields_a_description_summary_and_is_marked_unre
     card = out.cards["places"]["Piedmont Park"]
     assert set(card) == {"name", "summary", "attribution", "imageUrl", "imageAlt", "imageCredit", "imageWidth", "imageHeight"}
     assert card["summary"] == "Urban park in Atlanta, Georgia." and card["attribution"] == "Wikipedia, CC BY-SA"
-    assert out.cards["words"] == {} and out.cards["reviewed"] is False and out.cards["source"] == "wikipedia"
+    assert out.cards["words"] == {} and out.cards["reviewed"] is False and out.cards["source"] == "automatic"
 
 
 def test_the_picture_is_stored_under_a_hashed_name_with_alt_text_and_a_credit():
@@ -363,3 +363,39 @@ def test_a_title_with_a_qualifier_never_borrows_the_map_of_its_namesake():
     assert ep._map_names("Turkey (bird)") == []
     assert ep._map_names("China")[0] == "China (orthographic projection).svg"
     assert all("Georgia" not in n or n == "Georgia in United States.svg" for n in ep._map_names("Georgia (U.S. state)"))
+
+
+# ---- word pictures ride along (offline, independent of places) -------------------------------------------------------------------
+WORD_IMG = "/data/%s.word-cookies-0a1b2c3d.png" % PID
+
+
+def fake_words(passage_id, text, **kw):
+    card = {"word": "cookies", "syllables": None, "ipa": None, "partOfSpeech": "noun", "definition": "", "example": None, "spanish": [],
+            "imageUrl": WORD_IMG, "imageAlt": "cookie", "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0", "imageWidth": 72, "imageHeight": 72}
+    return {"cookies": card}, {WORD_IMG.removeprefix("/data/"): b"\x89PNG\r\n\x1a\n" + b"w" * 20}
+
+
+def test_word_pictures_are_included_even_when_the_network_is_down():
+    passage = {**PASSAGE, "content": "<p>We ate cookies after school.</p>"}
+    out = ep.enrich_places(passage, FakeHttp(wiki([]), fail=urllib.error.URLError("offline")), ner=lambda t: [], words=fake_words)
+    assert out is not None and list(out.cards["words"]) == ["cookies"] and out.cards["places"] == {}
+    assert WORD_IMG.removeprefix("/data/") in out.images
+
+
+def test_word_pictures_and_place_pictures_are_merged_in_one_cards_document():
+    out = ep.enrich_places(PASSAGE, FakeHttp(wiki([PARK]), [commons("Lake.jpg")]), ner=lambda t: ["Piedmont Park"], words=fake_words)
+    assert "Piedmont Park" in out.cards["places"] and "cookies" in out.cards["words"] and len(out.images) == 2
+
+
+def test_turning_place_lookups_off_does_not_remove_word_pictures():
+    http = FakeHttp(wiki([PARK]))
+    out = ep.enrich_places({**PASSAGE, "settings": {"placeCards": False}}, http, ner=lambda t: ["Piedmont Park"], words=fake_words)
+    assert http.urls == [] and out.cards["places"] == {} and "cookies" in out.cards["words"]
+
+
+def test_a_failing_word_finder_never_breaks_place_cards():
+    def boom(*a, **k):
+        raise RuntimeError("model missing")
+
+    out = ep.enrich_places(PASSAGE, FakeHttp(wiki([PARK]), [commons("Lake.jpg")]), ner=lambda t: ["Piedmont Park"], words=boom)
+    assert "Piedmont Park" in out.cards["places"] and out.cards["words"] == {}

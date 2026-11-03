@@ -107,9 +107,9 @@ def ner_places(text: str, nlp: Any = None) -> list[str]:
     The generator image already ships both for Kokoro's grapheme-to-phoneme step, so this adds no dependency."""
     try:
         if nlp is None:
-            import spacy
+            from nlp_shared import shared_nlp
 
-            nlp = spacy.load("en_core_web_sm", disable=["parser", "lemmatizer"])
+            nlp = shared_nlp()
         return [ent.text.strip() for ent in nlp(text).ents if ent.label_ in ("GPE", "LOC", "FAC") and ent.text.strip()]
     except Exception as err:  # noqa: BLE001 (a missing or broken model must never stop publishing)
         LOG.warning("place detection with spaCy skipped: %s", err)
@@ -319,16 +319,12 @@ def _switched_off(passage: dict[str, Any]) -> bool:
     return os.environ.get("PLACE_CARDS", "").strip().lower() in ("off", "0", "false", "no") or (passage.get("settings") or {}).get("placeCards") is False
 
 
-def enrich_places(
-    passage: dict[str, Any], http_get: HttpGet = fetch, budget_s: float = BUDGET_SECONDS,
-    clock: Callable[[], float] = time.monotonic, ner: Optional[Callable[[str], list[str]]] = None,
-) -> Optional[Enriched]:
-    """Cards for the real places in an English, teacher-generated passage, or None. Never raises."""
-    if passage.get("source") != "generated" or (passage.get("language") or "en") != "en" or _switched_off(passage):
-        return None
+def _place_cards(passage: dict[str, Any], tokens: Sequence[Any], plain: str, http_get: HttpGet, budget_s: float, clock: Callable[[], float],
+                 ner: Optional[Callable[[str], list[str]]]) -> tuple[dict[str, dict[str, Any]], dict[str, bytes]]:
+    """Place cards with pictures, or ({}, {}) when switched off, offline, or there is nothing to find. Never raises."""
+    if _switched_off(passage):
+        return {}, {}
     try:
-        tokens = tokenize_html(passage.get("content") or "")
-        plain = " ".join(t.text for t in tokens)
         if ner is None:
             candidates = place_candidates(tokens, MAX_CANDIDATES)  # tools and tests only: production always passes a place detector
         else:
@@ -341,21 +337,49 @@ def enrich_places(
                     candidates.append(extra)
             candidates = candidates[:MAX_CANDIDATES]
         if not candidates:
-            return None
+            return {}, {}
         started = clock()
         out_of_time = lambda: clock() - started > budget_s  # noqa: E731
         pages = _real_places(candidates, http_get)
         if not pages:
-            return None
+            return {}, {}
         pictures, images, _ = _pictures(pages, passage["uuid"], http_get, out_of_time)
         places = {
             name: {"name": name, "summary": _sentence(page["description"]), "attribution": "Wikipedia, CC BY-SA",
                    "imageUrl": None, "imageAlt": None, "imageCredit": None, "imageWidth": None, "imageHeight": None, **pictures.get(name, {})}
             for name, page in pages.items()
         }
-        return Enriched({"words": {}, "places": places, "reviewed": False, "source": "wikipedia"}, images)
+        return places, images
     except Exception as err:  # noqa: BLE001 (live path: log and carry on, audio must still publish)
-        LOG.warning("place enrichment skipped: %s", err)
+        LOG.warning("place cards skipped: %s", err)
+        return {}, {}
+
+
+def enrich_places(
+    passage: dict[str, Any], http_get: HttpGet = fetch, budget_s: float = BUDGET_SECONDS,
+    clock: Callable[[], float] = time.monotonic, ner: Optional[Callable[[str], list[str]]] = None,
+    words: Optional[Callable[..., tuple[dict[str, Any], dict[str, bytes]]]] = None,
+) -> Optional[Enriched]:
+    """Cards for an English, teacher-generated passage: place cards with pictures (needs the network) and word pictures for everyday nouns
+    (offline, `words` = word_pictures.word_picture_cards). None when there is nothing to show. Never raises."""
+    if passage.get("source") != "generated" or (passage.get("language") or "en") != "en":
+        return None
+    try:
+        tokens = tokenize_html(passage.get("content") or "")
+        plain = " ".join(t.text for t in tokens)
+        places, images = _place_cards(passage, tokens, plain, http_get, budget_s, clock, ner)
+        word_cards: dict[str, Any] = {}
+        word_images: dict[str, bytes] = {}
+        if words is not None:
+            try:
+                word_cards, word_images = words(passage["uuid"], plain)
+            except Exception as err:  # noqa: BLE001
+                LOG.warning("word pictures skipped: %s", err)
+        if not places and not word_cards:
+            return None
+        return Enriched({"words": word_cards, "places": places, "reviewed": False, "source": "automatic"}, {**images, **word_images})
+    except Exception as err:  # noqa: BLE001
+        LOG.warning("enrichment skipped: %s", err)
         return None
 
 

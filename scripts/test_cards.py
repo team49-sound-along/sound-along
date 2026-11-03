@@ -25,6 +25,7 @@ EXPECTED = (  # the three English texts (AI passage ids), see docs/BACKEND_HANDO
 )
 POS = {"noun", "verb", "adjective", "adverb"}
 WORD_FIELDS = {"word", "syllables", "ipa", "partOfSpeech", "definition", "example", "spanish"}
+WORD_PICTURE_FIELDS = {"imageUrl", "imageAlt", "imageCredit", "imageWidth", "imageHeight"}
 PLACE_FIELDS = {"name", "summary", "attribution", "imageUrl", "imageAlt", "imageCredit", "imageWidth", "imageHeight"}
 
 
@@ -81,9 +82,10 @@ def test_shape_is_exactly_the_contract(doc) -> None:
     _, _, _, _, cards = doc
     assert set(cards) == {"words", "places"}
     for key, card in cards["words"].items():
-        assert set(card) == WORD_FIELDS, key
+        assert set(card) in (WORD_FIELDS, WORD_FIELDS | WORD_PICTURE_FIELDS), f"{key}: unexpected fields {sorted(set(card) ^ WORD_FIELDS)}"
         assert card["partOfSpeech"] in POS, key
-        assert isinstance(card["definition"], str) and card["definition"].strip(), key
+        assert isinstance(card["definition"], str), key
+        assert card["definition"].strip() or card.get("imageUrl"), f"{key}: a card needs a definition or a picture"
     for key, card in cards["places"].items():
         assert set(card) == PLACE_FIELDS, key
         assert card["name"] == key, key
@@ -164,16 +166,31 @@ def test_a_place_picture_is_a_small_real_image_on_our_own_origin_with_alt_text_a
         assert "Wikimedia Commons" in card["imageCredit"] and "http" not in card["imageCredit"]
 
 
+def test_a_word_picture_is_a_small_real_png_on_our_own_origin_with_alt_text_and_the_openmoji_credit(doc) -> None:
+    import place_images as pi
+
+    _, _, _, _, cards = doc
+    pictured = {k: c for k, c in cards["words"].items() if c.get("imageUrl")}
+    for key, card in pictured.items():
+        name = card["imageUrl"].removeprefix("/data/")
+        assert card["imageUrl"].startswith("/data/") and pi.NAME_PATTERN.fullmatch(name) and ".word-" in name, f"{key}: bad imageUrl"
+        data = (CARDS / "images" / name).read_bytes()
+        assert pi.image_ext(data) == "png" and len(data) <= 20_000, f"{key}: not a small PNG"
+        assert (card["imageWidth"], card["imageHeight"]) == pi.image_size(data), f"{key}: size mismatch"
+        assert card["imageAlt"] and "<" not in card["imageAlt"] and card["imageCredit"] == "Picture: OpenMoji, CC BY-SA 4.0", key
+    assert len(pictured) >= 3, "every text should have a few word pictures"
+
+
 def test_there_are_no_orphan_image_files(doc) -> None:
     _, _, _, _, cards = doc
-    used = {c["imageUrl"].removeprefix("/data/") for c in cards["places"].values() if c["imageUrl"]}
-    own = {p.name for p in (CARDS / "images").glob(f"{doc[0]}.place-*")}
+    used = {c["imageUrl"].removeprefix("/data/") for kind in ("places", "words") for c in cards[kind].values() if c.get("imageUrl")}
+    own = {p.name for p in (CARDS / "images").glob(f"{doc[0]}.*") if ".place-" in p.name or ".word-" in p.name}
     assert own == used, f"image files not referenced by the cards: {sorted(own - used)}"
 
 
 def test_each_text_has_enough_words_to_help_a_reader(doc) -> None:
     passage_id, _, _, _, cards = doc
-    assert 25 <= len(cards["words"]) <= 70, f"{passage_id}: {len(cards['words'])} word cards (aim for 25 to 40 headwords plus inflected forms)"
+    assert 25 <= len(cards["words"]) <= 100, f"{passage_id}: {len(cards['words'])} word cards (aim for 25 to 40 headwords plus inflected forms)"
 
 
 def test_word_key_matches_the_browser_rule() -> None:
@@ -205,4 +222,4 @@ def test_the_real_cards_publish_into_data(tmp_path) -> None:
 
     copied = cards_files.publish_cards(CARDS, tmp_path)
     assert [n for n in copied if n.endswith(".cards.json")] == sorted(f"{i}.cards.json" for i in EXPECTED)
-    assert len([n for n in copied if ".place-" in n]) == len(list((CARDS / "images").glob("*.*")))
+    assert len([n for n in copied if ".place-" in n or ".word-" in n]) == len(list((CARDS / "images").glob("*.*")))

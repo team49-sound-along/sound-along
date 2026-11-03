@@ -61,7 +61,7 @@ def apply(cards: Path = CARDS) -> list[str]:
         name = card["imageUrl"].removeprefix("/data/")
         card["imageWidth"], card["imageHeight"] = sizes[name] or (None, None)
     for stale in images.iterdir():
-        if stale.is_file() and stale.name not in files:
+        if stale.is_file() and ".place-" in stale.name and stale.name not in files:  # word pictures are managed by apply_word_pictures.py
             stale.unlink()
     for name, data in files.items():
         (images / name).write_bytes(data)

@@ -37,5 +37,8 @@ from enrich_places import enrich_places, ner_places
 assert 'London' in ner_places('We visited Tower Bridge in London.'), ner_places('We visited Tower Bridge in London.')
 offline = enrich_places({'uuid': 'x', 'source': 'generated', 'language': 'en', 'content': '<p>We saw Tower Bridge in London.</p>'}, ner=ner_places)
 assert offline is None, offline
-print('OK: handler imports, offline synthesis, 2 extra voices, offline recognition, Spanish with recognizer timing, Phonon (2 voices) offline, place detection and offline-safe enrichment;', len(result.words), 'English words, 0 unaligned')
+from word_pictures import word_picture_cards
+cards, pics = word_picture_cards('x' * 8 + '-0000-4000-8000-000000000000', 'The children ate cookies and drank tea near the trees.')
+assert {'cookies', 'tea', 'trees'} <= set(cards) and len(pics) >= 3, cards.keys()
+print('OK: handler imports, offline synthesis, 2 extra voices, offline recognition, Spanish with recognizer timing, Phonon (2 voices) offline, place detection, word pictures and offline-safe enrichment;', len(result.words), 'English words, 0 unaligned')
 "

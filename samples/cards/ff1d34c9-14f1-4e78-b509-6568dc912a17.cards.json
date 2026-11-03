@@ -266,7 +266,12 @@
    "example": "Mr. Collins invited them to take a stroll in the garden",
    "spanish": [
     "jardín"
-   ]
+   ],
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-garden-a5242e66.png",
+   "imageAlt": "house with garden",
+   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
   },
   "regard": {
    "word": "regard",
@@ -347,6 +352,90 @@
    "spanish": [
     "agitación"
    ]
+  },
+  "house": {
+   "word": "house",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-house-39d49ba1.png",
+   "imageAlt": "house",
+   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  },
+  "door": {
+   "word": "door",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-door-d62d5826.png",
+   "imageAlt": "door",
+   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  },
+  "trees": {
+   "word": "trees",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-trees-df5a1853.png",
+   "imageAlt": "deciduous tree",
+   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  },
+  "building": {
+   "word": "building",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-building-cf8fca46.png",
+   "imageAlt": "classical building",
+   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  },
+  "shoes": {
+   "word": "shoes",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-shoes-0306c4ed.png",
+   "imageAlt": "man’s shoe",
+   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
+  },
+  "church": {
+   "word": "church",
+   "syllables": null,
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "",
+   "example": null,
+   "spanish": [],
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.word-church-82eca767.png",
+   "imageAlt": "church",
+   "imageCredit": "Picture: OpenMoji, CC BY-SA 4.0",
+   "imageWidth": 72,
+   "imageHeight": 72
   }
  },
  "places": {

@@ -68,8 +68,9 @@ IMMUTABLE = "public, max-age=31536000, immutable"  # picture file names carry a 
 def live_enrichment(passage: dict[str, Any]) -> Any:
     """Place cards and pictures for a teacher-generated passage (see enrich_places.py). Never raises."""
     from enrich_places import enrich_places, ner_places
+    from word_pictures import word_picture_cards
 
-    return enrich_places(passage, ner=ner_places)
+    return enrich_places(passage, ner=ner_places, words=word_picture_cards)
 
 
 def _cards_reviewed(clients: Clients, passage_id: str) -> bool:

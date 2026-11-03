@@ -5,7 +5,7 @@ import re
 import shutil
 from pathlib import Path
 
-_IMAGE = re.compile(r"[0-9a-zA-Z-]+\.place-[a-z0-9-]+-[0-9a-f]{8}\.(?:jpg|png)")
+_IMAGE = re.compile(r"[0-9a-zA-Z-]+\.(?:place|word)-[a-z0-9-]+-[0-9a-f]{8}\.(?:jpg|png)")
 
 
 def publish_cards(source: Path, data: Path) -> list[str]:

@@ -9,7 +9,7 @@ import hashlib
 import html
 import re
 
-NAME_PATTERN = re.compile(r"[0-9a-f-]{36}\.place-[a-z0-9-]{1,60}-[0-9a-f]{8}\.(?:jpg|png)")
+NAME_PATTERN = re.compile(r"[0-9a-f-]{36}\.(?:place|word)-[a-z0-9-]{1,60}-[0-9a-f]{8}\.(?:jpg|png)")
 MAX_ALT = 125  # a screen reader reads alt text in one go; longer belongs in the caption
 MAX_BYTES = 400_000
 THUMB_WIDTH = 500
@@ -81,12 +81,14 @@ def slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60].strip("-") or "place"
 
 
-def target_name(passage_id: str, place: str, data: bytes) -> str:
-    """<passage id>.place-<slug>-<8 hex of the content hash>.<ext>: the hash makes the file safe to cache for a year."""
+def target_name(passage_id: str, place: str, data: bytes, kind: str = "place") -> str:
+    """<passage id>.<place|word>-<slug>-<8 hex of the content hash>.<ext>: the hash makes the file safe to cache for a year."""
     ext = image_ext(data)
     if ext is None:
         raise ValueError("not a JPEG or PNG image")
-    return f"{passage_id}.place-{slug(place)}-{hashlib.sha256(data).hexdigest()[:8]}.{ext}"
+    if kind not in ("place", "word"):
+        raise ValueError("kind must be place or word")
+    return f"{passage_id}.{kind}-{slug(place)}-{hashlib.sha256(data).hexdigest()[:8]}.{ext}"
 
 
 def alt_problem(alt: object, place: str) -> str | None:

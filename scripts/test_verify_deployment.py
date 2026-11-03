@@ -48,8 +48,8 @@ def test_cards_document_validation():
 
 
 def test_image_urls_are_collected_from_place_cards_only_and_must_stay_on_our_own_origin():
-    doc = {"words": {"relax": {"word": "relax", "imageUrl": "/data/ignored.jpg"}}, "places": {
+    doc = {"words": {"relax": {"word": "relax", "imageUrl": "/data/x.word-relax-12345678.png"}}, "places": {
         "A": {"imageUrl": "/data/x.place-a-12345678.jpg"}, "B": {"imageUrl": None}, "C": {}}}
-    assert v.image_urls(doc) == ["/data/x.place-a-12345678.jpg"]
+    assert v.image_urls(doc) == ["/data/x.place-a-12345678.jpg", "/data/x.word-relax-12345678.png"]
     assert v.cards_problem({"words": {"w": {}}, "places": {"A": {"imageUrl": "https://example.com/a.jpg"}}}) is not None
     assert v.cards_problem({"words": {"w": {}}, "places": {"A": {"imageUrl": "/data/x.place-a-12345678.jpg"}}}) is None

@@ -70,9 +70,12 @@ def needs_cards(passage: dict[str, Any]) -> bool:
 
 
 def image_urls(doc: Any) -> list[str]:
-    """The place pictures a cards document points at (word cards never carry one)."""
-    places = doc.get("places") if isinstance(doc, dict) else None
-    return [c["imageUrl"] for c in (places or {}).values() if isinstance(c, dict) and c.get("imageUrl")]
+    """The pictures a cards document points at (place pictures and word pictures)."""
+    cards = []
+    for kind in ("places", "words"):
+        group = doc.get(kind) if isinstance(doc, dict) else None
+        cards += [c["imageUrl"] for c in (group or {}).values() if isinstance(c, dict) and c.get("imageUrl")]
+    return cards
 
 
 def cards_problem(doc: Any) -> Optional[str]:
