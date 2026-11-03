@@ -37,7 +37,12 @@ MODELS = (
 # (PHONON_MODEL_DIR / PHONON_VOICES_DIR), so nothing is downloaded at run time. Revisions match services/synth/phonon_engine.py.
 PHONON_DIR = Path("/opt/phonon")
 PHONON = (
-    ("gradium/phonon-31m-en", "8c64b55ec301728e2d1695bfea87a08a267d0c2d", "model", None),
+    (  # f32 weights only: the quantized .gguf copies (about 110 MB) are not used
+        "gradium/phonon-31m-en",
+        "8c64b55ec301728e2d1695bfea87a08a267d0c2d",
+        "model",
+        ["config.json", "model.safetensors", "default-voice.safetensors", "tokenizer.json", "tokenizer.model"],
+    ),
     (
         "gradium/phonon-voices",
         "da6c9ec0d47be8df5c87c730a3aa97187f3229c3",
