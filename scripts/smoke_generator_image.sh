@@ -3,7 +3,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 docker build --platform linux/arm64 --build-arg "PYTHON_VERSION=${PYTHON_VERSION:-3.14}" -f services/generator/Dockerfile -t sound-along-generator .
-docker run --rm --network none -e PYTHONPATH=/var/task:/var/task/synth:/var/task/parse --entrypoint python sound-along-generator -c "
+# Lambda runs the image as a non-root user on a READ-ONLY filesystem where only /tmp is writable, with no network.
+docker run --rm --network none --read-only --tmpfs /tmp:rw,exec,size=1g --user 1000:1000 -e HOME=/home/sbx_user1051 -e PYTHONPATH=/var/task:/var/task/synth:/var/task/parse --entrypoint python sound-along-generator -c "
 import handler  # the real Lambda entry module must import cleanly
 from pipeline import generate
 from engines import create_engine
