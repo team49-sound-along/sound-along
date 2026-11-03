@@ -10,6 +10,7 @@ from typing import Any, Iterable, Mapping
 import numpy as np
 
 from engine import Engine
+from phrases import phrase_ends
 from pipeline import Generated, StepCallback, _noop, generate
 
 # Pricing used for the cost comparison. Polly rates are from the AWS Polly pricing page (per 1M characters);
@@ -87,7 +88,7 @@ def build_timing(passage: dict[str, Any], engine: Engine, result: Generated, met
         "duration_ms": round(result.seconds_of_audio * 1000),
         "metrics": metrics,
         "vocab": vocab_for(passage, result),
-        "words": list(result.words),
+        "words": phrase_ends(result.words),
     }
 
 

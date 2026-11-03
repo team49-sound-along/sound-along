@@ -231,7 +231,7 @@ describe("seed script", () => {
     const dir = await mkdtemp(path.join(tmpdir(), "seed-"));
     const id = "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98";
     await writeFile(path.join(dir, `${id}.mp3`), "audio");
-    await writeFile(path.join(dir, `${id}.timing.json`), JSON.stringify({ title: "Park", duration_ms: 10, metrics: { words: 7 }, vocab: { 1: {} } }));
+    await writeFile(path.join(dir, `${id}.timing.json`), JSON.stringify({ title: "Park", duration_ms: 10, metrics: { words: 7 }, vocab: { 1: { word: "nature" } } }));
     await mkdir(path.join(dir, "raw"));
     const s3 = fakeClient();
     const ddb = fakeClient();
@@ -246,5 +246,21 @@ describe("seed script", () => {
     const { Item } = ddb.calls[0].input;
     assert.deepEqual([Item.pk, Item.sk, Item.title, Item.words, Item.source, Item.vocabCount], ["PASSAGE", id, "Park", 7, "sample", 1]);
     assert.deepEqual(Item.metrics, { words: 7 });
+  });
+
+  test("uploads <id>.cards.json as plain JSON when it exists, and nothing for a text without cards", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "seed-cards-"));
+    const withCards = "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98";
+    const without = "5af24980-4d6d-41c1-87fa-4f21cb2d169d";
+    for (const id of [withCards, without]) {
+      await writeFile(path.join(dir, `${id}.mp3`), "audio");
+      await writeFile(path.join(dir, `${id}.timing.json`), JSON.stringify({ title: id, duration_ms: 10, metrics: { words: 1 }, vocab: {} }));
+    }
+    await writeFile(path.join(dir, `${withCards}.cards.json`), '{"words":{},"places":{}}');
+    const s3 = fakeClient();
+    await seed({ s3, ddb: fakeClient(), bucket: "B", tableName: "T", dataDir: dir, logger: quiet });
+    const cards = s3.calls.filter((c) => c.input.Key.endsWith(".cards.json"));
+    assert.deepEqual(cards.map((c) => [c.input.Key, c.input.ContentType, c.input.ContentEncoding]), [[`data/${withCards}.cards.json`, "application/json", undefined]]);
+    assert.equal(String(cards[0].input.Body), '{"words":{},"places":{}}');
   });
 });

@@ -85,6 +85,25 @@ describe("health and catalog", () => {
   });
 });
 
+describe("cards documents", () => {
+  const OTHER = "5af24980-4d6d-41c1-87fa-4f21cb2d169d";
+  test("GET /data/<id>.cards.json serves the JSON when the file exists", async () => {
+    await writeFile(path.join(dir, `${PID}.cards.json`), JSON.stringify({ words: { relax: { word: "relax" } }, places: {} }));
+    const r = await call("GET", `/data/${PID}.cards.json`);
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get("content-type"), /application\/json/);
+    assert.deepEqual(r.json.words.relax, { word: "relax" });
+  });
+  test("a text without cards answers 404 (the reader then falls back to the vocabulary)", async () => {
+    assert.equal((await call("GET", `/data/${OTHER}.cards.json`)).status, 404);
+  });
+  test("only the exact <uuid>.cards.json name is served, and the listening answer key stays unreachable", async () => {
+    for (const name of ["cards.json", `${PID}.cards.json.bak`, `${PID}.cards.JSON`, `${PID}.card.json`, "ab%2Fmanifest.json", "raw%2Fab%2Fmanifest.json", "ab/manifest.json"]) {
+      assert.equal((await call("GET", `/data/${name}`)).status, 404, name);
+    }
+  });
+});
+
 describe("static data allow-list", () => {
   test("serves audio and timing", async () => {
     assert.equal((await call("GET", `/data/${PID}.mp3`)).status, 200);

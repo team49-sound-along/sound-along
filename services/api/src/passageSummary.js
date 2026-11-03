@@ -1,3 +1,7 @@
+/** Vocabulary words in a timing document. Its keys are word senses, so "tax" (noun) and "tax" (verb) are two keys but one word. */
+const distinctVocabWords = (vocab) =>
+  new Set(Object.values(vocab ?? {}).map((entry) => String(entry?.word ?? "").trim().toLowerCase()).filter(Boolean)).size;
+
 /** Passage summary derived from a timing document. `source` is the raw/<id>.json `source` field ("sample" when absent). Shared by the file catalog and the DynamoDB seed script. */
 export function summarizePassage({ id, timing, mtimeMs, source }) {
   return {
@@ -9,7 +13,7 @@ export function summarizePassage({ id, timing, mtimeMs, source }) {
     voice: timing.voice ?? "unknown",
     createdAt: new Date(mtimeMs).toISOString(),
     source: source === "generated" ? "generated" : "sample",
-    vocabCount: Object.keys(timing.vocab ?? {}).length,
+    vocabCount: distinctVocabWords(timing.vocab),
     pairId: timing.pairId ?? null,
     language: timing.language === "es" ? "es" : "en",
   };

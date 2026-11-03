@@ -1,0 +1,366 @@
+{
+ "words": {
+  "journey": {
+   "word": "journey",
+   "syllables": "jour·ney",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A trip from one place to another.",
+   "example": "Every object in the next day’s journey was new and interesting to Elizabeth",
+   "spanish": [
+    "viaje"
+   ]
+  },
+  "delight": {
+   "word": "delight",
+   "syllables": "de·light",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Great happiness or joy.",
+   "example": "the prospect of her northern tour was a constant source of delight",
+   "spanish": [
+    "deleite",
+    "alegría"
+   ]
+  },
+  "enjoyment": {
+   "word": "enjoyment",
+   "syllables": "en·joy·ment",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "The feeling of having a good time.",
+   "example": "her spirits were in a state of enjoyment",
+   "spanish": [
+    "disfrute",
+    "placer"
+   ]
+  },
+  "prospect": {
+   "word": "prospect",
+   "syllables": "pros·pect",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Something you look forward to that might happen.",
+   "example": "the prospect of her northern tour was a constant source of delight",
+   "spanish": [
+    "perspectiva",
+    "expectativa"
+   ]
+  },
+  "boundary": {
+   "word": "boundary",
+   "syllables": "bound·ar·y",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A line that marks where a place ends.",
+   "example": "The palings of Rosings Park was their boundary on one side.",
+   "spanish": [
+    "límite",
+    "frontera"
+   ]
+  },
+  "recollection": {
+   "word": "recollection",
+   "syllables": "rec·ol·lec·tion",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Something you remember.",
+   "example": "Elizabeth smiled at the recollection of all that she had heard of its inhabitants.",
+   "spanish": [
+    "recuerdo"
+   ]
+  },
+  "inhabitants": {
+   "word": "inhabitants",
+   "syllables": "in·hab·i·tants",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "The people who live in a place.",
+   "example": "Elizabeth smiled at the recollection of all that she had heard of its inhabitants.",
+   "spanish": [
+    "habitantes"
+   ]
+  },
+  "discernible": {
+   "word": "discernible",
+   "syllables": "dis·cern·i·ble",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Able to be seen or noticed.",
+   "example": "At length the Parsonage was discernible.",
+   "spanish": [
+    "perceptible",
+    "visible"
+   ]
+  },
+  "gravel": {
+   "word": "gravel",
+   "syllables": "grav·el",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Small stones used to make paths and roads.",
+   "example": "a short gravel walk to the house",
+   "spanish": [
+    "grava"
+   ]
+  },
+  "carriage": {
+   "word": "carriage",
+   "syllables": "car·riage",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A vehicle with wheels that horses pull.",
+   "example": "the carriage stopped at the small gate",
+   "spanish": [
+    "carruaje"
+   ]
+  },
+  "welcomed": {
+   "word": "welcomed",
+   "syllables": "wel·comed",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "Greeted someone in a kind way.",
+   "example": "Mrs. Collins welcomed her friend with the liveliest pleasure",
+   "spanish": [
+    "dio la bienvenida",
+    "recibió"
+   ]
+  },
+  "rejoicing": {
+   "word": "rejoicing",
+   "syllables": "re·joic·ing",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "Feeling and showing great joy.",
+   "example": "they were all out of the chaise, rejoicing at the sight of each other",
+   "spanish": [
+    "regocijándose",
+    "alegrándose"
+   ]
+  },
+  "manners": {
+   "word": "manners",
+   "syllables": "man·ners",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "The way a person behaves around other people.",
+   "example": "her cousin’s manners were not altered by his marriage",
+   "spanish": [
+    "modales",
+    "maneras"
+   ]
+  },
+  "altered": {
+   "word": "altered",
+   "syllables": "al·tered",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "Changed.",
+   "example": "her cousin’s manners were not altered by his marriage",
+   "spanish": [
+    "alterado",
+    "cambiado"
+   ]
+  },
+  "formality": {
+   "word": "formality",
+   "syllables": "for·mal·i·ty",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Following polite rules and customs very carefully.",
+   "example": "with ostentatious formality to his humble abode",
+   "spanish": [
+    "formalidad"
+   ]
+  },
+  "humble": {
+   "word": "humble",
+   "syllables": "hum·ble",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Simple and not fancy.",
+   "example": "with ostentatious formality to his humble abode",
+   "spanish": [
+    "humilde",
+    "modesto"
+   ]
+  },
+  "delay": {
+   "word": "delay",
+   "syllables": "de·lay",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Time spent waiting before something happens.",
+   "example": "no other delay than his pointing out the neatness of the entrance",
+   "spanish": [
+    "retraso",
+    "demora"
+   ]
+  },
+  "refreshment": {
+   "word": "refreshment",
+   "syllables": "re·fresh·ment",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Food or drink offered to a guest.",
+   "example": "punctually repeated all his wife’s offers of refreshment",
+   "spanish": [
+    "refrigerio",
+    "refrescos"
+   ]
+  },
+  "furniture": {
+   "word": "furniture",
+   "syllables": "fur·ni·ture",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Things like chairs and tables that you put in a room.",
+   "example": "to admire every article of furniture in the room",
+   "spanish": [
+    "muebles",
+    "mobiliario"
+   ]
+  },
+  "cheerful": {
+   "word": "cheerful",
+   "syllables": "cheer·ful",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Happy and full of good spirits.",
+   "example": "she could have so cheerful an air with such a companion",
+   "spanish": [
+    "alegre",
+    "animado"
+   ]
+  },
+  "companion": {
+   "word": "companion",
+   "syllables": "com·pan·ion",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A person who spends time with you.",
+   "example": "she could have so cheerful an air with such a companion",
+   "spanish": [
+    "compañero",
+    "acompañante"
+   ]
+  },
+  "ashamed": {
+   "word": "ashamed",
+   "syllables": "a·shamed",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Feeling embarrassed or sorry about something.",
+   "example": "When Mr. Collins said anything of which his wife might reasonably be ashamed",
+   "spanish": [
+    "avergonzado"
+   ]
+  },
+  "garden": {
+   "word": "garden",
+   "syllables": "gar·den",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A piece of ground where flowers, vegetables, or other plants are grown.",
+   "example": "Mr. Collins invited them to take a stroll in the garden",
+   "spanish": [
+    "jardín"
+   ]
+  },
+  "regard": {
+   "word": "regard",
+   "syllables": "re·gard",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "To think of someone or something in a certain way.",
+   "example": "She is the sort of woman whom one cannot regard with too much deference.",
+   "spanish": [
+    "considerar",
+    "contemplar"
+   ]
+  },
+  "solitude": {
+   "word": "solitude",
+   "syllables": "sol·i·tude",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Being alone.",
+   "example": "in the solitude of her chamber",
+   "spanish": [
+    "soledad"
+   ]
+  },
+  "imagination": {
+   "word": "imagination",
+   "syllables": "i·mag·i·na·tion",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "The ability to picture things in your mind.",
+   "example": "A lively imagination soon settled it all.",
+   "spanish": [
+    "imaginación"
+   ]
+  },
+  "confusion": {
+   "word": "confusion",
+   "syllables": "con·fu·sion",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A mixed-up, noisy state where nothing is clear.",
+   "example": "a sudden noise below seemed to speak the whole house in confusion",
+   "spanish": [
+    "confusión"
+   ]
+  },
+  "contentment": {
+   "word": "contentment",
+   "syllables": "con·tent·ment",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A calm feeling of being satisfied.",
+   "example": "to meditate upon Charlotte’s degree of contentment",
+   "spanish": [
+    "contento",
+    "satisfacción"
+   ]
+  },
+  "breathless": {
+   "word": "breathless",
+   "syllables": "breath·less",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Out of breath, often from hurrying or excitement.",
+   "example": "who, breathless with agitation, cried out",
+   "spanish": [
+    "sin aliento",
+    "jadeante"
+   ]
+  },
+  "agitation": {
+   "word": "agitation",
+   "syllables": "ag·i·ta·tion",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A restless, upset, or excited feeling.",
+   "example": "who, breathless with agitation, cried out",
+   "spanish": [
+    "agitación"
+   ]
+  }
+ },
+ "places": {
+  "Hertfordshire": {
+   "name": "Hertfordshire",
+   "summary": "A county in the east of England, north of London.",
+   "attribution": "Wikipedia, CC BY-SA",
+   "imageUrl": null
+  },
+  "London": {
+   "name": "London",
+   "summary": "The capital and largest city of England and the United Kingdom.",
+   "attribution": "Wikipedia, CC BY-SA",
+   "imageUrl": null
+  }
+ }
+}

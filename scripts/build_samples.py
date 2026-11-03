@@ -21,6 +21,7 @@ import urllib.request
 import uuid
 
 import ab_clips
+import cards_files
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -123,6 +124,7 @@ def main(skip_mos: bool) -> int:
         recordings = {PARK: human_mp3, TEA: download(HUMAN_TEA_URL, workdir / "tea_human.mp3")}
         for passage_file in passages:
             generate(passage_file, recordings.get(passage_file.stem), workdir)
+        log(f"  cards: {len(cards_files.publish_cards(SAMPLES / 'cards', DATA))} reviewed cards file(s) copied to data/")
         log("2/4 done")
 
         log("3/5 checking English passages against an independent Whisper transcript")

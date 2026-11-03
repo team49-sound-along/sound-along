@@ -1,0 +1,412 @@
+{
+ "words": {
+  "relax": {
+   "word": "relax",
+   "syllables": "re·lax",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "To rest and feel calm.",
+   "example": "A city park is a fun place to relax, play, and enjoy nature.",
+   "spanish": [
+    "relajarse"
+   ]
+  },
+  "nature": {
+   "word": "nature",
+   "syllables": "na·ture",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Everything in the world that people did not make, like plants, animals, water, and air.",
+   "example": "A city park is a fun place to relax, play, and enjoy nature.",
+   "spanish": [
+    "naturaleza"
+   ]
+  },
+  "visit": {
+   "word": "visit",
+   "syllables": "vis·it",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "To go to a place or person and spend a little time there.",
+   "example": "Over six million people visit it every year!",
+   "spanish": [
+    "visitar",
+    "ir de visita"
+   ]
+  },
+  "different": {
+   "word": "different",
+   "syllables": "dif·fer·ent",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Not the same as something else.",
+   "example": "Every day is different.",
+   "spanish": [
+    "diferente",
+    "distinto"
+   ]
+  },
+  "noise": {
+   "word": "noise",
+   "syllables": "noise",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A sound, often a loud one that you do not want to hear.",
+   "example": "Cities are full of people, cars, and noise.",
+   "spanish": [
+    "ruido"
+   ]
+  },
+  "stressful": {
+   "word": "stressful",
+   "syllables": "stress·ful",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Making you feel worried or tense.",
+   "example": "That can feel a little stressful sometimes.",
+   "spanish": [
+    "estresante"
+   ]
+  },
+  "peace": {
+   "word": "peace",
+   "syllables": "peace",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A calm, quiet feeling with no fighting or worry.",
+   "example": "So where can people in cities go when they want to find some peace and quiet?",
+   "spanish": [
+    "paz"
+   ]
+  },
+  "quiet": {
+   "word": "quiet",
+   "syllables": "qui·et",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A time or place with very little noise.",
+   "example": "So where can people in cities go when they want to find some peace and quiet?",
+   "spanish": [
+    "tranquilidad",
+    "silencio"
+   ]
+  },
+  "yoga": {
+   "word": "yoga",
+   "syllables": "yo·ga",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Slow stretching and breathing exercises that help your body and mind relax.",
+   "example": "Others go to run or do yoga.",
+   "spanish": [
+    "yoga"
+   ]
+  },
+  "sports": {
+   "word": "sports",
+   "syllables": "sports",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Games and activities, like soccer or running, that people play for fun and exercise.",
+   "example": "Lots of people go to play sports.",
+   "spanish": [
+    "deportes"
+   ]
+  },
+  "beautiful": {
+   "word": "beautiful",
+   "syllables": "beau·ti·ful",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Very nice to look at.",
+   "example": "Many people go to look at the beautiful trees and flowers.",
+   "spanish": [
+    "hermoso",
+    "bello"
+   ]
+  },
+  "special": {
+   "word": "special",
+   "syllables": "spe·cial",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Important or different in a good way.",
+   "example": "Piedmont Park is very special to people in Georgia.",
+   "spanish": [
+    "especial"
+   ]
+  },
+  "caretaker": {
+   "word": "caretaker",
+   "syllables": "care·tak·er",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A person whose job is to look after a place or something that needs care.",
+   "example": "Let’s meet Doug Widener, an important park caretaker at Piedmont Park.",
+   "spanish": [
+    "cuidador",
+    "encargado"
+   ]
+  },
+  "caretakers": {
+   "word": "caretakers",
+   "syllables": "care·tak·ers",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "People whose job is to look after a place or something that needs care.",
+   "example": "People called park caretakers take care of the park so that everyone in Atlanta can use it.",
+   "spanish": [
+    "cuidadores",
+    "encargados"
+   ]
+  },
+  "important": {
+   "word": "important",
+   "syllables": "im·por·tant",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Having great meaning or value.",
+   "example": "Let’s meet Doug Widener, an important park caretaker at Piedmont Park.",
+   "spanish": [
+    "importante"
+   ]
+  },
+  "hired": {
+   "word": "hired",
+   "syllables": "hired",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "Given a job.",
+   "example": "Because he did such a great job caring for the park, he was hired to be the president of it!",
+   "spanish": [
+    "contratado"
+   ]
+  },
+  "president": {
+   "word": "president",
+   "syllables": "pres·i·dent",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "The person who leads a group or organization.",
+   "example": "A park president has a big job.",
+   "spanish": [
+    "presidente"
+   ]
+  },
+  "tours": {
+   "word": "tours",
+   "syllables": "tours",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Trips where a guide shows people around a place.",
+   "example": "Some days, Doug gives tours to visitors to tell them about Piedmont Park’s history.",
+   "spanish": [
+    "visitas guiadas",
+    "recorridos"
+   ]
+  },
+  "visitors": {
+   "word": "visitors",
+   "syllables": "vis·i·tors",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "People who come to see a place.",
+   "example": "Some days, Doug gives tours to visitors to tell them about Piedmont Park’s history.",
+   "spanish": [
+    "visitantes"
+   ]
+  },
+  "history": {
+   "word": "history",
+   "syllables": "his·to·ry",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "The story of what happened in the past.",
+   "example": "Some days, Doug gives tours to visitors to tell them about Piedmont Park’s history.",
+   "spanish": [
+    "historia"
+   ]
+  },
+  "events": {
+   "word": "events",
+   "syllables": "e·vents",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Things that happen, especially important ones.",
+   "example": "Important events happened at the park, such as peace marches during times of war.",
+   "spanish": [
+    "eventos",
+    "acontecimientos"
+   ]
+  },
+  "marches": {
+   "word": "marches",
+   "syllables": "march·es",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Groups of people walking together to show what they believe.",
+   "example": "Important events happened at the park, such as peace marches during times of war.",
+   "spanish": [
+    "marchas"
+   ]
+  },
+  "remove": {
+   "word": "remove",
+   "syllables": "re·move",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "To take something away.",
+   "example": "I help to remove weeds that don’t belong so the plants that do belong there can grow strong.",
+   "spanish": [
+    "quitar",
+    "eliminar"
+   ]
+  },
+  "weeds": {
+   "word": "weeds",
+   "syllables": "weeds",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Wild plants that grow where people do not want them.",
+   "example": "I help to remove weeds that don’t belong so the plants that do belong there can grow strong.",
+   "spanish": [
+    "maleza",
+    "malas hierbas"
+   ]
+  },
+  "plants": {
+   "word": "plants",
+   "syllables": "plants",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Living things that grow in soil, like grass, flowers, and trees.",
+   "example": "He can walk along the boardwalk and look at the plants and animals.",
+   "spanish": [
+    "plantas"
+   ]
+  },
+  "strong": {
+   "word": "strong",
+   "syllables": "strong",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Having a lot of power or health.",
+   "example": "I help to remove weeds that don’t belong so the plants that do belong there can grow strong.",
+   "spanish": [
+    "fuerte"
+   ]
+  },
+  "mulch": {
+   "word": "mulch",
+   "syllables": "mulch",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A layer of leaves or wood chips spread on the ground to keep soil wet and healthy.",
+   "example": "I also put something called mulch around the trees.",
+   "spanish": [
+    "mantillo",
+    "acolchado vegetal"
+   ]
+  },
+  "soak": {
+   "word": "soak",
+   "syllables": "soak",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "To take in liquid, like a sponge does.",
+   "example": "It helps trees soak up the water they need.",
+   "spanish": [
+    "absorber",
+    "empapar"
+   ]
+  },
+  "favorite": {
+   "word": "favorite",
+   "syllables": "fa·vor·ite",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Liked best.",
+   "example": "Doug’s favorite spot in the park is the Six Springs Wetlands.",
+   "spanish": [
+    "favorito"
+   ]
+  },
+  "wetlands": {
+   "word": "wetlands",
+   "syllables": "wet·lands",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Land that is covered with water for much or all of the year, like a marsh.",
+   "example": "Doug’s favorite spot in the park is the Six Springs Wetlands.",
+   "spanish": [
+    "humedales"
+   ]
+  },
+  "breaths": {
+   "word": "breaths",
+   "syllables": "breaths",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "The air you pull in and push out of your body.",
+   "example": "There, he can take some deep breaths under the treetops.",
+   "spanish": [
+    "respiraciones"
+   ]
+  },
+  "treetops": {
+   "word": "treetops",
+   "syllables": "tree·tops",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "The highest branches of the trees.",
+   "example": "There, he can take some deep breaths under the treetops.",
+   "spanish": [
+    "copas de los árboles"
+   ]
+  },
+  "boardwalk": {
+   "word": "boardwalk",
+   "syllables": "board·walk",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A path built from wooden boards, often over wet ground.",
+   "example": "He can walk along the boardwalk and look at the plants and animals.",
+   "spanish": [
+    "pasarela de madera",
+    "paseo de tablas"
+   ]
+  },
+  "connect": {
+   "word": "connect",
+   "syllables": "con·nect",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "To join or feel close to someone or something.",
+   "example": "Parks are where we can connect to ourselves, each other, and nature, all for free.",
+   "spanish": [
+    "conectar",
+    "conectarse"
+   ]
+  }
+ },
+ "places": {
+  "Piedmont Park": {
+   "name": "Piedmont Park",
+   "summary": "A big public park in the city of Atlanta, Georgia, in the United States.",
+   "attribution": "Wikipedia, CC BY-SA",
+   "imageUrl": null
+  },
+  "Atlanta": {
+   "name": "Atlanta",
+   "summary": "The capital and largest city of the U.S. state of Georgia.",
+   "attribution": "Wikipedia, CC BY-SA",
+   "imageUrl": null
+  },
+  "Georgia": {
+   "name": "Georgia",
+   "summary": "A state in the southeastern United States. Its capital is Atlanta.",
+   "attribution": "Wikipedia, CC BY-SA",
+   "imageUrl": null
+  }
+ }
+}

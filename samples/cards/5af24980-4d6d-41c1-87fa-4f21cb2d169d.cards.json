@@ -1,0 +1,426 @@
+{
+ "words": {
+  "imported": {
+   "word": "imported",
+   "syllables": "im·port·ed",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "Brought into a country from another country to be sold.",
+   "example": "Ever since tea was first imported to Great Britain from China",
+   "spanish": [
+    "importado",
+    "traído de otro país"
+   ]
+  },
+  "colonies": {
+   "word": "colonies",
+   "syllables": "col·o·nies",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Lands ruled by a faraway country and settled by people from it.",
+   "example": "they brought this habit with them to their colonies in North America",
+   "spanish": [
+    "colonias"
+   ]
+  },
+  "colonists": {
+   "word": "colonists",
+   "syllables": "col·o·nists",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "People who live in a colony, a land ruled by a faraway country.",
+   "example": "In the British colonies of North America, colonists did not like having to pay such high prices.",
+   "spanish": [
+    "colonos",
+    "colonizadores"
+   ]
+  },
+  "government": {
+   "word": "government",
+   "syllables": "gov·ern·ment",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "The group of people who make the laws and run a country.",
+   "example": "the British government made a special deal with the East India Company",
+   "spanish": [
+    "gobierno"
+   ]
+  },
+  "monopoly": {
+   "word": "monopoly",
+   "syllables": "mo·nop·o·ly",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "When only one company is allowed to sell something, so no one else can compete.",
+   "example": "They granted the East India Company a monopoly on tea",
+   "spanish": [
+    "monopolio"
+   ]
+  },
+  "smugglers": {
+   "word": "smugglers",
+   "syllables": "smug·glers",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "People who secretly bring goods in or out of a place against the law.",
+   "example": "they turned to Dutch smugglers, who sneaked in tea that was just as good",
+   "spanish": [
+    "contrabandistas"
+   ]
+  },
+  "smuggled": {
+   "word": "smuggled",
+   "syllables": "smug·gled",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Brought in secretly against the law.",
+   "example": "English tea was cheaper than smuggled Dutch tea",
+   "spanish": [
+    "de contrabando"
+   ]
+  },
+  "sneaked": {
+   "word": "sneaked",
+   "syllables": "sneaked",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "Moved or brought something quietly so no one would notice.",
+   "example": "they turned to Dutch smugglers, who sneaked in tea that was just as good",
+   "spanish": [
+    "se colaron",
+    "entraron a escondidas"
+   ]
+  },
+  "expensive": {
+   "word": "expensive",
+   "syllables": "ex·pen·sive",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Costing a lot of money.",
+   "example": "Lead, glass, paints, and paper all became more expensive.",
+   "spanish": [
+    "caro",
+    "costoso"
+   ]
+  },
+  "taxes": {
+   "word": "taxes",
+   "syllables": "tax·es",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Money that people pay to the government to help pay for public services.",
+   "example": "government taxes made the cost of tea even higher",
+   "spanish": [
+    "impuestos",
+    "tributos"
+   ]
+  },
+  "tax": {
+   "word": "tax",
+   "syllables": "tax",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Money paid to the government, which uses it to pay for services for the people.",
+   "example": "the Townshend tax was still in effect",
+   "spanish": [
+    "impuesto",
+    "tributo"
+   ]
+  },
+  "taxed": {
+   "word": "taxed",
+   "syllables": "taxed",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "Made to pay a tax.",
+   "example": "carrying thousands of pounds of discounted, yet taxed tea",
+   "spanish": [
+    "gravado",
+    "con impuestos"
+   ]
+  },
+  "taxing": {
+   "word": "taxing",
+   "syllables": "tax·ing",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "Making people pay a tax.",
+   "example": "referring to the government taxing people without their consent",
+   "spanish": [
+    "gravar",
+    "cobrar impuestos"
+   ]
+  },
+  "unpopular": {
+   "word": "unpopular",
+   "syllables": "un·pop·u·lar",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Not liked by many people.",
+   "example": "after the incredibly unpopular Stamp Act of 1765",
+   "spanish": [
+    "impopular"
+   ]
+  },
+  "tradition": {
+   "word": "tradition",
+   "syllables": "tra·di·tion",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A way of doing things that has been kept for a long time.",
+   "example": "According to the British tradition, a tax could only be enacted",
+   "spanish": [
+    "tradición"
+   ]
+  },
+  "parliament": {
+   "word": "parliament",
+   "syllables": "par·lia·ment",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "The group of people who make a country's laws, as in Great Britain.",
+   "example": "Parliament agreed and passed a series of acts in 1767",
+   "spanish": [
+    "parlamento"
+   ]
+  },
+  "representatives": {
+   "word": "representatives",
+   "syllables": "rep·re·sen·ta·tives",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "People chosen to speak and vote for other people.",
+   "example": "But the colonists didn't have any representatives in Parliament.",
+   "spanish": [
+    "representantes"
+   ]
+  },
+  "representation": {
+   "word": "representation",
+   "syllables": "rep·re·sen·ta·tion",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Having someone speak and vote for you in government.",
+   "example": "No taxation without representation",
+   "spanish": [
+    "representación"
+   ]
+  },
+  "consent": {
+   "word": "consent",
+   "syllables": "con·sent",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Permission or agreement.",
+   "example": "referring to the government taxing people without their consent",
+   "spanish": [
+    "consentimiento",
+    "permiso"
+   ]
+  },
+  "merchants": {
+   "word": "merchants",
+   "syllables": "mer·chants",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "People who buy and sell goods.",
+   "example": "the East India Company was able to cut American merchants out of the picture",
+   "spanish": [
+    "comerciantes",
+    "mercaderes"
+   ]
+  },
+  "economy": {
+   "word": "economy",
+   "syllables": "e·con·o·my",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "All the buying, selling, and making of things in a country.",
+   "example": "The act, however, had a negative effect on the American economy",
+   "spanish": [
+    "economía"
+   ]
+  },
+  "principle": {
+   "word": "principle",
+   "syllables": "prin·ci·ple",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A basic belief about what is right and what is wrong.",
+   "example": "It was a question of principle",
+   "spanish": [
+    "principio"
+   ]
+  },
+  "violation": {
+   "word": "violation",
+   "syllables": "vi·o·la·tion",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "The breaking of a rule or law.",
+   "example": "This was a violation of the English monopoly and against the law",
+   "spanish": [
+    "violación",
+    "infracción"
+   ]
+  },
+  "outraged": {
+   "word": "outraged",
+   "syllables": "out·raged",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Very angry about something that seems unfair.",
+   "example": "The colonists were outraged",
+   "spanish": [
+    "indignados",
+    "furiosos"
+   ]
+  },
+  "protestors": {
+   "word": "protestors",
+   "syllables": "pro·tes·tors",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "People who show in public that they disagree with something.",
+   "example": "protestors calling themselves the Sons of Liberty",
+   "spanish": [
+    "manifestantes"
+   ]
+  },
+  "disguised": {
+   "word": "disguised",
+   "syllables": "dis·guised",
+   "ipa": null,
+   "partOfSpeech": "verb",
+   "definition": "Dressed or made to look like someone else so no one knows who you are.",
+   "example": "a sizable group of colonists sneaked aboard the Dartmouth disguised as Native Americans",
+   "spanish": [
+    "disfrazado",
+    "disfrazados"
+   ]
+  },
+  "harbor": {
+   "word": "harbor",
+   "syllables": "har·bor",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A sheltered place by the sea where ships can stay safely.",
+   "example": "chests of tea went into the frigid Boston Harbor",
+   "spanish": [
+    "puerto",
+    "bahía"
+   ]
+  },
+  "frigid": {
+   "word": "frigid",
+   "syllables": "fri·gid",
+   "ipa": null,
+   "partOfSpeech": "adjective",
+   "definition": "Extremely cold.",
+   "example": "chests of tea went into the frigid Boston Harbor",
+   "spanish": [
+    "gélido",
+    "helado"
+   ]
+  },
+  "fortune": {
+   "word": "fortune",
+   "syllables": "for·tune",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A very large amount of money.",
+   "example": "a fortune in a time when £60 a year was considered a good income",
+   "spanish": [
+    "fortuna"
+   ]
+  },
+  "income": {
+   "word": "income",
+   "syllables": "in·come",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "The money a person gets from work or other sources.",
+   "example": "a fortune in a time when £60 a year was considered a good income",
+   "spanish": [
+    "ingresos"
+   ]
+  },
+  "declaration": {
+   "word": "declaration",
+   "syllables": "dec·la·ra·tion",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "An important public statement.",
+   "example": "the Declaration of Independence was signed",
+   "spanish": [
+    "declaración"
+   ]
+  },
+  "independence": {
+   "word": "independence",
+   "syllables": "in·de·pen·dence",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "Freedom from being ruled by another country.",
+   "example": "the Declaration of Independence was signed",
+   "spanish": [
+    "independencia"
+   ]
+  },
+  "revolution": {
+   "word": "revolution",
+   "syllables": "rev·o·lu·tion",
+   "ipa": null,
+   "partOfSpeech": "noun",
+   "definition": "A big change, often when people take power from a ruler.",
+   "example": "the path to revolution was assured",
+   "spanish": [
+    "revolución"
+   ]
+  }
+ },
+ "places": {
+  "Boston Harbor": {
+   "name": "Boston Harbor",
+   "summary": "A natural harbor next to the city of Boston, Massachusetts. In this story, the tea was thrown into it.",
+   "attribution": "Wikipedia, CC BY-SA",
+   "imageUrl": null
+  },
+  "Boston": {
+   "name": "Boston",
+   "summary": "The capital and largest city of the U.S. state of Massachusetts.",
+   "attribution": "Wikipedia, CC BY-SA",
+   "imageUrl": null
+  },
+  "Great Britain": {
+   "name": "Great Britain",
+   "summary": "The big island that holds England, Scotland, and Wales.",
+   "attribution": "Wikipedia, CC BY-SA",
+   "imageUrl": null
+  },
+  "England": {
+   "name": "England",
+   "summary": "A country in the United Kingdom, on the island of Great Britain. Its capital is London.",
+   "attribution": "Wikipedia, CC BY-SA",
+   "imageUrl": null
+  },
+  "China": {
+   "name": "China",
+   "summary": "A large country in East Asia.",
+   "attribution": "Wikipedia, CC BY-SA",
+   "imageUrl": null
+  },
+  "India": {
+   "name": "India",
+   "summary": "A large country in South Asia.",
+   "attribution": "Wikipedia, CC BY-SA",
+   "imageUrl": null
+  },
+  "North America": {
+   "name": "North America",
+   "summary": "A continent in the northern and western parts of the world.",
+   "attribution": "Wikipedia, CC BY-SA",
+   "imageUrl": null
+  }
+ }
+}

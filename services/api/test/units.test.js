@@ -19,6 +19,7 @@ test("textToHtml escapes markup and splits paragraphs", () => {
 });
 
 import { buildInsights } from "../src/insights.js";
+import { summarizePassage } from "../src/passageSummary.js";
 
 test("human-narrated variants count for quality but never double-count text, cost or speed", () => {
   const ai = { engine: "kokoro", metrics: { characters: 1000, words: 200, audioSeconds: 60, generateSeconds: 6, unalignedWords: 0, estimatedLambdaUsd: 0.01 } };
@@ -42,4 +43,25 @@ test("insights expose the measured quality report only when one exists", () => {
   assert.equal(q.timingAgreement.medianErrorMs, 40);
   assert.equal(q.timingAgreement.generatedAt, "2026-11-03");
   assert.deepEqual(q.naturalness, { scores: { a: 1 } });
+});
+
+test("vocabCount counts distinct words, not senses: two senses of 'tax' are one word", () => {
+  const timing = {
+    title: "Tea",
+    vocab: {
+      4217601: { word: "tax", partOfSpeech: "noun" },
+      4217603: { word: "Tax", partOfSpeech: "verb" },
+      813901: { word: "colonist" },
+      1179703: { word: "disguise" },
+      3277401: { word: "principle" },
+    },
+  };
+  assert.equal(summarizePassage({ id: "x", timing, mtimeMs: 0, source: "sample" }).vocabCount, 4);
+});
+
+test("vocabCount ignores empty or missing vocabulary and entries without a word", () => {
+  const count = (vocab) => summarizePassage({ id: "x", timing: { vocab }, mtimeMs: 0 }).vocabCount;
+  assert.equal(count(undefined), 0);
+  assert.equal(count({}), 0);
+  assert.equal(count({ 1: { word: "nature" }, 2: { definition: "no word here" }, 3: { word: "  " } }), 1);
 });

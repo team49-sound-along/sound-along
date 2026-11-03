@@ -19,14 +19,14 @@ A student presses play and every word is highlighted as it is spoken. Tapping an
 ```
 Browser (Vue 3) -> CloudFront (OAC) -+- /app/*  -> S3 (static web app)
                                      +- /data/* -> S3 (MP3 + timing JSON)
-                                     +- /api/*  -> API Lambda (Express 4, Node 22) -> DynamoDB
+                                     +- /api/*  -> API Lambda (Express 4, Node 18.x) -> DynamoDB
 API Lambda -> Step Functions -> Generator Lambda (container, arm64, Kokoro baked in, no internet needed)
                                   parse -> synthesize per sentence -> align words -> master audio -> publish to S3
 ```
 Details: `docs/AWS.md` (AWS contract), `docs/API.md` (HTTP contract), `docs/FORMAT.md` (file format for ReadWorks' frontend), `docs/COST.md` (long-run cost), `docs/DEPLOY.md` (deploy-day runbook), `infra/README.md` (infrastructure).
 
 ## Run it locally (no AWS needed)
-Prerequisites: Python 3.12, Node 18 or newer (the customer requires 18.x; see `.nvmrc`), and `uv`. No ffmpeg is needed.
+Prerequisites: Python 3.12 for local development only (Kokoro supports Python 3.10 to 3.12; the deployed generator image runs the required Python 3.14), Node 18 or newer (the customer requires 18.x; see `.nvmrc`), and `uv`. No ffmpeg is needed.
 ```bash
 scripts/dev.sh          # installs, builds the samples, serves http://127.0.0.1:3101
 ```

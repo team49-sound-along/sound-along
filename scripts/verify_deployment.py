@@ -63,6 +63,21 @@ def parse_content_range(value: str) -> Optional[tuple[int, int, int]]:
         return None
 
 
+def needs_cards(passage: dict[str, Any]) -> bool:
+    """English sample texts voiced by the read-aloud engine carry a reviewed cards document (docs/CARDS.md).
+    Human variants open their AI passage's cards; Spanish, teacher uploads and this script's own job have none."""
+    return passage.get("source") == "sample" and passage.get("language") == "en" and passage.get("engine") not in (None, "human")
+
+
+def cards_problem(doc: Any) -> Optional[str]:
+    """None when the cards document has the shape the reader expects, otherwise what is wrong."""
+    if not isinstance(doc, dict) or not isinstance(doc.get("words"), dict) or not isinstance(doc.get("places"), dict):
+        return "expected an object with `words` and `places` objects"
+    if not doc["words"]:
+        return "no word cards"
+    return None
+
+
 class Report:
     def __init__(self) -> None:
         self.failed = 0
@@ -101,6 +116,7 @@ def run(site: str, generate: bool, language: str, timeout_s: int) -> int:
         data = request("GET", f"{site}/api/passages").json()["data"]
         assert data, "no passages (run the seed script)"
         state["passage"] = data[0]["id"]
+        state["catalog"] = data
         return f"{len(data)} passages; using {data[0]['title']!r}"
 
     def timing() -> str:
@@ -117,6 +133,16 @@ def run(site: str, generate: bool, language: str, timeout_s: int) -> int:
         span = parse_content_range(r.headers.get("content-range", ""))
         assert span and span[1] == 1023, f"bad Content-Range {r.headers.get('content-range')!r}"
         return f"206, {r.headers.get('content-range')}, {r.headers.get('content-type')}"
+
+    def cards() -> str:
+        wanted = [p for p in state["catalog"] if needs_cards(p)]
+        assert wanted, "no English sample text in the catalog to check (run the seed script)"
+        for passage in wanted:
+            r = request("GET", f"{site}/data/{passage['id']}.cards.json")
+            assert r.status == 200, f"{passage['title']!r} has no cards document (HTTP {r.status}); seed uploads data/<id>.cards.json"
+            problem = cards_problem(r.json())
+            assert problem is None, f"{passage['title']!r}: {problem}"
+        return f"{len(wanted)} English sample text(s) each have a valid cards document"
 
     def signed_write() -> str:
         current = request("GET", f"{site}/api/settings").json()["data"]
@@ -140,9 +166,9 @@ def run(site: str, generate: bool, language: str, timeout_s: int) -> int:
         return "a trial is available" if trial else "no clips yet (run scripts/build_samples.py, then seed)"
 
     for name, fn in (("site loads", page), ("API health", health), ("passage list", passages), ("timing document", timing),
-                     ("audio range request (seeking)", audio_range), ("write through the front door", signed_write),
+                     ("audio range request (seeking)", audio_range), ("word and place cards", cards), ("write through the front door", signed_write),
                      ("security headers", security_headers), ("insights", insights), ("listening test clips", listening)):
-        if "passage" not in state and name in ("timing document", "audio range request (seeking)"):
+        if "passage" not in state and name in ("timing document", "audio range request (seeking)", "word and place cards"):
             report.emit("SKIP", name, "no passage to test")
             continue
         report.check(name, fn)

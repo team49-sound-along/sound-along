@@ -42,6 +42,11 @@ export async function seed({ s3, ddb, bucket, tableName, dataDir, logger = conso
     const timing = JSON.parse(timingText);
     await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.mp3`, Body: audio, ContentType: "audio/mpeg" }));
     await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.timing.json`, Body: gzipSync(timingText), ContentType: "application/json", ContentEncoding: "gzip" }));
+    const cardsPath = path.join(dataDir, `${id}.cards.json`);
+    if (await exists(cardsPath)) {
+      // Small and read as-is by the browser: plain application/json, no gzip.
+      await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.cards.json`, Body: await readFile(cardsPath), ContentType: "application/json" }));
+    }
     const item = { pk: "PASSAGE", sk: id, ...summarizePassage({ id, timing, mtimeMs, source }), metrics: timing.metrics ?? {}, ...(reviewOf(timing) && { review: reviewOf(timing) }) };
     await ddb.send(new PutCommand({ TableName: tableName, Item: item }));
     logger.info(`uploaded ${id}: ${item.title} (s3 data/${id}.mp3, data/${id}.timing.json; PASSAGE item)`);
