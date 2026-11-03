@@ -18,7 +18,9 @@ export function buildAwsApp({ env, clients, logger = console }) {
       generationEnabled: (env.GENERATION_ENABLED ?? "true") === "true",
       generatePerMinute: Number(env.GENERATE_PER_MINUTE ?? 3),
       maxConcurrentJobs: Number(env.MAX_CONCURRENT_JOBS ?? 1),
-      trustProxy: true, // behind CloudFront
+      // Trust only the proxy hops we control (CloudFront). `true` would trust the left-most X-Forwarded-For entry,
+      // which the caller can forge to dodge the rate limit. Verify the hop count after the first deploy (docs/AWS.md).
+      trustProxy: Number.isInteger(Number(env.TRUSTED_PROXY_HOPS)) && Number(env.TRUSTED_PROXY_HOPS) > 0 ? Number(env.TRUSTED_PROXY_HOPS) : 1,
     },
     store: createDynamoStore({ client: clients.ddb, tableName }),
     catalog: createDynamoCatalog({ client: clients.ddb, tableName }),

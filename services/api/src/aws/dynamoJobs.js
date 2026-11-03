@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { GetCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { DeleteCommand, GetCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { buildSet, isConditionalFailure, queryPartition, stripKeys } from "./dynamo.js";
 
 const TTL_SECONDS = 7 * 24 * 60 * 60;
+const LOCK_KEY = { pk: "LOCK", sk: "GENERATE_START" };
+// Long enough to cover S3 put + StartExecution, short enough that a crashed request frees the lock quickly.
+const LOCK_LEASE_MS = 15_000;
 
 /** Async job registry in DynamoDB (JOB items with a 7-day TTL). Same interface as createJobStore, but every call returns a promise. */
 export function createDynamoJobs({ client, tableName, now = Date.now }) {
@@ -46,6 +49,41 @@ export function createDynamoJobs({ client, tableName, now = Date.now }) {
         if (isConditionalFailure(err)) return null;
         throw err;
       }
+    },
+    /**
+     * Serialises "check the cap, then start a job" across Lambda instances with a short lease.
+     * Returns a release function, or null when another request holds the lease. An expired lease counts as free.
+     */
+    async acquireStartLock() {
+      const t = now();
+      const owner = randomUUID();
+      try {
+        await client.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: { ...LOCK_KEY, owner, expiresAt: t + LOCK_LEASE_MS, ttl: Math.floor(t / 1000) + 3600 },
+            ConditionExpression: "attribute_not_exists(pk) OR expiresAt < :now",
+            ExpressionAttributeValues: { ":now": t },
+          }),
+        );
+      } catch (err) {
+        if (isConditionalFailure(err)) return null;
+        throw err;
+      }
+      return async () => {
+        try {
+          await client.send(
+            new DeleteCommand({
+              TableName: tableName,
+              Key: LOCK_KEY,
+              ConditionExpression: "owner = :owner",
+              ExpressionAttributeValues: { ":owner": owner },
+            }),
+          );
+        } catch {
+          // The lease expires on its own; failing to release must never fail the request.
+        }
+      };
     },
     async activeCount() {
       const pages = await queryPartition(client, tableName, "JOB", {

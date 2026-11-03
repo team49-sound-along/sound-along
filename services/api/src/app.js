@@ -90,11 +90,18 @@ export function createApp({ store, catalog, jobs, runner, config, logger = conso
       }
       const input = parseGenerateInput(req.body);
       if (!generateLimiter(req.ip)) throw new HttpError(429, "You are generating too quickly. Wait a minute and try again.");
-      if ((await jobs.activeCount()) >= config.maxConcurrentJobs) {
-        throw new HttpError(429, "Another passage is being generated. Try again in a moment.");
+      // The cap check and the job start must be one atomic step, or parallel requests all pass the check.
+      const release = await jobs.acquireStartLock();
+      if (!release) throw new HttpError(429, "Another passage is being generated. Try again in a moment.");
+      try {
+        if ((await jobs.activeCount()) >= config.maxConcurrentJobs) {
+          throw new HttpError(429, "Another passage is being generated. Try again in a moment.");
+        }
+        const job = await runner.start(input);
+        res.status(202).json(ok({ jobId: job.id }));
+      } finally {
+        await release();
       }
-      const job = await runner.start(input);
-      res.status(202).json(ok({ jobId: job.id }));
     }),
   );
 

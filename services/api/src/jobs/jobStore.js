@@ -5,6 +5,7 @@ const MAX_KEPT = 200;
 /** In-memory job registry. Jobs are short-lived; in AWS this is a Step Functions execution. */
 export function createJobStore() {
   const jobs = new Map();
+  let startLockHeld = false;
 
   const snapshot = (job) => ({ ...job });
 
@@ -35,6 +36,14 @@ export function createJobStore() {
       const next = { ...current, ...patch };
       jobs.set(id, next);
       return snapshot(next);
+    },
+    /** Serialises "check the cap, then start a job". Returns a release function, or null if another start is in flight. */
+    acquireStartLock() {
+      if (startLockHeld) return null;
+      startLockHeld = true;
+      return () => {
+        startLockHeld = false;
+      };
     },
     activeCount() {
       return [...jobs.values()].filter((j) => j.status === "queued" || j.status === "running").length;
