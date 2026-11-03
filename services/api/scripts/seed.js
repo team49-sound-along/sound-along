@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { reviewOf, summarizePassage } from "../src/passageSummary.js";
 
 const TIMING = /^([0-9a-f-]{36})\.timing\.json$/;
+const PLACE_PICTURE = /^[0-9a-f-]{36}\.place-[a-z0-9-]{1,60}-[0-9a-f]{8}\.(?:jpg|png)$/;
 
 const exists = (file) => access(file).then(() => true, () => false);
 
@@ -46,6 +47,11 @@ export async function seed({ s3, ddb, bucket, tableName, dataDir, logger = conso
     if (await exists(cardsPath)) {
       // Small and read as-is by the browser: plain application/json, no gzip.
       await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.cards.json`, Body: await readFile(cardsPath), ContentType: "application/json" }));
+    }
+    // Place pictures (small JPEG/PNG chosen ahead of time). The content hash is in the file name, so they can be cached for a year.
+    for (const picture of (await readdir(dataDir)).filter((f) => PLACE_PICTURE.test(f) && f.startsWith(`${id}.`)).sort()) {
+      const type = picture.endsWith(".png") ? "image/png" : "image/jpeg";
+      await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${picture}`, Body: await readFile(path.join(dataDir, picture)), ContentType: type, CacheControl: "public, max-age=31536000, immutable" }));
     }
     const item = { pk: "PASSAGE", sk: id, ...summarizePassage({ id, timing, mtimeMs, source }), metrics: timing.metrics ?? {}, ...(reviewOf(timing) && { review: reviewOf(timing) }) };
     await ddb.send(new PutCommand({ TableName: tableName, Item: item }));

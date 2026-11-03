@@ -14,3 +14,6 @@ data/*
 
 # raw Wikipedia text used once to write the place cards (CC BY-SA); the committed cards are our own wording
 samples/cards/places.raw.json
+samples/cards/places.images.raw.json
+samples/cards/images.candidates/
+samples/cards/images.candidates.json

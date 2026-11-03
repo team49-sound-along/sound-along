@@ -97,6 +97,20 @@ describe("cards documents", () => {
   test("a text without cards answers 404 (the reader then falls back to the vocabulary)", async () => {
     assert.equal((await call("GET", `/data/${OTHER}.cards.json`)).status, 404);
   });
+  test("place pictures are served as images, and only the exact hashed JPEG or PNG names are", async () => {
+    const name = `${PID}.place-piedmont-park-e96cde8f.jpg`;
+    await writeFile(path.join(dir, name), Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]));
+    const ok = await fetch(`${base}/data/${name}`);
+    assert.equal(ok.status, 200);
+    assert.equal(ok.headers.get("content-type"), "image/jpeg");
+    await writeFile(path.join(dir, `${PID}.place-x-12345678.svg`), "<svg><script>1</script></svg>");
+    await writeFile(path.join(dir, `${PID}.place-x-123.jpg`), "x");
+    await writeFile(path.join(dir, `${PID}.place-X-12345678.jpg`), "x");
+    for (const bad of [`${PID}.place-x-12345678.svg`, `${PID}.place-x-123.jpg`, `${PID}.place-X-12345678.jpg`, `${PID}.place-x-12345678.jpg.bak`,
+      `${PID}.place-..%2Fx-12345678.jpg`, `place-x-12345678.jpg`, `${PID}.place--12345678.jpg`, `${PID}.place-piedmont-park-e96cde8f.gif`]) {
+      assert.equal((await call("GET", `/data/${bad}`)).status, 404, bad);
+    }
+  });
   test("only the exact <uuid>.cards.json name is served, and the listening answer key stays unreachable", async () => {
     for (const name of ["cards.json", `${PID}.cards.json.bak`, `${PID}.cards.JSON`, `${PID}.card.json`, "ab%2Fmanifest.json", "raw%2Fab%2Fmanifest.json", "ab/manifest.json"]) {
       assert.equal((await call("GET", `/data/${name}`)).status, 404, name);

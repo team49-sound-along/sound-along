@@ -248,6 +248,24 @@ describe("seed script", () => {
     assert.deepEqual(Item.metrics, { words: 7 });
   });
 
+  test("uploads place pictures with an image type and a long immutable cache, for texts that have them", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "seed-img-"));
+    const id = "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98";
+    await writeFile(path.join(dir, `${id}.mp3`), "audio");
+    await writeFile(path.join(dir, `${id}.timing.json`), JSON.stringify({ title: "P", duration_ms: 1, metrics: { words: 1 }, vocab: {} }));
+    await writeFile(path.join(dir, `${id}.place-piedmont-park-e96cde8f.jpg`), "jpgbytes");
+    await writeFile(path.join(dir, `${id}.place-boston-harbor-0a1b2c3d.png`), "pngbytes");
+    await writeFile(path.join(dir, `${id}.place-x-12345678.svg`), "<svg/>"); // never uploaded
+    await writeFile(path.join(dir, "notes.place-x-12345678.jpg"), "not a uuid name"); // never uploaded
+    const s3 = fakeClient();
+    await seed({ s3, ddb: fakeClient(), bucket: "B", tableName: "T", dataDir: dir, logger: quiet });
+    const pics = s3.calls.filter((c) => c.input.Key.includes(".place-")).map((c) => [c.input.Key, c.input.ContentType, c.input.CacheControl]);
+    assert.deepEqual(pics.sort(), [
+      [`data/${id}.place-boston-harbor-0a1b2c3d.png`, "image/png", "public, max-age=31536000, immutable"],
+      [`data/${id}.place-piedmont-park-e96cde8f.jpg`, "image/jpeg", "public, max-age=31536000, immutable"],
+    ]);
+  });
+
   test("uploads <id>.cards.json as plain JSON when it exists, and nothing for a text without cards", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "seed-cards-"));
     const withCards = "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98";

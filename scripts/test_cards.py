@@ -25,7 +25,7 @@ EXPECTED = (  # the three English texts (AI passage ids), see docs/BACKEND_HANDO
 )
 POS = {"noun", "verb", "adjective", "adverb"}
 WORD_FIELDS = {"word", "syllables", "ipa", "partOfSpeech", "definition", "example", "spanish"}
-PLACE_FIELDS = {"name", "summary", "attribution", "imageUrl"}
+PLACE_FIELDS = {"name", "summary", "attribution", "imageUrl", "imageAlt", "imageCredit"}
 
 
 def word_key(text: str) -> str:
@@ -87,7 +87,6 @@ def test_shape_is_exactly_the_contract(doc) -> None:
     for key, card in cards["places"].items():
         assert set(card) == PLACE_FIELDS, key
         assert card["name"] == key, key
-        assert card["imageUrl"] is None, key
 
 
 def test_word_keys_are_normalised_and_are_words_the_reader_shows(doc) -> None:
@@ -124,6 +123,8 @@ def test_plain_text_only_and_length_limits(doc) -> None:
     for key, card in cards["places"].items():
         assert len(card["summary"]) <= 160, f"{key}: summary over 160 characters"
         strings += [card["summary"], card["attribution"], card["name"]]
+    for card in cards["places"].values():
+        strings += [card["imageAlt"] or "", card["imageCredit"] or ""]
     for text in strings:
         assert not re.search(r"[<>]|https?:|www\.", text), f"markup or link in {text!r}"
 
@@ -141,6 +142,32 @@ def test_places_appear_in_the_text_and_credit_wikipedia(doc) -> None:
         assert re.search(rf"(?<![\w]){re.escape(norm(key))}(?![\w])", plain), f"place {key!r} is not in the passage"
         assert "CC BY-SA" in card["attribution"], key
         assert card["summary"].strip(), key
+
+
+def test_a_place_picture_is_a_small_real_image_on_our_own_origin_with_alt_text_and_a_credit(doc) -> None:
+    import place_images as pi
+
+    _, _, _, _, cards = doc
+    for key, card in cards["places"].items():
+        if card["imageUrl"] is None:
+            assert card["imageAlt"] is None and card["imageCredit"] is None, f"{key}: alt and credit without a picture"
+            continue
+        name = card["imageUrl"].removeprefix("/data/")
+        assert card["imageUrl"].startswith("/data/") and pi.NAME_PATTERN.fullmatch(name), f"{key}: imageUrl must be /data/<uuid>.place-<slug>-<hash>.jpg|png, never an absolute URL"
+        data = (CARDS / "images" / name).read_bytes()
+        assert pi.image_ext(data) == name.rsplit(".", 1)[1], f"{key}: file is not really a {name.rsplit('.', 1)[1]}"
+        assert len(data) <= 150_000, f"{key}: {len(data)} bytes is over the 150 KB budget"
+        assert name.split("-")[-1].split(".")[0] == pi.hashlib.sha256(data).hexdigest()[:8], f"{key}: file name hash does not match the content"
+        assert pi.alt_problem(card["imageAlt"], key) is None, f"{key}: {pi.alt_problem(card['imageAlt'], key)}"
+        assert any(lic in card["imageCredit"] for lic in ("CC BY", "CC0", "Public domain")), f"{key}: credit must name the licence"
+        assert "Wikimedia Commons" in card["imageCredit"] and "http" not in card["imageCredit"]
+
+
+def test_there_are_no_orphan_image_files(doc) -> None:
+    _, _, _, _, cards = doc
+    used = {c["imageUrl"].removeprefix("/data/") for c in cards["places"].values() if c["imageUrl"]}
+    own = {p.name for p in (CARDS / "images").glob(f"{doc[0]}.place-*")}
+    assert own == used, f"image files not referenced by the cards: {sorted(own - used)}"
 
 
 def test_each_text_has_enough_words_to_help_a_reader(doc) -> None:
@@ -164,8 +191,11 @@ def test_publish_cards_copies_only_cards_files(tmp_path) -> None:
     (src / "a.cards.json").write_text("{}", encoding="utf-8")
     (src / "REVIEW.md").write_text("x", encoding="utf-8")
     (src / "places.raw.json").write_text("x", encoding="utf-8")
-    assert cards_files.publish_cards(src, dest) == ["a.cards.json"]
-    assert sorted(p.name for p in dest.iterdir()) == ["a.cards.json"]
+    (src / "images").mkdir()
+    (src / "images" / "x.place-y-12345678.jpg").write_bytes(b"jpg")
+    (src / "images" / "notes.txt").write_text("no", encoding="utf-8")
+    assert cards_files.publish_cards(src, dest) == ["a.cards.json", "x.place-y-12345678.jpg"]
+    assert sorted(p.name for p in dest.iterdir()) == ["a.cards.json", "x.place-y-12345678.jpg"]
     assert cards_files.publish_cards(tmp_path / "missing", dest) == []
 
 
@@ -173,4 +203,5 @@ def test_the_real_cards_publish_into_data(tmp_path) -> None:
     import cards_files
 
     copied = cards_files.publish_cards(CARDS, tmp_path)
-    assert sorted(copied) == sorted(f"{i}.cards.json" for i in EXPECTED)
+    assert [n for n in copied if n.endswith(".cards.json")] == sorted(f"{i}.cards.json" for i in EXPECTED)
+    assert len([n for n in copied if ".place-" in n]) == len(list((CARDS / "images").glob("*.*")))

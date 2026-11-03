@@ -354,13 +354,17 @@
    "name": "Hertfordshire",
    "summary": "A county in the east of England, north of London.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.place-hertfordshire-bbd6b254.jpg",
+   "imageAlt": "Golden farm fields and a wooded hill with green trees under a blue sky.",
+   "imageCredit": "Photo: Peter O'Connor aka anemoneprojectors, CC BY-SA 2.0, via Wikimedia Commons"
   },
   "London": {
    "name": "London",
    "summary": "The capital and largest city of England and the United Kingdom.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null
+   "imageUrl": "/data/ff1d34c9-14f1-4e78-b509-6568dc912a17.place-london-e069b22d.jpg",
+   "imageAlt": "Tower Bridge lit up at sunset over the River Thames, with tall buildings of London in the distance.",
+   "imageCredit": "Photo: Ilya Grigorik, CC BY-SA 3.0, via Wikimedia Commons"
   }
  }
 }

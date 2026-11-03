@@ -1,0 +1,65 @@
+{
+ "_note": "Curated by looking at each picture. Only entries listed here are used. Rejected on purpose: Georgia, England, China, India and North America (SVG flags or locator maps), and Boston Harbor (dense topographic map, too large and not readable for young readers).",
+ "images": [
+  {
+   "passageId": "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98",
+   "place": "Piedmont Park",
+   "candidate": "piedmont-park.jpg",
+   "file": "Piedmont_Park’s_Lake_Clara_Meer_with_Midtown_Atlanta_skyline_(2024)-104A8428.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Piedmont_Park%E2%80%99s_Lake_Clara_Meer_with_Midtown_Atlanta_skyline_%282024%29-104A8428.jpg",
+   "artist": "Frank Schulenburg",
+   "license": "CC BY-SA 4.0",
+   "alt": "A calm lake with green trees along the shore and tall city buildings behind, all reflected in the water."
+  },
+  {
+   "passageId": "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98",
+   "place": "Atlanta",
+   "candidate": "atlanta.jpg",
+   "file": "A2ATL20250614-0721_(cropped).jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:A2ATL20250614-0721_%28cropped%29.jpg",
+   "artist": "AtlChampion",
+   "license": "CC BY-SA 4.0",
+   "alt": "Tall skyscrapers in a city downtown with a highway and green trees, seen from above under a cloudy sky."
+  },
+  {
+   "passageId": "5af24980-4d6d-41c1-87fa-4f21cb2d169d",
+   "place": "Boston",
+   "candidate": "boston.jpg",
+   "file": "ISH_WC_Boston4.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:ISH_WC_Boston4.jpg",
+   "artist": "Ian Howard",
+   "license": "CC BY 2.5",
+   "alt": "A narrow cobblestone street between red brick houses with flower boxes, old-fashioned street lamps and an American flag."
+  },
+  {
+   "passageId": "5af24980-4d6d-41c1-87fa-4f21cb2d169d",
+   "place": "Great Britain",
+   "candidate": "great-britain.jpg",
+   "file": "MODIS_-_Great_Britain_-_2012-06-04_during_heat_wave_(cropped).jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:MODIS_-_Great_Britain_-_2012-06-04_during_heat_wave_%28cropped%29.jpg",
+   "artist": "Jeff Schmaltz, NASA MODIS Rapid Response Team",
+   "license": "Public domain",
+   "alt": "A satellite picture of the island of Great Britain, green land surrounded by dark blue sea, with Ireland on the left."
+  },
+  {
+   "passageId": "ff1d34c9-14f1-4e78-b509-6568dc912a17",
+   "place": "Hertfordshire",
+   "candidate": "hertfordshire.jpg",
+   "file": "GOC_Hexton_007_Chilterns_landscape_(24372234911)_(cropped).jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:GOC_Hexton_007_Chilterns_landscape_%2824372234911%29_%28cropped%29.jpg",
+   "artist": "Peter O'Connor aka anemoneprojectors",
+   "license": "CC BY-SA 2.0",
+   "alt": "Golden farm fields and a wooded hill with green trees under a blue sky."
+  },
+  {
+   "passageId": "ff1d34c9-14f1-4e78-b509-6568dc912a17",
+   "place": "London",
+   "candidate": "london.jpg",
+   "file": "London_Skyline_(125508655).jpeg",
+   "page": "https://commons.wikimedia.org/wiki/File:London_Skyline_%28125508655%29.jpeg",
+   "artist": "Ilya Grigorik",
+   "license": "CC BY-SA 3.0",
+   "alt": "Tower Bridge lit up at sunset over the River Thames, with tall buildings of London in the distance."
+  }
+ ]
+}

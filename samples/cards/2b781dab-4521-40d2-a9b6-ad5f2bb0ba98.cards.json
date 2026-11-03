@@ -394,19 +394,25 @@
    "name": "Piedmont Park",
    "summary": "A big public park in the city of Atlanta, Georgia, in the United States.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null
+   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.place-piedmont-park-e96cde8f.jpg",
+   "imageAlt": "A calm lake with green trees along the shore and tall city buildings behind, all reflected in the water.",
+   "imageCredit": "Photo: Frank Schulenburg, CC BY-SA 4.0, via Wikimedia Commons"
   },
   "Atlanta": {
    "name": "Atlanta",
    "summary": "The capital and largest city of the U.S. state of Georgia.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null
+   "imageUrl": "/data/2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.place-atlanta-44f8df63.jpg",
+   "imageAlt": "Tall skyscrapers in a city downtown with a highway and green trees, seen from above under a cloudy sky.",
+   "imageCredit": "Photo: AtlChampion, CC BY-SA 4.0, via Wikimedia Commons"
   },
   "Georgia": {
    "name": "Georgia",
    "summary": "A state in the southeastern United States. Its capital is Atlanta.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null
+   "imageUrl": null,
+   "imageAlt": null,
+   "imageCredit": null
   }
  }
 }

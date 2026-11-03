@@ -384,43 +384,57 @@
    "name": "Boston Harbor",
    "summary": "A natural harbor next to the city of Boston, Massachusetts. In this story, the tea was thrown into it.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null
+   "imageUrl": null,
+   "imageAlt": null,
+   "imageCredit": null
   },
   "Boston": {
    "name": "Boston",
    "summary": "The capital and largest city of the U.S. state of Massachusetts.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.place-boston-b015b703.jpg",
+   "imageAlt": "A narrow cobblestone street between red brick houses with flower boxes, old-fashioned street lamps and an American flag.",
+   "imageCredit": "Photo: Ian Howard, CC BY 2.5, via Wikimedia Commons"
   },
   "Great Britain": {
    "name": "Great Britain",
    "summary": "The big island that holds England, Scotland, and Wales.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null
+   "imageUrl": "/data/5af24980-4d6d-41c1-87fa-4f21cb2d169d.place-great-britain-88f49799.jpg",
+   "imageAlt": "A satellite picture of the island of Great Britain, green land surrounded by dark blue sea, with Ireland on the left.",
+   "imageCredit": "Image: Jeff Schmaltz, NASA MODIS Rapid Response Team, Public domain, via Wikimedia Commons"
   },
   "England": {
    "name": "England",
    "summary": "A country in the United Kingdom, on the island of Great Britain. Its capital is London.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null
+   "imageUrl": null,
+   "imageAlt": null,
+   "imageCredit": null
   },
   "China": {
    "name": "China",
    "summary": "A large country in East Asia.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null
+   "imageUrl": null,
+   "imageAlt": null,
+   "imageCredit": null
   },
   "India": {
    "name": "India",
    "summary": "A large country in South Asia.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null
+   "imageUrl": null,
+   "imageAlt": null,
+   "imageCredit": null
   },
   "North America": {
    "name": "North America",
    "summary": "A continent in the northern and western parts of the world.",
    "attribution": "Wikipedia, CC BY-SA",
-   "imageUrl": null
+   "imageUrl": null,
+   "imageAlt": null,
+   "imageCredit": null
   }
  }
 }

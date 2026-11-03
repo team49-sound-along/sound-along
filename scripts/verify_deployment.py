@@ -69,12 +69,21 @@ def needs_cards(passage: dict[str, Any]) -> bool:
     return passage.get("source") == "sample" and passage.get("language") == "en" and passage.get("engine") not in (None, "human")
 
 
+def image_urls(doc: Any) -> list[str]:
+    """The place pictures a cards document points at (word cards never carry one)."""
+    places = doc.get("places") if isinstance(doc, dict) else None
+    return [c["imageUrl"] for c in (places or {}).values() if isinstance(c, dict) and c.get("imageUrl")]
+
+
 def cards_problem(doc: Any) -> Optional[str]:
     """None when the cards document has the shape the reader expects, otherwise what is wrong."""
     if not isinstance(doc, dict) or not isinstance(doc.get("words"), dict) or not isinstance(doc.get("places"), dict):
         return "expected an object with `words` and `places` objects"
     if not doc["words"]:
         return "no word cards"
+    offsite = [u for u in image_urls(doc) if not (isinstance(u, str) and u.startswith("/data/") and "://" not in u)]
+    if offsite:
+        return f"imageUrl must be a /data/ path on our own origin, found {offsite[0]!r}"
     return None
 
 
@@ -142,7 +151,13 @@ def run(site: str, generate: bool, language: str, timeout_s: int) -> int:
             assert r.status == 200, f"{passage['title']!r} has no cards document (HTTP {r.status}); seed uploads data/<id>.cards.json"
             problem = cards_problem(r.json())
             assert problem is None, f"{passage['title']!r}: {problem}"
-        return f"{len(wanted)} English sample text(s) each have a valid cards document"
+        pictures = 0
+        for passage in wanted:
+            for url in image_urls(request("GET", f"{site}/data/{passage['id']}.cards.json").json()):
+                r = request("GET", f"{site}{url}")
+                assert r.status == 200 and r.headers.get("content-type", "").startswith("image/"), f"{url}: HTTP {r.status} {r.headers.get('content-type')}"
+                pictures += 1
+        return f"{len(wanted)} English sample text(s) each have a valid cards document; {pictures} place picture(s) load as images"
 
     def signed_write() -> str:
         current = request("GET", f"{site}/api/settings").json()["data"]
