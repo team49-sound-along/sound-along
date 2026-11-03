@@ -21,6 +21,7 @@ import urllib.request
 import uuid
 
 import ab_clips
+import build_translations
 import cards_files
 from datetime import datetime, timezone
 from pathlib import Path
@@ -126,6 +127,9 @@ def main(skip_mos: bool) -> int:
             generate(passage_file, recordings.get(passage_file.stem), workdir)
         log(f"  cards: {len(cards_files.publish_cards(SAMPLES / 'cards', DATA))} reviewed cards file(s) copied to data/")
         log("2/4 done")
+        log("  making the other-language version of each text (Spanish for the English texts, English for the Spanish one)")
+        if build_translations.main() != 0:
+            log("  WARNING: a translation failed; the originals are fine (see the messages above)")
 
         log("3/5 checking English passages against an independent Whisper transcript")
         rows, pooled = [], []

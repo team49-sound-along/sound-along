@@ -30,7 +30,7 @@ Prerequisites: Python 3.12 for local development only (Kokoro supports Python 3.
 ```bash
 scripts/dev.sh          # installs, builds the samples, serves http://127.0.0.1:3101
 ```
-Rebuild every sample and every measured number from scratch (about 3 minutes): `.venv/bin/python scripts/build_samples.py`
+Rebuild every sample and every measured number from scratch (about 3 minutes, plus the Spanish/English translations it makes at the end): `.venv/bin/python scripts/build_samples.py`. Order matters: the translations, cards and pictures are build output, so build before seeding or demoing.
 
 Tests: `cd services/parse && ../../.venv/bin/python -m pytest` (same for `synth`, `eval`, `generator`, `scripts`), `cd services/api && npm test`, `cd web && npm test`, and for the infrastructure (Python) `cd infra && python -m pytest`.
 
