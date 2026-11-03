@@ -3,9 +3,13 @@ import path from "node:path";
 import { HttpError, errorHandler, fail, ok, route } from "./http.js";
 import { buildInsights } from "./insights.js";
 import { createRateLimiter } from "./rateLimit.js";
-import { parseAssignmentInput, parseEvent, parseGenerateInput, parseToggle } from "./validate.js";
+import { contentRoutes } from "./routes/content.js";
+import { generationRoutes } from "./routes/generation.js";
+import { mountLocalRecordingUpload, recordingRoutes } from "./routes/recordings.js";
+import { loadVoices } from "./settings.js";
+import { parseAssignmentInput, parseEvent, parseToggle } from "./validate.js";
 
-const DATA_FILE = /^[0-9a-f-]{36}\.(mp3|timing\.json)$/;
+const DATA_FILE = /^[0-9a-f-]{36}\.(mp3|timing\.json|soundalong\.json)$/;
 
 const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
@@ -22,8 +26,10 @@ const SECURITY_HEADERS = {
  *   catalog  passages + timings        (data folder locally, S3 on AWS)
  *   jobs     job registry (async)      (memory locally, DynamoDB on AWS)
  *   runner   starts generation         (child process locally, Step Functions on AWS)
+ *   recordings  human recording slots   (local disk, or S3 presigned PUT)
+ *   sources  stored job input by id     (raw/<id>.json on disk or S3; used by regenerate)
  */
-export function createApp({ store, catalog, jobs, runner, config, logger = console }) {
+export function createApp({ store, catalog, jobs, runner, recordings, sources, config, logger = console }) {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", config.trustProxy ?? false);
@@ -31,9 +37,12 @@ export function createApp({ store, catalog, jobs, runner, config, logger = conso
     res.set(SECURITY_HEADERS);
     next();
   });
-  app.use(express.json({ limit: "64kb" }));
-
   const generateLimiter = createRateLimiter({ max: config.generatePerMinute, windowMs: 60_000 });
+  const writeLimiter = createRateLimiter({ max: config.writePerMinute ?? 60, windowMs: 60_000 });
+
+  // The raw audio upload streams its own body, so it is mounted before the JSON parser.
+  mountLocalRecordingUpload(app, { recordings, config, writeLimiter });
+  app.use(express.json({ limit: "64kb" }));
 
   const passageIds = async () => new Set((await catalog.list()).map((p) => p.id));
   const classIds = async () => new Set((await store.listClasses()).map((c) => c.id));
@@ -82,35 +91,16 @@ export function createApp({ store, catalog, jobs, runner, config, logger = conso
     }),
   );
 
-  api.post(
-    "/generate",
-    route(async (req, res) => {
-      if (!config.generationEnabled) {
-        throw new HttpError(503, "Audio generation is switched off right now. Pre-generated passages are still available.");
-      }
-      const input = parseGenerateInput(req.body);
-      if (!generateLimiter(req.ip)) throw new HttpError(429, "You are generating too quickly. Wait a minute and try again.");
-      // The cap check and the job start must be one atomic step, or parallel requests all pass the check.
-      const release = await jobs.acquireStartLock();
-      if (!release) throw new HttpError(429, "Another passage is being generated. Try again in a moment.");
-      try {
-        if ((await jobs.activeCount()) >= config.maxConcurrentJobs) {
-          throw new HttpError(429, "Another passage is being generated. Try again in a moment.");
-        }
-        const job = await runner.start(input);
-        res.status(202).json(ok({ jobId: job.id }));
-      } finally {
-        await release();
-      }
-    }),
-  );
+  generationRoutes(api, { store, jobs, runner, recordings, sources, config, generateLimiter });
+  recordingRoutes(api, { recordings, config, writeLimiter });
+  contentRoutes(api, { store, catalog, voices: config.voices ?? loadVoices(), writeLimiter });
 
   api.get(
     "/jobs/:id",
     route(async (req, res) => {
       const job = await jobs.get(req.params.id);
       if (!job) return res.status(404).json(fail("That job was not found."));
-      return res.json(ok(job));
+      return res.json(ok({ humanPassageId: null, ...job }));
     }),
   );
 

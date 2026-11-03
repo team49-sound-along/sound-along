@@ -4,11 +4,14 @@ import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { access, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { summarizePassage } from "../src/passageSummary.js";
+import { reviewOf, summarizePassage } from "../src/passageSummary.js";
 
 const TIMING = /^([0-9a-f-]{36})\.timing\.json$/;
 
 const exists = (file) => access(file).then(() => true, () => false);
+
+/** The `source` field of raw/<id>.json, or "sample" when the file is missing or unreadable. */
+const readSource = (file) => readFile(file, "utf8").then((t) => JSON.parse(t).source, () => "sample");
 
 /** Upload every local passage (mp3 + timing) to S3 and write its PASSAGE summary item. Returns the ids seeded. */
 export async function seed({ s3, ddb, bucket, tableName, dataDir, logger = console }) {
@@ -22,16 +25,16 @@ export async function seed({ s3, ddb, bucket, tableName, dataDir, logger = conso
       continue;
     }
     const timingPath = path.join(dataDir, file);
-    const [timingText, audio, { mtimeMs }, generated] = await Promise.all([
+    const [timingText, audio, { mtimeMs }, source] = await Promise.all([
       readFile(timingPath, "utf8"),
       readFile(mp3),
       stat(timingPath),
-      exists(path.join(dataDir, "raw", `${id}.json`)),
+      readSource(path.join(dataDir, "raw", `${id}.json`)),
     ]);
     const timing = JSON.parse(timingText);
     await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.mp3`, Body: audio, ContentType: "audio/mpeg" }));
     await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.timing.json`, Body: timingText, ContentType: "application/json" }));
-    const item = { pk: "PASSAGE", sk: id, ...summarizePassage({ id, timing, mtimeMs, generated }), metrics: timing.metrics ?? {} };
+    const item = { pk: "PASSAGE", sk: id, ...summarizePassage({ id, timing, mtimeMs, source }), metrics: timing.metrics ?? {}, ...(reviewOf(timing) && { review: reviewOf(timing) }) };
     await ddb.send(new PutCommand({ TableName: tableName, Item: item }));
     logger.info(`uploaded ${id}: ${item.title} (s3 data/${id}.mp3, data/${id}.timing.json; PASSAGE item)`);
     ids.push(id);

@@ -10,13 +10,14 @@ export function createJobStore() {
   const snapshot = (job) => ({ ...job });
 
   return {
-    create(title) {
+    create(title, { humanPassageId = null } = {}) {
       const job = {
         id: randomUUID(),
         title,
         status: "queued",
         step: "parse",
         passageId: null,
+        humanPassageId,
         error: null,
         metrics: null,
         startedAt: new Date().toISOString(),

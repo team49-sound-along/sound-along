@@ -18,11 +18,15 @@ export function createDynamoCatalog({ client, tableName, now = Date.now, cacheMs
   return {
     async list() {
       return (await items())
-        .map((item) => stripKeys({ id: item.sk, ...item }, ["metrics"]))
+        .map((item) => stripKeys({ id: item.sk, ...item }, ["metrics", "review"]))
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
     async timings() {
       return (await items()).map((item) => ({ engine: item.engine, metrics: item.metrics ?? {} }));
+    },
+    /** Passages carrying ASR review suspects (the PASSAGE item's `review` field). */
+    async reviewSources() {
+      return (await items()).filter((item) => item.review).map((item) => ({ id: item.sk, title: item.title, review: item.review }));
     },
     /** Measured quality report (QUALITY item written by scripts/seed.js), or null. */
     async qualityReport() {

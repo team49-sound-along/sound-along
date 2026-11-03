@@ -178,7 +178,7 @@ describe("sfnRunner", () => {
     const exec = sfn.calls[0];
     assert.equal(exec.name, "StartExecutionCommand");
     assert.equal(exec.input.stateMachineArn, "arn:sm");
-    assert.deepEqual(JSON.parse(exec.input.input), { jobId: "job-1", passageId: raw.uuid, title: "T", rawKey: put.input.Key });
+    assert.deepEqual(JSON.parse(exec.input.input), { jobId: "job-1", passageId: raw.uuid, title: "T", rawKey: put.input.Key, humanPassageId: null });
     assert.equal(job.passageId, raw.uuid);
   });
 

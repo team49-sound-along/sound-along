@@ -5,6 +5,8 @@ import { createApp } from "./src/app.js";
 import { createFileCatalog } from "./src/catalog.js";
 import { createJobStore } from "./src/jobs/jobStore.js";
 import { createLocalRunner } from "./src/jobs/localRunner.js";
+import { createLocalSources } from "./src/jobs/localSources.js";
+import { createLocalRecordings } from "./src/recordings/localRecordings.js";
 import { createFileStore } from "./src/stores/fileStore.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -30,6 +32,8 @@ const app = createApp({
   jobs,
   store: createFileStore(path.join(config.dataDir, "state.json")),
   catalog: createFileCatalog(config.dataDir),
+  recordings: createLocalRecordings({ dataDir: config.dataDir }),
+  sources: createLocalSources({ dataDir: config.dataDir }),
   runner: createLocalRunner({ jobs, dataDir: config.dataDir, python, script }),
 });
 

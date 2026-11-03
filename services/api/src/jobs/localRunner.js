@@ -2,7 +2,9 @@ import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createLocalRecordings } from "../recordings/localRecordings.js";
 import { textToHtml } from "../validate.js";
+import { buildJobInput } from "./jobInput.js";
 
 const STEPS = new Set(["parse", "synthesize", "align", "publish"]);
 const TIMEOUT_MS = 10 * 60 * 1000;
@@ -10,15 +12,32 @@ const TIMEOUT_MS = 10 * 60 * 1000;
 /**
  * Runs the real Python pipeline (services/synth/run_local.py) as a child process and mirrors its progress
  * into the job store. In AWS this is replaced by a Step Functions state machine with the same four steps.
+ *
+ * start(spec): { title, text | content, source?, passageId?, settings, pronunciations, recordingId | recording, humanPassageId }
+ * A `passageId` re-runs an existing passage (regenerate); otherwise a new one is created.
  */
 export function createLocalRunner({ jobs, dataDir, python, script, logger = console }) {
-  async function start({ title, text }) {
-    const job = jobs.create(title);
-    const passageId = randomUUID();
+  const recordings = createLocalRecordings({ dataDir });
+
+  async function start(spec) {
+    const { title } = spec;
+    const passageId = spec.passageId ?? randomUUID();
+    const recording = spec.recording ?? (spec.recordingId ? recordings.ref(spec.recordingId) : null);
+    const input = buildJobInput({
+      passageId,
+      title,
+      content: spec.content ?? textToHtml(spec.text),
+      source: spec.source ?? "generated",
+      settings: spec.settings,
+      pronunciations: spec.pronunciations,
+      recording,
+      humanPassageId: spec.humanPassageId,
+    });
+    const job = await jobs.create(title, { humanPassageId: input.humanPassageId });
     const rawDir = path.join(dataDir, "raw");
     await mkdir(rawDir, { recursive: true });
     const rawFile = path.join(rawDir, `${passageId}.json`);
-    await writeFile(rawFile, JSON.stringify({ uuid: passageId, title, content: textToHtml(text), source: "generated" }));
+    await writeFile(rawFile, JSON.stringify(input));
 
     const child = spawn(python, [script, rawFile, dataDir], { stdio: ["ignore", "pipe", "pipe"] });
     jobs.update(job.id, { status: "running", passageId });

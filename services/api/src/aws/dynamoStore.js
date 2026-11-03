@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { DeleteCommand, GetCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { CLASSES, EVENT_KEY } from "../stores/fileStore.js";
+import { createDynamoContentMethods } from "./dynamoContent.js";
 import { buildSet, isConditionalFailure, queryPartition, stripKeys } from "./dynamo.js";
 
 /** Assignments and event totals in the DynamoDB single table (docs/AWS.md). `client` is a DynamoDBDocumentClient. */
@@ -8,6 +9,7 @@ export function createDynamoStore({ client, tableName }) {
   const key = (pk, sk) => ({ pk, sk });
 
   return {
+    ...createDynamoContentMethods({ client, tableName }),
     async listClasses() {
       return CLASSES;
     },

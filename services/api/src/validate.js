@@ -1,4 +1,5 @@
 import { HttpError } from "./http.js";
+import { UUID } from "./recordings/rules.js";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const EVENT_TYPES = new Set(["play", "word_tap", "complete"]);
@@ -34,7 +35,12 @@ export function parseGenerateInput(body) {
   if (title.length < 1 || title.length > LIMITS.titleMax) bad(`Title must be 1 to ${LIMITS.titleMax} characters.`);
   if (text.length < LIMITS.textMin) bad(`Add at least ${LIMITS.textMin} characters of text.`);
   if (text.length > LIMITS.textMax) bad(`Text can be at most ${LIMITS.textMax.toLocaleString("en-US")} characters.`);
-  return { title, text };
+  let recordingId = null;
+  if (body.recordingId != null) {
+    if (typeof body.recordingId !== "string" || !UUID.test(body.recordingId)) bad("That recording id is not valid. Upload the recording again.");
+    recordingId = body.recordingId;
+  }
+  return { title, text, recordingId };
 }
 
 export function parseEvent(body, passageIds) {

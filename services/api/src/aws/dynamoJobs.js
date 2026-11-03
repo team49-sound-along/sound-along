@@ -13,13 +13,14 @@ export function createDynamoJobs({ client, tableName, now = Date.now }) {
   const view = (item) => stripKeys(item, ["ttl"]);
 
   return {
-    async create(title) {
+    async create(title, { humanPassageId = null } = {}) {
       const job = {
         id: randomUUID(),
         title,
         status: "queued",
         step: "parse",
         passageId: null,
+        humanPassageId,
         error: null,
         metrics: null,
         startedAt: new Date(now()).toISOString(),

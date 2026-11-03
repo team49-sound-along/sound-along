@@ -1,12 +1,15 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SFNClient } from "@aws-sdk/client-sfn";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import serverlessExpress from "@codegenie/serverless-express";
 import { createApp } from "../app.js";
 import { createDynamoCatalog } from "./dynamoCatalog.js";
 import { createDynamoJobs } from "./dynamoJobs.js";
 import { createDynamoStore } from "./dynamoStore.js";
+import { createS3Recordings } from "./s3Recordings.js";
+import { createS3Sources } from "./s3Sources.js";
 import { createSfnRunner } from "./sfnRunner.js";
 
 /** Express app wired with the AWS adapters. Clients are injectable so tests never touch the network. */
@@ -25,6 +28,8 @@ export function buildAwsApp({ env, clients, logger = console }) {
     store: createDynamoStore({ client: clients.ddb, tableName }),
     catalog: createDynamoCatalog({ client: clients.ddb, tableName }),
     jobs,
+    recordings: createS3Recordings({ s3: clients.s3, bucket, presign: clients.presign ?? ((command, opts) => getSignedUrl(clients.s3, command, opts)) }),
+    sources: createS3Sources({ s3: clients.s3, bucket }),
     runner: createSfnRunner({ jobs, s3: clients.s3, sfn: clients.sfn, bucket, stateMachineArn, logger }),
     logger,
   });

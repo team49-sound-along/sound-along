@@ -1,4 +1,4 @@
-import { access, readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { summarizePassage } from "./passageSummary.js";
 
@@ -21,12 +21,13 @@ export function createFileCatalog(dataDir) {
     return { mtimeMs, timing };
   }
 
-  async function isGenerated(id) {
+  /** "generated" or "sample", from the `source` field inside raw/<id>.json (sample when there is no usable file). */
+  async function sourceOf(id) {
     try {
-      await access(path.join(dataDir, "raw", `${id}.json`));
-      return true;
+      const raw = JSON.parse(await readFile(path.join(dataDir, "raw", `${id}.json`), "utf8"));
+      return raw?.source === "generated" ? "generated" : "sample";
     } catch {
-      return false;
+      return "sample";
     }
   }
 
@@ -40,7 +41,7 @@ export function createFileCatalog(dataDir) {
     const loaded = await Promise.all(
       files.map(async (file) => {
         const { mtimeMs, timing } = await readTiming(file);
-        return { id: file.match(TIMING)[1], mtimeMs, timing, generated: await isGenerated(file.match(TIMING)[1]) };
+        return { id: file.match(TIMING)[1], mtimeMs, timing, source: await sourceOf(file.match(TIMING)[1]) };
       }),
     );
     return loaded.sort((a, b) => b.mtimeMs - a.mtimeMs);
@@ -48,11 +49,17 @@ export function createFileCatalog(dataDir) {
 
   return {
     async list() {
-      return (await all()).map(({ id, mtimeMs, timing, generated }) => summarizePassage({ id, timing, mtimeMs, generated }));
+      return (await all()).map(({ id, mtimeMs, timing, source }) => summarizePassage({ id, timing, mtimeMs, source }));
     },
     /** Full timing documents, for metrics aggregation. */
     async timings() {
       return (await all()).map(({ timing }) => timing);
+    },
+    /** Passages carrying ASR review suspects, straight from the timing documents. */
+    async reviewSources() {
+      return (await all())
+        .filter(({ timing }) => timing.review)
+        .map(({ id, timing }) => ({ id, title: timing.title ?? "Untitled passage", review: timing.review }));
     },
     /** Measured quality report written by scripts/build_samples.py, or null if it has not been run. */
     async qualityReport() {
