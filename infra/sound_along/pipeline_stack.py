@@ -33,6 +33,9 @@ from .config import PROJECT_TAG, REGION
 # Python/Node, and we install the exact Node from .nvmrc and CDK deps in the buildspec.
 _ARM_BUILD_IMAGE = codebuild.LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0
 
+# Part of the GitHub connection name; bump it to replace the connection (see PipelineStack).
+_CONNECTION_REVISION = 2
+
 
 @dataclass(frozen=True)
 class PipelineStackProps:
@@ -130,10 +133,16 @@ class PipelineStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         # --- GitHub v2 connection (CodeStar Connections). Created PENDING; authorize once in the console. ---
+        # A connection is bound to one GitHub account/org (the app is installed there), so the name carries the owner.
+        # Changing the source owner therefore replaces the connection, and the new one must be authorized once.
+        # Connection names are limited to 32 characters.
+        # Bump _CONNECTION_REVISION to force a brand-new PENDING connection: once a connection is AVAILABLE its GitHub App
+        # installation is fixed, so linking it to a different installation (e.g. the org instead of a personal account)
+        # means replacing it.
         github_connection = codestar.CfnConnection(
             self,
             "GitHubConnection",
-            connection_name=f"{PROJECT_TAG}-github",
+            connection_name=f"{props.github_owner}-r{_CONNECTION_REVISION}"[:32],
             provider_type="GitHub",
         )
 
