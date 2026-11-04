@@ -3,6 +3,7 @@ import { DeleteCommand, GetCommand, PutCommand, UpdateCommand } from "@aws-sdk/l
 import { CLASSES, EVENT_KEY } from "../stores/fileStore.js";
 import { createDynamoContentMethods } from "./dynamoContent.js";
 import { createDynamoRatingMethods } from "./dynamoRatings.js";
+import { createDynamoReadAloudMethods } from "./dynamoReadAloud.js";
 import { buildSet, isConditionalFailure, queryPartition, stripKeys } from "./dynamo.js";
 
 /** Assignments and event totals in the DynamoDB single table (docs/AWS.md). `client` is a DynamoDBDocumentClient. */
@@ -12,6 +13,7 @@ export function createDynamoStore({ client, tableName }) {
   return {
     ...createDynamoContentMethods({ client, tableName }),
     ...createDynamoRatingMethods({ client, tableName }),
+    ...createDynamoReadAloudMethods({ client, tableName }),
     async listClasses() {
       return CLASSES;
     },
