@@ -75,7 +75,6 @@ watch(
       <SectionTabs v-if="showVoiceTabs" />
       <component :is="view" :key="route.name + (route.params.id || '')" />
     </main>
-    <footer class="demo small muted">Demo data. Sign-in is simulated.</footer>
   </div>
 </template>
 
@@ -92,7 +91,6 @@ watch(
 .chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border: 1px solid var(--border); border-radius: 999px; min-height: 44px; font-size: 14px; font-weight: 600; }
 .avatar { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 700; }
 main { min-width: 0; outline: none; }
-.demo { padding: var(--s2) var(--s3); text-align: center; }
 
 @media (max-width: 1000px) {
   .who { display: none; }

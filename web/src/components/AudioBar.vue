@@ -61,5 +61,14 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); transition: transform 0.15s; }
 .toggle[aria-checked="true"] .track { background: var(--primary); }
 .toggle[aria-checked="true"] .knob { transform: translateX(16px); }
-@media (max-width: 520px) { .speeds { flex: 1 1 100%; } .speeds button { flex: 1; } }
+/* A small phone: controls, position and speed fit in about 170px, so the passage keeps most of the screen. */
+@media (max-width: 520px) {
+  .bar { gap: 8px; padding: 8px var(--s2); }
+  .scrub { flex: 1 1 120px; }
+  .time { font-size: 12px; }
+  input[type="range"] { height: 32px; }
+  .speeds { flex: 1 1 100%; }
+  .speeds button { flex: 1; min-height: 40px; min-width: 0; }
+  .toggle { min-height: 40px; }
+}
 </style>

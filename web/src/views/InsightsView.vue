@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { route } from "../router.js";
 import StateBlock from "../components/StateBlock.vue";
 import KpiCard from "../components/KpiCard.vue";
 import CostChart from "../components/CostChart.vue";
@@ -10,6 +11,8 @@ import { useResource } from "../useResource.js";
 import { formatCount, formatMinutes, formatMos, formatMs, formatPercent, formatRtf, formatShare, percentOf } from "../format.js";
 
 const { data, loading, error, reload } = useResource(api.insights);
+// Technical measurements (timing accuracy, predicted naturalness, listening test, cost) are for the project team: open Insights with ?team=1.
+const team = computed(() => route.value.query.team === "1");
 
 const rowsFor = (c) => [
   { key: "neural", label: "Amazon Polly Neural", value: c?.pollyNeuralUsd },
@@ -44,7 +47,7 @@ const naturalness = computed(() => {
     <div class="page-head">
       <div>
         <h2>Insights</h2>
-        <p>Catalog quality, generation cost and classroom adoption. Each figure notes where it comes from. Missing values show as an em dash.</p>
+        <p>Passages, listening time and reading activity across your classes.</p>
       </div>
     </div>
 
@@ -53,15 +56,15 @@ const naturalness = computed(() => {
         <section aria-labelledby="kpi-h" class="stack">
           <h3 id="kpi-h" class="sr-only">Key metrics</h3>
           <div class="kpis">
-            <KpiCard label="Passages" :value="formatCount(data.catalog?.passages)" source="Measured: count of published passages" />
-            <KpiCard label="Audio minutes" :value="formatMinutes(data.catalog?.audioMinutes)" source="Measured: total generated audio length" />
-            <KpiCard label="Timing vs independent check" :value="formatMs(agreement?.medianErrorMs)" :source="agreementSource" emphasis />
-            <KpiCard label="Words mapped" :value="formatPercent(data.quality?.alignedPercent)" :source="`Voice word timings mapped to displayed words (${formatCount(data.quality?.unalignedWords)} not exact). This is not a sync measure.`" />
-            <KpiCard label="Avg real-time factor" :value="formatRtf(data.speed?.avgRealTimeFactor)" source="Measured while generating on a development computer; speed in production will differ" />
+            <KpiCard label="Passages" :value="formatCount(data.catalog?.passages)" source="Passages in the Library" />
+            <KpiCard label="Audio minutes" :value="formatMinutes(data.catalog?.audioMinutes)" source="Total narrated audio" />
+            <KpiCard v-if="team" label="Timing vs independent check" :value="formatMs(agreement?.medianErrorMs)" :source="agreementSource" emphasis />
+            <KpiCard v-if="team" label="Words mapped" :value="formatPercent(data.quality?.alignedPercent)" :source="`Voice word timings mapped to displayed words (${formatCount(data.quality?.unalignedWords)} not exact). This is not a sync measure.`" />
+            <KpiCard v-if="team" label="Avg real-time factor" :value="formatRtf(data.speed?.avgRealTimeFactor)" source="Measured while generating; speed in production will differ" />
           </div>
         </section>
 
-        <section v-if="naturalness.length" class="card stack" aria-labelledby="nat-h">
+        <section v-if="team && naturalness.length" class="card stack" aria-labelledby="nat-h">
           <div>
             <h3 id="nat-h">Predicted narration naturalness</h3>
             <p class="small muted">{{ data.quality.naturalness.method }}</p>
@@ -77,10 +80,12 @@ const naturalness = computed(() => {
           <p class="small muted">Scores run from 1 (poor) to 5 (excellent).</p>
         </section>
 
-        <BlindRating :summary="data.quality?.blindRating ?? null" />
-        <p class="small"><a class="btn" href="#/listening">Take the listening test</a> Compare voices without knowing which is which.</p>
+        <template v-if="team">
+          <BlindRating :summary="data.quality?.blindRating ?? null" />
+          <p class="small"><a class="btn" href="#/listening">Take the listening test</a> Compare voices without knowing which is which.</p>
+        </template>
 
-        <section class="card stack" aria-labelledby="cost-h">
+        <section v-if="team" class="card stack" aria-labelledby="cost-h">
           <div>
             <h3 id="cost-h">Cost to generate narration</h3>
             <p class="small muted">Lower is better. Each chart has its own scale.</p>
@@ -102,7 +107,7 @@ const naturalness = computed(() => {
         <section class="card stack" aria-labelledby="adopt-h">
           <div>
             <h3 id="adopt-h">Classroom adoption</h3>
-            <p class="small muted">Based on reading activity (plays, word taps, completions) and assignments recorded in this app.</p>
+            <p class="small muted">Plays, word taps and completions, and how many assignments use Sound Along.</p>
           </div>
           <dl class="adopt">
             <div><dt>Plays</dt><dd class="num">{{ formatCount(adoption.plays) }}</dd></div>

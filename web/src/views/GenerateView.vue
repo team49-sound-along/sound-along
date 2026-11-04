@@ -110,7 +110,7 @@ function reset() {
     <div class="page-head">
       <div>
         <h2>Create a passage</h2>
-        <p>Paste a passage or add a text file. Sound Along creates the narration and the word-by-word timing automatically. You can also add your own recording of the passage.</p>
+        <p>Paste a passage or add a document. Sound Along creates the narration, highlights each word as it is read, and adds a Spanish or English version. You can also add your own recording.</p>
       </div>
     </div>
 
@@ -146,7 +146,7 @@ function reset() {
       </div>
       <p v-if="startError" class="notice error" role="alert">{{ startError }}</p>
       <div class="actions">
-        <button class="btn primary" type="submit" :disabled="running">{{ uploadPct !== null ? "Uploading..." : running ? "Generating..." : "Generate audio and timing" }}</button>
+        <button class="btn primary" type="submit" :disabled="running">{{ uploadPct !== null ? "Uploading..." : running ? "Generating..." : "Create passage" }}</button>
         <button v-if="(job || series.jobs.value.length) && !running" class="btn" type="button" @click="reset">Start another</button>
       </div>
     </form>

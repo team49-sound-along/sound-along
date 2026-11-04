@@ -42,7 +42,7 @@ const errorText = computed(() => friendlyJobError(props.job.error));
       <p>{{ errorText }}</p>
     </div>
     <div v-else-if="job.status === 'done'" class="result" role="status">
-      <p class="notice ok"><strong>Ready.</strong> Audio and word timing were generated from your text.</p>
+      <p class="notice ok"><strong>Ready.</strong> Your passage is ready to read.</p>
       <dl class="metrics">
         <div v-for="x in summary" :key="x.label"><dt>{{ x.label }}</dt><dd class="num">{{ x.value }}</dd></div>
       </dl>

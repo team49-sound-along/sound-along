@@ -3,7 +3,7 @@
 
 export const isHuman = (passage) => passage?.engine === "human";
 
-export const voiceLabel = (engine) => (engine === "human" ? "ReadWorks recording" : "Read-aloud voice");
+export const voiceLabel = (engine) => (engine === "human" ? "Human narration" : "Read-aloud voice");
 
 /** One entry per text. Hides a human variant when its AI pair is present (recorded as `humanId`) and a translation when its source is present
  *  (the source records the languages as `translationLangs`). */

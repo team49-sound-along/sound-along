@@ -158,7 +158,7 @@ with sync_playwright() as pw:
     step("reader: every reading-setting radio and switch, persistence, Done", reader_settings)
     def voice_switch():
         go(f"#/read/{PAIR}"); pg.wait_for_selector(".w")
-        a = pg.get_by_role("button", name="ReadWorks recording"); c = pg.get_by_role("button", name="Read-aloud voice")
+        a = pg.get_by_role("button", name="Human narration"); c = pg.get_by_role("button", name="Read-aloud voice")
         (c if a.is_disabled() else a).click(); pg.wait_for_timeout(1500)
         if pg.locator(".w").count() < 20: return "no words after switch"
     step("reader: switch between recording and read-aloud voice", voice_switch)
@@ -234,7 +234,7 @@ with sync_playwright() as pw:
     # ---------- create / generate
     def gen_text(label, setup, expect_nav=True):
         go("#/generate"); pg.wait_for_selector("#g-text"); setup()
-        pg.get_by_role("button", name="Generate audio and timing").click()
+        pg.get_by_role("button", name="Create passage").click()
         pg.wait_for_selector(".tracker, [role=status] >> text=/ready|done|complete/i", timeout=5000) if False else None
         for _ in range(120):
             pg.wait_for_timeout(1000)
@@ -263,7 +263,7 @@ with sync_playwright() as pw:
         go("#/generate"); pg.wait_for_selector("#g-text")
         pg.set_input_files("input[type=file]:not(#g-rec)", FILES + "bad.exe"); pg.wait_for_timeout(500)
         t1 = pg.inner_text("main")
-        pg.fill("#g-text", "Hi."); pg.get_by_role("button", name="Generate audio and timing").click(); pg.wait_for_timeout(500)
+        pg.fill("#g-text", "Hi."); pg.get_by_role("button", name="Create passage").click(); pg.wait_for_timeout(500)
         t2 = pg.inner_text("main")
         return (re.search(r"not supported|can't|cannot|choose a|only", t1, re.I) is not None and re.search(r"at least|too short|characters|title", t2, re.I) is not None) or (t1[-200:], t2[-200:])
     step("create: wrong file type and too-short text are refused with a message", bad_files)
@@ -346,9 +346,12 @@ with sync_playwright() as pw:
     def insights():
         go("#/insights"); pg.wait_for_timeout(1200)
         t = pg.inner_text("main")
-        if not re.search(r"\d", t) or "Cost" not in t: return t[:200]
+        if not re.search(r"\d", t) or "Classroom adoption" not in t: return t[:200]
+        if re.search(r"UTMOS|Lambda|Polly|independent check|Blind listening", t): return "technical measurements shown to a teacher: " + t[:120]
+        go("#/insights?team=1"); pg.wait_for_timeout(1200)  # the project team's view keeps the measurements
+        if "Cost" not in pg.inner_text("main"): return "team view lost the cost section"
         pg.get_by_role("link", name=re.compile("listening test", re.I)).first.click(); pg.wait_for_timeout(500); return "#/listening" in pg.url
-    step("insights: numbers and cost render, listening-test link works", insights)
+    step("insights: teacher view is plain, team view keeps cost and the listening-test link", insights)
     step("teacher-only guard for student: create, insights and the three voice screens", lambda: (pg.get_by_role("radio", name="Student").click(), all((go(f"#/{h}"), "Teacher only" in pg.inner_text("main"))[1] for h in ("generate","insights","settings","pronunciations","review")), pg.get_by_role("radio", name="Teacher").click())[1])
     def student_library_has_no_create():
         go("#/library"); pg.get_by_role("radio", name="Student").click(); pg.wait_for_timeout(400)
@@ -373,7 +376,7 @@ with sync_playwright() as pw:
     def phone_reader():
         mp.goto(BASE + f"#/read/{EN}"); mp.wait_for_selector(".w"); mp.wait_for_timeout(800)
         mp.locator("button[aria-label=Play]").click(); mp.wait_for_timeout(1200)
-        mp.locator(".w").nth(8).click(); mp.wait_for_timeout(400)
+        mp.locator(".w").nth(8).click(); mp.wait_for_timeout(400)  # the word must not be hidden under the player or the word card
         return (mp.evaluate("document.documentElement.scrollWidth-innerWidth") <= 0 and mp.evaluate("document.querySelector('audio').currentTime") > 0) or "phone reader"
     step("phone: reader plays and taps a word with no overflow", phone_reader)
 

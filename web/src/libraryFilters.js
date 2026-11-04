@@ -4,7 +4,7 @@ import { isHuman } from "./voices.js";
 
 export const VOICE_FILTERS = [
   { value: "any", label: "Any voice" },
-  { value: "ai", label: "AI voice" },
+  { value: "ai", label: "Read-aloud voice" },
   { value: "human", label: "Human recording" },
 ];
 

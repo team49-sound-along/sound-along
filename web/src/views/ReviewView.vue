@@ -30,13 +30,13 @@ async function dismiss(word) {
     <div class="page-head">
       <div>
         <h2>Pronunciation review</h2>
-        <p>Words an automatic check thinks the voice may have said differently from the text.</p>
+        <p>Words the narration may have pronounced differently from the written text.</p>
       </div>
     </div>
 
     <div class="notice warn honesty" role="note">
       <ul>
-        <li>These are <strong>candidates</strong> from an automatic speech-recognition check, not confirmed mistakes.</li>
+        <li>These are <strong>suggestions</strong> from an automatic check, not confirmed mistakes.</li>
         <li>Many are only spelling differences, for example British and American (colour and color), and can be dismissed.</li>
         <li>The check only runs for passages generated here, not the built-in sample passages.</li>
         <li><strong>Listening is the real test.</strong> Open the passage and listen before you change anything.</li>

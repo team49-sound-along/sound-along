@@ -3,7 +3,7 @@ export const STEPS = [
   { key: "parse", label: "Read", hint: "Split the text into words and sentences" },
   { key: "synthesize", label: "Voice", hint: "Create the narration audio" },
   { key: "align", label: "Match", hint: "Match each word to its sound" },
-  { key: "publish", label: "Save", hint: "Save the audio and word timing" },
+  { key: "publish", label: "Save", hint: "Save the narration" },
   { key: "translate", label: "Translate", hint: "Make the other-language version, then add both to the library" },
 ];
 

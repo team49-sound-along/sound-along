@@ -46,7 +46,7 @@ onBeforeUnmount(() => clearInterval(pendingTimer));
     <div class="page-head">
       <div>
         <h2>Library</h2>
-        <p>Every passage has narrated audio with word-level timing. Tap any word while reading to hear it again from there.</p>
+        <p>Every passage is read aloud and each word lights up as you listen. Tap any word to hear it again.</p>
       </div>
       <div class="tools">
         <a v-if="isTeacher" class="btn primary" href="#/generate">Create a passage</a>

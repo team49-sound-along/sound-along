@@ -18,6 +18,7 @@ const BANNED = [
   [/\b(on|by|from) this server\b/i, "'this server'"],
   [/\b(Lambda|DynamoDB|Step Functions|CloudFront|Whisper|Kokoro|Phonon)\b/, "an internal service or engine name"],
   [/job metrics from/i, "job metrics source"],
+  [/not rated yet|Sign-in is simulated|Demo data|word-level timing|development computer/i, "an internal or prototype note"],
 ];
 
 test("no screen shows an endpoint, an HTTP code or an internal service name", () => {

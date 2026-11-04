@@ -296,11 +296,11 @@ function onKey(event) {
 <template>
   <article class="reader" aria-labelledby="reader-h" :style="{ '--dock-h': dockHeight + 'px' }">
     <header class="head">
-      <p class="eyebrow">{{ words.length }} words<template v-if="role === 'teacher'"> &middot; {{ voiceLabel(timing.engine) }}{{ isHuman(timing) ? "" : " (computer-generated)" }}</template></p>
+      <p class="eyebrow">{{ words.length }} words<template v-if="role === 'teacher'"> &middot; {{ voiceLabel(timing.engine) }}</template></p>
       <h2 id="reader-h">{{ timing.title }}</h2>
       <div class="tools">
         <div v-if="hasPair && soundAlong && role === 'teacher'" class="voice" role="group" aria-label="Narration voice">
-          <button type="button" class="btn" :aria-pressed="isHuman(timing)" :disabled="isHuman(timing)" @click="switchVoice">ReadWorks recording</button>
+          <button type="button" class="btn" :aria-pressed="isHuman(timing)" :disabled="isHuman(timing)" @click="switchVoice">Human narration</button>
           <button type="button" class="btn" :aria-pressed="!isHuman(timing)" :disabled="!isHuman(timing)" @click="switchVoice">Read-aloud voice</button>
         </div>
         <div v-if="langSwitch" class="voice lang" role="group" aria-label="Language">
@@ -315,7 +315,7 @@ function onKey(event) {
     </header>
 
     <PartNav :timing="timing" />
-    <p v-if="timing.machineTranslated" class="small muted" role="note">Machine translation, not reviewed by a person.</p>
+    <p v-if="timing.machineTranslated" class="small muted" role="note">Translated automatically.</p>
     <ReadingSettings v-if="showSettings" :prefs="prefs" @change="prefs = $event" @close="closeSettings" />
 
     <audio v-if="soundAlong" ref="audio" :src="audioUrl(passageId)" preload="auto" @play="onPlay" @pause="onPause" @ended="onEnded" @seeked="tick" @error="onAudioError"></audio>
@@ -412,6 +412,9 @@ function onKey(event) {
   .stage { grid-template-columns: minmax(0, 1fr); gap: var(--s3); }
   /* On a phone the word card sticks just above the player, so a tapped word's definition is always in view. */
   .side { position: sticky; top: auto; bottom: var(--dock-h, 0); z-index: 15; max-height: 32vh; overflow-y: auto; }
+}
+@media (max-width: 520px) {
+  .side { max-height: 22vh; }
 }
 @media (max-width: 640px) {
   .passage { font-size: calc(var(--read-size, 24px) * 0.8); }

@@ -132,7 +132,7 @@ with sync_playwright() as pw:
     def student_reader():
         reader(PARK); pg.get_by_role("radio", name="Student").click(); pg.wait_for_timeout(400)
         t = pg.inner_text("main"); pg.get_by_role("radio", name="Teacher").click()
-        return not re.search(r"computer-generated|ReadWorks recording|Kokoro|Polly|engine", t, re.I) or "student sees voice/engine information"
+        return not re.search(r"computer-generated|Human narration|Kokoro|Polly|engine", t, re.I) or "student sees voice/engine information"
     step("student reader shows no voice/engine internals", student_reader)
     def audio_off():
         a = api(BASE, "assignments", {"passageId": PARK, "classId": "cls-g3-p2", "soundAlong": False})["data"]
@@ -188,7 +188,7 @@ with sync_playwright() as pw:
         try:
             api(BASE, "generate", {"title": "Busy two", "text": long, "language": "en"}); second = 200
         except urllib.error.HTTPError as e: second = e.code
-        go("#/generate"); pg.fill("#g-title", "Busy three"); pg.fill("#g-text", long); pg.get_by_role("button", name="Generate audio and timing").click(); pg.wait_for_timeout(1200)
+        go("#/generate"); pg.fill("#g-title", "Busy three"); pg.fill("#g-text", long); pg.get_by_role("button", name="Create passage").click(); pg.wait_for_timeout(1200)
         t = pg.inner_text("main")
         for _ in range(120):
             j = api(BASE, "jobs/" + a["data"]["jobId"])["data"]
@@ -198,7 +198,7 @@ with sync_playwright() as pw:
     step("generator busy: API says 429, the screen says so in plain words", busy)
     def xss():
         title = "<img src=x onerror=window.__x=1>Safe title"; text = "The robot said <b>hello</b> to the children. <script>window.__x=2</script> They waved back and smiled all day long."
-        go("#/generate"); pg.fill("#g-title", title); pg.fill("#g-text", text); pg.get_by_role("button", name="Generate audio and timing").click()
+        go("#/generate"); pg.fill("#g-title", title); pg.fill("#g-text", text); pg.get_by_role("button", name="Create passage").click()
         for _ in range(100):
             pg.wait_for_timeout(1500)
             if pg.get_by_role("button", name="Start another").count(): break
@@ -210,13 +210,13 @@ with sync_playwright() as pw:
     def recording_variant():
         src = f"{DATA}/{DAY}.mp3"; tj = json.load(open(f"{DATA}/{DAY}.timing.json")); text = " ".join(w["text"] for w in tj["words"])
         go("#/generate"); pg.fill("#g-title", "Recording variant test"); pg.fill("#g-text", text); pg.set_input_files("#g-rec", src); pg.wait_for_timeout(300)
-        pg.get_by_role("button", name="Generate audio and timing").click()
+        pg.get_by_role("button", name="Create passage").click()
         for _ in range(160):
             pg.wait_for_timeout(1500)
             if pg.get_by_role("button", name="Start another").count(): break
         else: return "did not finish"
         go("#/library"); pg.wait_for_selector(".pcard"); pg.locator(".pcard", has_text="Recording variant test").first.get_by_role("link", name=re.compile("^Read")).click(); pg.wait_for_selector(".w"); pg.wait_for_timeout(800)
-        a = pg.get_by_role("button", name="ReadWorks recording"); c = pg.get_by_role("button", name="Read-aloud voice")
+        a = pg.get_by_role("button", name="Human narration"); c = pg.get_by_role("button", name="Read-aloud voice")
         if a.count() != 1 or c.count() != 1: return "voice choice buttons missing"
         (a if not a.is_disabled() else c).click(); pg.wait_for_timeout(1500)
         pg.locator("button[aria-label=Play]").click(); pg.wait_for_timeout(1500)

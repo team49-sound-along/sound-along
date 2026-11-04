@@ -22,14 +22,14 @@
  },
  {
   "id": "phonon_bryony",
-  "label": "Bryony (UK female, full and relaxed; not rated yet)",
+  "label": "Bryony (UK female, full and relaxed)",
   "lang": "en",
   "engine": "phonon",
   "recommended": true
  },
  {
   "id": "phonon_trevor",
-  "label": "Trevor (US male, warm and resonant; not rated yet)",
+  "label": "Trevor (US male, warm and resonant)",
   "lang": "en",
   "engine": "phonon",
   "recommended": true
