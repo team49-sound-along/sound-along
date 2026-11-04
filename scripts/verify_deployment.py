@@ -118,6 +118,28 @@ def translation_link_problems(catalog: list[dict[str, Any]]) -> list[str]:
     return problems
 
 
+def series_link_problems(catalog: list[dict[str, Any]]) -> list[str]:
+    """The parts of a long document must agree with each other: the same ids and total everywhere, each part at its own place in the list, and
+    (once the document is finished) every part present. Parts still being generated are allowed to be missing; a part that disagrees is not."""
+    by_id = {p["id"]: p for p in catalog}
+    problems: list[str] = []
+    for p in catalog:
+        s = p.get("series")
+        if not s:
+            continue
+        ids = s.get("partIds") or []
+        if s.get("total") != len(ids) or not 1 <= s.get("index", 0) <= len(ids):
+            problems.append(f"{p['id']}: series numbers do not add up (part {s.get('index')} of {s.get('total')}, {len(ids)} ids)")
+            continue
+        if ids[s["index"] - 1] != p["id"]:
+            problems.append(f"{p['id']} says it is part {s['index']} but the list has {ids[s['index'] - 1]} there")
+        for i, pid in enumerate(ids, start=1):
+            other = by_id.get(pid)
+            if other is not None and (other.get("series") or {}).get("partIds") != ids:
+                problems.append(f"part {i} ({pid}) disagrees with part {s['index']} about which parts belong together")
+    return problems
+
+
 class Report:
     def __init__(self) -> None:
         self.failed = 0
@@ -196,6 +218,12 @@ def run(site: str, generate: bool, language: str, timeout_s: int) -> int:
         linked = sum(1 for p in state["catalog"] if p.get("translationOf"))
         return f"{linked} translated passage(s), every link resolves both ways"
 
+    def series_links() -> str:
+        problems = series_link_problems(state["catalog"])
+        assert not problems, "; ".join(problems[:3])
+        documents = {(p.get("series") or {}).get("id") for p in state["catalog"] if p.get("series")} - {None}
+        return f"{len(documents)} multi-part document(s), every part agrees with the others"
+
     def drafts_unreachable() -> str:
         """A question draft a student could fetch is exactly the failure the review step guards against."""
         for url in draft_paths(state["passage"]):
@@ -225,7 +253,7 @@ def run(site: str, generate: bool, language: str, timeout_s: int) -> int:
         return "a trial is available" if trial else "no clips yet (run scripts/build_samples.py, then seed)"
 
     for name, fn in (("site loads", page), ("API health", health), ("passage list", passages), ("timing document", timing),
-                     ("audio range request (seeking)", audio_range), ("word and place cards", cards), ("translation links", translation_links), ("question drafts are not served", drafts_unreachable), ("write through the front door", signed_write),
+                     ("audio range request (seeking)", audio_range), ("word and place cards", cards), ("translation links", translation_links), ("multi-part documents", series_links), ("question drafts are not served", drafts_unreachable), ("write through the front door", signed_write),
                      ("security headers", security_headers), ("insights", insights), ("listening test clips", listening)):
         if "passage" not in state and name in ("timing document", "audio range request (seeking)", "word and place cards", "question drafts are not served"):
             report.emit("SKIP", name, "no passage to test")
