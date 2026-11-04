@@ -8,7 +8,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { syllablesFor, displayWord } from "../syllables.js";
 import { slowWindow } from "../slowPlay.js";
 import { createRecognizer, recognitionSupported } from "../speechRecognizer.js";
-import { finished, initial, judge, step } from "../sayItRetry.js";
+import { finished, initial, judge, shouldArmMissTimer, step } from "../sayItRetry.js";
 import { loadState, saveState, toggleStar } from "../practice.js";
 import { wordKey } from "../cards.js";
 import { langAttr } from "../language.js";
@@ -147,10 +147,18 @@ function startListening() {
       if (verdict === "match") dispatch({ type: "heard" });
       else if (verdict === "miss") dispatch({ type: "missed" });
     },
-    onError: (info) => dispatch({ type: "failed", message: info.message }),
+    onStatus: (recognizerStatus) => {
+      if (recognizer !== mine || phase.value !== "listening" || target !== chosen.value) return;
+      if (!shouldArmMissTimer(recognizerStatus, listenTimer !== null)) return;
+      listenTimer = setTimeout(() => dispatch({ type: "missed" }), LISTEN_LIMIT_MS);
+    },
+    onError: (info) => {
+      clearTimers();
+      dispatch({ type: "failed", message: info.message });
+    },
   });
+  const mine = recognizer;
   recognizer.start();
-  listenTimer = setTimeout(() => dispatch({ type: "missed" }), LISTEN_LIMIT_MS);
 }
 
 function toggleWord() {
