@@ -47,12 +47,5 @@
   "lang": "es",
   "engine": "kokoro",
   "recommended": true
- },
- {
-  "id": "em_santa",
-  "label": "Santa (Spanish male)",
-  "lang": "es",
-  "engine": "kokoro",
-  "recommended": true
  }
 ]
