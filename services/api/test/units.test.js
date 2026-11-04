@@ -163,3 +163,11 @@ test("Spanish text with English selected (and the reverse) is refused with a hel
   assert.equal(languageMismatch(EN_TEXT, "en"), null);
   assert.equal(languageMismatch("Hola", "en"), null, "too short to judge: never blocks");
 });
+
+
+test("an italic phrase that wraps across lines is cleaned too", () => {
+  const html = textToHtml("The Rabbit actually _took a watch out of its waistcoat-pocket_, and looked at it, and then hurried on.");
+  assert.ok(!html.includes("_"));
+  const wrapped = textToHtml("She saw the Rabbit actually _took a watch out\nof its waistcoat-pocket_, and looked at it, and then hurried on.");
+  assert.ok(!wrapped.includes("_") && wrapped.includes("watch out of its waistcoat-pocket"), wrapped);
+});

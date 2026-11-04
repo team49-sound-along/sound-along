@@ -110,7 +110,8 @@ export function stripMarkup(text) {
 
 /** Plain text -> the same <p> structure the parser expects from ReadWorks content. */
 export function textToHtml(text) {
-  return unwrapLines(stripMarkup(text))
+  // Lines are joined first, so an italic phrase that spans a line break is still one phrase when the markers are removed.
+  return stripMarkup(unwrapLines(text))
     .split(/\n{1,}/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean)
