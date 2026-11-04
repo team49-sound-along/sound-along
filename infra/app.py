@@ -29,7 +29,7 @@ from sound_along.stack import SoundAlongStack, SoundAlongStackProps
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 # GitHub source for the CI/CD pipeline (PipelineStack). Override with -c githubOwner/-c githubRepo/-c githubBranch.
-DEFAULT_GITHUB_OWNER = "rohanreigns007"
+DEFAULT_GITHUB_OWNER = "awshack2026ny"
 DEFAULT_GITHUB_REPO = "sound-along"
 DEFAULT_GITHUB_BRANCH = "main"
 

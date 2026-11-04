@@ -125,10 +125,13 @@ class PipelineStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         # --- GitHub v2 connection (CodeStar Connections). Created PENDING; authorize once in the console. ---
+        # A connection is bound to one GitHub account/org (the app is installed there), so the name carries the owner.
+        # Changing the source owner therefore replaces the connection, and the new one must be authorized once.
+        # Connection names are limited to 32 characters.
         github_connection = codestar.CfnConnection(
             self,
             "GitHubConnection",
-            connection_name=f"{PROJECT_TAG}-github",
+            connection_name=f"{PROJECT_TAG}-{props.github_owner}"[:32],
             provider_type="GitHub",
         )
 
