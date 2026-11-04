@@ -67,6 +67,33 @@ describe("question draft routes (local)", () => {
     assert.ok(!(await readdir(dir)).some((f) => f.endsWith(".questions.json")));
   });
 
+  test("publish accepts only questions marked approved: pending, rejected or extra fields are refused and nothing is written", async () => {
+    const before = (await readdir(dir)).sort();
+    const bodies = [
+      { approved: [item(1)], rejected: [item(2)] },
+      { approved: [item(1)], pending: [item(3)] },
+      { approved: [item(1)], questions: draft.questions },
+      { approved: [item(1)], passageId: NO_DRAFT_ID },
+      { approved: [item(1, { status: "rejected" })] },
+      { approved: [item(1, { status: "pending" })] },
+      { approved: [item(1, { answerIndex: 0, evidenceSentence: 9 })] },
+      { approved: [item(7)] }, // a question that is not in the draft
+      draft,
+    ];
+    for (const body of bodies) assert.equal((await publish(ID, body)).status, 400, JSON.stringify(body).slice(0, 80));
+    assert.deepEqual((await readdir(dir)).sort(), before);
+  });
+
+  test("publish refuses ids that are not passage ids, so it can only ever write data/<id>.questions.json", async () => {
+    const ids = ["nope", "..%2F..%2Fstate", "..%2F" + ID, `${ID}.json`, ID.toUpperCase(), `${ID}%2F..%2Fx`, "%00", "state.json"];
+    const before = (await readdir(dir)).sort();
+    for (const id of ids) {
+      const r = await publish(id, { approved: [item(1)] });
+      assert.ok(r.status === 404 || r.status === 400, `${id} -> ${r.status}`);
+    }
+    assert.deepEqual((await readdir(dir)).sort(), before);
+  });
+
   test("publish writes only the approved questions, with the draft's answers, and students can then read them", async () => {
     const r = await publish(ID, { approved: [item(3), item(1, { question: "Edited question?" })] });
     assert.equal(r.status, 200);
@@ -108,6 +135,12 @@ describe("local store", () => {
     const store = createLocalQuestions({ draftsDir: path.join(dir, "absent"), dataDir: dir });
     assert.deepEqual(await store.listDraftIds(), []);
     assert.deepEqual(await createLocalQuestions({ draftsDir: path.join(dir, "question-drafts"), dataDir: dir }).listDraftIds().then((x) => x.sort()), [ID, NO_DRAFT_ID].sort());
+  });
+  test("publish refuses any id that is not a plain passage id and writes no file", async () => {
+    const store = createLocalQuestions({ draftsDir: path.join(dir, "question-drafts"), dataDir: dir });
+    const before = (await readdir(dir)).sort();
+    for (const id of ["../state", "x", `${ID}/../../y`, `${ID}.json`, ""]) await assert.rejects(store.publish(id, {}), /Invalid passage id/);
+    assert.deepEqual((await readdir(dir)).sort(), before);
   });
   test("the seed shape (review reset) loads as an unreviewed draft", async () => {
     const reset = resetReview(draft);

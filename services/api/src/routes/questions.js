@@ -11,7 +11,9 @@ const NO_DRAFT = "There is no question draft for that passage.";
  *   GET  /questions/drafts/:id        one draft, every question pending
  *   POST /questions/drafts/:id/publish  writes the served file with ONLY the approved questions
  * A draft is never served to students: only publish writes the document they read. `questions` is { listDraftIds, readDraft, publish }.
- * Like the other teacher routes there is no sign-in on the API; the teacher screen is guarded in the app only.
+ * Protection is exactly that of the other teacher writes (settings, pronunciations, assignments, generate): the same write rate limit and,
+ * on AWS, the same CloudFront-signed origin. There is NO sign-in or teacher check on the API in this build; the teacher screen is guarded
+ * in the app only. Real authentication (for example Cognito and a verified token) is required before production, for all teacher routes.
  */
 export function questionRoutes(api, { questions, readyList, writeLimiter, now = () => new Date() }) {
   const store = () => {
