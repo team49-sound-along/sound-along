@@ -64,6 +64,10 @@ export const api = {
   ratingTrial: () => request("GET", "/api/ratings/trial"),
   submitRating: (body) => request("POST", "/api/ratings", body),
   insights: () => request("GET", "/api/insights"),
+  /** Teacher: passages that have unreviewed question drafts, one draft, and publishing the approved questions (students only ever see what is published). */
+  questionDrafts: () => request("GET", "/api/questions/drafts"),
+  questionDraft: (id) => request("GET", `/api/questions/drafts/${encodeURIComponent(id)}`),
+  publishQuestions: (id, body) => request("POST", `/api/questions/drafts/${encodeURIComponent(id)}/publish`, body),
   /** Fire and forget: analytics must never break reading. */
   event: (body) => {
     request("POST", "/api/events", body).catch(() => {});
@@ -98,6 +102,21 @@ export async function fetchCards(id, fetchFn = globalThis.fetch) {
     const doc = await res.json();
     const isMap = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
     return isMap(doc) ? { words: isMap(doc.words) ? doc.words : {}, places: isMap(doc.places) ? doc.places : {}, figures: Array.isArray(doc.figures) ? doc.figures : [] } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The approved questions document next to the timing file (docs/QUESTIONS.md). Optional: a missing, offline or malformed document gives null.
+ * It is revalidated on every load, so a teacher's newest publish is what a student sees.
+ */
+export async function fetchQuestions(id, fetchFn = globalThis.fetch) {
+  try {
+    const res = await fetchFn(`/data/${encodeURIComponent(id)}.questions.json`, { cache: "no-cache" });
+    if (!res.ok) return null;
+    const doc = await res.json();
+    return doc !== null && typeof doc === "object" && !Array.isArray(doc) ? doc : null;
   } catch {
     return null;
   }

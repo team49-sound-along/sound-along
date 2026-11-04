@@ -89,12 +89,3 @@ export function firstAlignedIndex(words, key) {
   const index = Array.isArray(words) ? words.findIndex((w) => w?.aligned === true && wordKey(w.text) === key) : -1;
   return index >= 0 ? index : null;
 }
-
-/** Practice questions, only from a document a person has marked reviewed, and only well-formed ones. */
-export function approvedQuestions(doc) {
-  if (doc?.reviewed !== true || !Array.isArray(doc.questions)) return [];
-  return doc.questions.filter(
-    (q) => typeof q?.id === "string" && typeof q.question === "string" && Array.isArray(q.choices) && q.choices.length >= 2
-      && Number.isInteger(q.answerIndex) && q.answerIndex >= 0 && q.answerIndex < q.choices.length,
-  );
-}
