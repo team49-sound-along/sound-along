@@ -75,21 +75,10 @@ def test_figures_count_as_pictures_and_must_be_on_our_own_origin():
     assert "own origin" in v.cards_problem(bad)
 
 
-def test_the_parts_of_a_document_must_agree_with_each_other():
-    ids = ["a", "b", "c"]
-    part = lambda i, **kw: {"id": ids[i - 1], "series": {"id": "s", "index": i, "total": 3, "partIds": ids, **kw}}  # noqa: E731
-    assert v.series_link_problems([part(1), part(2), part(3), {"id": "solo"}]) == []
-    assert v.series_link_problems([part(1)]) == [], "parts still being generated may be missing"
-    assert v.series_link_problems([part(1), {"id": "b", "series": {"id": "s", "index": 1, "total": 3, "partIds": ids}}])  # b says it is part 1
-    assert v.series_link_problems([part(1), {"id": "b", "series": {"id": "s", "index": 2, "total": 3, "partIds": ["a", "x", "c"]}}])  # a different list
-    assert v.series_link_problems([{"id": "a", "series": {"id": "s", "index": 1, "total": 5, "partIds": ids}}])  # total does not match
+def test_no_listed_passage_may_be_a_part_of_a_document_or_name_one():
+    assert v.split_document_problems([{"id": "a", "title": "A story"}, {"id": "b", "title": "(Parte of the day)"}]) == []
+    assert v.split_document_problems([{"id": "a", "title": "T", "series": {"id": "s", "index": 1, "total": 2, "partIds": ["a", "b"]}}])
+    assert v.split_document_problems([{"id": "a", "title": "The Story (Part 2 of 5)"}])
+    assert v.split_document_problems([{"id": "a", "title": "La historia (Parte 1 de 2)"}])
 
 
-def test_a_translated_part_is_checked_through_the_part_it_was_translated_from():
-    ids = ["a", "b"]
-    series = lambda i: {"id": "s", "index": i, "total": 2, "partIds": ids}  # noqa: E731
-    parts = [{"id": "a", "series": series(1)}, {"id": "b", "series": series(2)},
-             {"id": "es-a", "translationOf": "a", "series": series(1)}, {"id": "es-b", "translationOf": "b", "series": series(2)}]
-    assert v.series_link_problems(parts) == []
-    wrong = [{"id": "es-b", "translationOf": "a", "series": series(2)}]
-    assert v.series_link_problems(wrong), "a translation of part a cannot claim to be part 2"

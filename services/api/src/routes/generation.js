@@ -31,14 +31,9 @@ export function generationRoutes(api, { store, jobs, runner, recordings, sources
     try {
       if ((await jobs.activeCount()) >= config.maxConcurrentJobs) throw new HttpError(429, BUSY);
       const started = await build(parsed);
-      if (Array.isArray(started)) {
-        // A long document: every part is queued now; the runner works through them one at a time. The whole document takes one job slot.
-        const parts = await runner.startSeries(started);
-        res.status(202).json(ok({ jobId: parts[0].id, jobIds: parts.map((j) => j.id), parts: parts.length, seriesId: started[0].series.id }));
-      } else {
-        const job = await runner.start(started);
-        res.status(202).json(ok({ jobId: job.id }));
-      }
+      const job = await runner.start(started);
+      // One job and one passage id for any size of upload: a long document is narrated in internal chunks and joined into a single passage.
+      res.status(202).json(ok({ jobId: job.id, ...(started.chunks?.length ? { chunks: started.chunks.length } : {}) }));
     } finally {
       await release();
     }
@@ -49,16 +44,9 @@ export function generationRoutes(api, { store, jobs, runner, recordings, sources
     route((req, res) =>
       guarded(req, res, {
         prepare: (r) => parseGenerateInput(r.body),
-        async build({ title, text, recordingId, language, parts }) {
+        async build({ title, text, recordingId, language, chunks }) {
           if (recordingId && !(await recordings?.exists(recordingId))) {
             throw new HttpError(400, "We could not find that recording. Upload it again and retry.");
-          }
-          if (parts) {
-            // Every part gets its id now, so each one knows its neighbours before they exist ("Next part" can say "still being created").
-            const partIds = parts.map(() => randomUUID());
-            const series = { id: randomUUID(), title, total: parts.length, partIds };
-            const settings = await snapshot();
-            return parts.map((part, i) => ({ title: part.title, text: part.text, language, passageId: partIds[i], series: { ...series, index: i + 1 }, ...settings }));
           }
           return {
             title,
@@ -66,6 +54,7 @@ export function generationRoutes(api, { store, jobs, runner, recordings, sources
             language,
             recordingId,
             humanPassageId: recordingId ? randomUUID() : null,
+            ...(chunks ? { chunks } : {}),
             ...(await snapshot()),
           };
         },
@@ -90,6 +79,7 @@ export function generationRoutes(api, { store, jobs, runner, recordings, sources
             language: stored.language === "es" ? "es" : "en",
             recording: stored.recording ?? null,
             humanPassageId: stored.recording ? (stored.humanPassageId ?? null) : null,
+            ...(Array.isArray(stored.chunks) && stored.chunks.length ? { chunkHtml: stored.chunks } : {}), // a long document is regenerated the same way it was made
             ...(await snapshot()),
           };
         },

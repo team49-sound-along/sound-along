@@ -1,5 +1,5 @@
 /** The generator's whole input (docs/API.md, "Job input file"). Pure: returns a new object. */
-export function buildJobInput({ passageId, title, content, source, language = "en", settings, pronunciations, recording, humanPassageId, series = null }) {
+export function buildJobInput({ passageId, title, content, source, language = "en", settings, pronunciations, recording, humanPassageId, chunks = null }) {
   return {
     uuid: passageId,
     title,
@@ -11,6 +11,6 @@ export function buildJobInput({ passageId, title, content, source, language = "e
     recording: recording ?? null,
     humanPassageId: recording ? (humanPassageId ?? null) : null,
     qualityCheck: true,
-    ...(series ? { series } : {}), // { id, index, total, title, partIds }: this passage is one part of a longer document
+    ...(chunks?.length ? { chunks } : {}), // HTML pieces of a long document: narrated one by one, then joined into this ONE passage (stitch.py)
   };
 }

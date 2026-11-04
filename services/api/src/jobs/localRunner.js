@@ -7,13 +7,15 @@ import { textToHtml } from "../validate.js";
 import { buildJobInput } from "./jobInput.js";
 
 const STEPS = new Set(["parse", "synthesize", "align", "publish", "translate"]);
-const TIMEOUT_MS = 20 * 60 * 1000; // narration, then the translation and its narration, for one part
+const TIMEOUT_MS = 20 * 60 * 1000; // narration, then the translation and its narration, for one run (a long document gets this much per chunk, up to MAX_TIMEOUT_MS)
+const MAX_TIMEOUT_MS = 6 * 60 * 60 * 1000;
 
 /**
  * Runs the real Python pipeline (services/synth/run_local.py) as a child process and mirrors its progress
  * into the job store. In AWS this is replaced by a Step Functions state machine with the same four steps.
  *
- * start(spec): { title, text | content, source?, passageId?, settings, pronunciations, recordingId | recording, humanPassageId }
+ * start(spec): { title, text | content, source?, passageId?, settings, pronunciations, recordingId | recording, humanPassageId, chunks? | chunkHtml? }
+ * A long document arrives with `chunks` (text pieces, or `chunkHtml` when regenerating): they are narrated one after another inside ONE run and joined into ONE passage.
  * A `passageId` re-runs an existing passage (regenerate); otherwise a new one is created.
  */
 export function createLocalRunner({ jobs, dataDir, python, script, logger = console }) {
@@ -34,25 +36,25 @@ export function createLocalRunner({ jobs, dataDir, python, script, logger = cons
       pronunciations: spec.pronunciations,
       recording,
       humanPassageId: spec.humanPassageId,
-      series: spec.series,
+      chunks: spec.chunkHtml ?? spec.chunks?.map((piece) => textToHtml(piece)),
     });
-    const job = await jobs.create(title, { humanPassageId: input.humanPassageId });
+    const job = await jobs.create(title, { humanPassageId: input.humanPassageId, chunks: input.chunks?.length ?? 0 });
     const rawDir = path.join(dataDir, "raw");
     await mkdir(rawDir, { recursive: true });
     const rawFile = path.join(rawDir, `${passageId}.json`);
     await writeFile(rawFile, JSON.stringify(input));
     jobs.update(job.id, { passageId });
-    return { job: { ...job, passageId }, run: () => execute(job, rawFile, passageId) };
+    return { job: { ...job, passageId }, run: () => execute(job, rawFile, passageId, input.chunks?.length ?? 0) };
   }
 
-  function execute(job, rawFile, passageId) {
+  function execute(job, rawFile, passageId, chunkCount = 0) {
     return new Promise((resolve) => {
     const child = spawn(python, [script, rawFile, dataDir], { stdio: ["ignore", "pipe", "pipe"] });
     jobs.update(job.id, { status: "running", passageId });
 
     let buffer = "";
     let stderrTail = "";
-    const timer = setTimeout(() => child.kill("SIGKILL"), TIMEOUT_MS);
+    const timer = setTimeout(() => child.kill("SIGKILL"), Math.min(MAX_TIMEOUT_MS, TIMEOUT_MS * Math.max(1, chunkCount)));
 
     child.stdout.on("data", (chunk) => {
       buffer += chunk.toString();
@@ -86,21 +88,6 @@ export function createLocalRunner({ jobs, dataDir, python, script, logger = cons
     return job;
   }
 
-  /** A long document: all jobs are created now (so the page can show every part), then the parts are generated one after another. A failed part does not stop the next. */
-  async function startSeries(specs) {
-    const prepared = [];
-    try {
-      for (const spec of specs) prepared.push(await prepare(spec));
-    } catch (err) {
-      for (const p of prepared) finishFailed(p.job.id, "We could not start the audio generator. Please try again in a moment.");
-      throw err;
-    }
-    (async () => {
-      for (const p of prepared) await p.run();
-    })();
-    return prepared.map((p) => p.job);
-  }
-
   function handleLine(jobId, line) {
     if (!line.trim()) return;
     let message;
@@ -110,6 +97,7 @@ export function createLocalRunner({ jobs, dataDir, python, script, logger = cons
       return; // library chatter on stdout is ignored
     }
     if (message.step && STEPS.has(message.step)) jobs.update(jobId, { step: message.step });
+    if (message.chunk) jobs.update(jobId, { step: "synthesize", chunksDone: message.chunk.done, chunksTotal: message.chunk.total });
     if (message.result) {
       jobs.update(jobId, { status: "done", step: "done", metrics: message.result, finishedAt: new Date().toISOString() });
     }
@@ -119,5 +107,5 @@ export function createLocalRunner({ jobs, dataDir, python, script, logger = cons
     jobs.update(jobId, { status: "failed", error, finishedAt: new Date().toISOString() });
   }
 
-  return { start, startSeries };
+  return { start };
 }

@@ -5,8 +5,6 @@ import TextFileDrop from "../components/TextFileDrop.vue";
 import RecordingPicker from "../components/RecordingPicker.vue";
 import { api } from "../api.js";
 import { useJobPoll } from "../useJobPoll.js";
-import { useSeriesPoll } from "../useSeriesPoll.js";
-import SeriesTracker from "../components/SeriesTracker.vue";
 import { describeSize } from "../documentSize.js";
 import { validateRecording } from "../files.js";
 import { uploadRecording } from "../upload.js";
@@ -47,12 +45,10 @@ const starting = ref(false);
 const uploadPct = ref(null);
 const startError = ref("");
 const { job, now, pollError, running: jobRunning, start, reset: resetJob } = useJobPoll();
-const series = useSeriesPoll();
-const seriesTitle = ref("");
 const size = computed(() => describeSize(text.value));
 
 const check = computed(() => validateGenerate({ title: title.value, text: text.value }));
-const running = computed(() => starting.value || jobRunning.value || series.running.value);
+const running = computed(() => starting.value || jobRunning.value);
 const overLimit = computed(() => text.value.length > TEXT_MAX);
 
 function onFileLoaded(f) {
@@ -66,7 +62,6 @@ async function submit() {
   if (!check.value.valid || running.value) return;
   starting.value = true;
   resetJob();
-  series.reset();
   try {
     const body = withLanguage({ title: title.value.trim(), text: text.value }, language.value);
     if (recording.value) {
@@ -77,13 +72,8 @@ async function submit() {
       await uploadRecording(file, upload, (p) => (uploadPct.value = p));
       body.recordingId = recordingId;
     }
-    const { jobId, jobIds } = await api.generate(body);
-    if (jobIds?.length > 1) {
-      seriesTitle.value = body.title;
-      series.start(jobIds, body.title);
-    } else {
-      start(jobId, body.title);
-    }
+    const { jobId } = await api.generate(body);
+    start(jobId, body.title); // any size of text is one job and one passage
   } catch (e) {
     startError.value = generateErrorMessage(e.status, e.message);
   } finally {
@@ -101,7 +91,6 @@ function reset() {
   submitted.value = false;
   startError.value = "";
   resetJob();
-  series.reset();
 }
 </script>
 
@@ -136,7 +125,7 @@ function reset() {
         <div class="count-row">
           <span id="g-text-err" class="error-text">{{ submitted ? check.errors.text : "" }}</span>
           <span id="g-count" class="small num" :class="overLimit || size.tooLong ? 'error-text' : 'muted'">{{ formatCount(size.words) }} words &middot; {{ formatCount(text.length) }} / {{ formatCount(TEXT_MAX) }} characters (minimum {{ TEXT_MIN }})</span>
-        <span v-if="size.parts > 1 && !size.tooLong" class="small" role="status">This is a long document. It will be created as about {{ size.parts }} linked parts of up to 1,000 words, so each can be read and assigned on its own.</span>
+        <span v-if="size.long && !size.tooLong" class="small" role="status">This is a long text. It takes a few minutes to turn into audio. It is added to the Library, in both languages, when everything is ready, and the time left is shown once it is under way.</span>
         </div>
       </div>
       <RecordingPicker v-model:file="recording" :disabled="running" />
@@ -147,13 +136,12 @@ function reset() {
       <p v-if="startError" class="notice error" role="alert">{{ startError }}</p>
       <div class="actions">
         <button class="btn primary" type="submit" :disabled="running">{{ uploadPct !== null ? "Uploading..." : running ? "Generating..." : "Create passage" }}</button>
-        <button v-if="(job || series.jobs.value.length) && !running" class="btn" type="button" @click="reset">Start another</button>
+        <button v-if="job && !running" class="btn" type="button" @click="reset">Start another</button>
       </div>
     </form>
 
-    <p v-if="pollError || series.pollError.value" class="notice error" role="alert">{{ pollError || series.pollError.value }}</p>
+    <p v-if="pollError" class="notice error" role="alert">{{ pollError }}</p>
     <JobTracker v-if="job" :job="job" :now="now" />
-    <SeriesTracker v-if="series.jobs.value.length" :jobs="series.jobs.value" :title="seriesTitle" />
   </div>
 </template>
 

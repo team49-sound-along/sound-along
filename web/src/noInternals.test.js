@@ -18,6 +18,7 @@ const BANNED = [
   [/\b(on|by|from) this server\b/i, "'this server'"],
   [/\b(Lambda|DynamoDB|Step Functions|CloudFront|Whisper|Kokoro|Phonon)\b/, "an internal service or engine name"],
   [/job metrics from/i, "job metrics source"],
+  [/\bParts? \d|\(Part |\d+ parts\b|\b[Nn]ext part\b|\b[Ss]how all \d+ parts\b|\{\{ *[a-z.]*total *\}\} parts/, "a part of a document (an upload is always one passage)"],
   [/not rated yet|Sign-in is simulated|Demo data|word-level timing|development computer/i, "an internal or prototype note"],
 ];
 

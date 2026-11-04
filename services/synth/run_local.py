@@ -11,15 +11,20 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import shutil
 import sys
+import uuid
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
+
+import numpy as np
 
 from engine import SAMPLE_RATE
 from engines import create_engine
 from fingerprint import fingerprint
-from flow import Variant, run_flow
+from flow import Variant, run_flow, soundalong_block
 from mp3 import encode_mp3, resolve_kbps
+from stitch import Chunk, Stitched, link_translation, retarget_ids, stitch
 
 
 def _emit_step(step: str) -> None:
@@ -27,8 +32,10 @@ def _emit_step(step: str) -> None:
     sys.stdout.flush()
 
 
-def _write_variant(variant: Variant, data_dir: Path, kbps: int) -> None:
+def _write_variant(variant: Variant, data_dir: Path, kbps: int, keep_pcm: bool = False) -> None:
     (data_dir / f"{variant.id}.mp3").write_bytes(encode_mp3(variant.audio, SAMPLE_RATE, kbps))
+    if keep_pcm:  # a chunk of a long document: the exact samples, so joining chunks never decodes and re-encodes an MP3
+        np.save(data_dir / f"{variant.id}.pcm.npy", (np.clip(variant.audio, -1.0, 1.0) * 32767).astype(np.int16))
     timing_file = data_dir / f"{variant.id}.timing.json"
     timing = variant.timing
     if "pairId" not in timing and timing_file.exists():
@@ -95,7 +102,8 @@ def run(passage: dict[str, Any], data_dir: Path, on_step=_emit_step) -> dict[str
     on_step("publish")
     kbps = resolve_kbps(settings.get("mp3Kbps"))
     ai, human = _held_if_translating(passage, result.ai, data_dir), (_held_if_translating(passage, result.human, data_dir) if result.human else None)
-    _write_variant(ai, data_dir, kbps)
+    keep_pcm = bool(passage.get("keepPcm"))
+    _write_variant(ai, data_dir, kbps, keep_pcm)
     if human:
         _write_variant(human, data_dir, kbps)
     (data_dir / f"{result.ai.id}.soundalong.json").write_text(json.dumps(result.soundalong, ensure_ascii=False))
@@ -123,8 +131,92 @@ def translate_after_publish(passage: dict[str, Any], data_dir: Path, summary: di
         return None
 
 
+CHUNK_NAMESPACE = uuid.UUID("6b2f7c1e-3d54-4a0b-8e77-1f2c9a5d0b64")
+PICTURE_PREFIXES = ("word-", "place-", "figure-")
+
+
+def chunk_id(document_id: str, k: int) -> str:
+    """The internal id of chunk `k` of a long document. Chunks live in a work folder and are never listed."""
+    return str(uuid.uuid5(CHUNK_NAMESPACE, f"{document_id}:{k}"))
+
+
+def _emit_chunk(done: int, total: int) -> None:
+    sys.stdout.write(json.dumps({"chunk": {"done": done, "total": total}}) + "\n")
+    sys.stdout.flush()
+
+
+def _load_chunk(work: Path, passage_id: str) -> Chunk:
+    timing = json.loads((work / f"{passage_id}.timing.json").read_text())
+    timing.pop("held", None)
+    audio = np.load(work / f"{passage_id}.pcm.npy").astype(np.float32) / 32768.0
+    cards_file = work / f"{passage_id}.cards.json"
+    return Chunk(timing, audio, json.loads(cards_file.read_text()) if cards_file.exists() else None)
+
+
+def _publish_stitched(data_dir: Path, work: Path, stitched: Stitched, timing: dict[str, Any], chunk_ids: list[str], kbps: int) -> None:
+    """Write one stitched passage: audio, sound-along block, cards with their pictures, and the timing document last (it is what lists the passage)."""
+    pid = timing["id"]
+    (data_dir / f"{pid}.mp3").write_bytes(encode_mp3(stitched.audio, SAMPLE_RATE, kbps))
+    (data_dir / f"{pid}.soundalong.json").write_text(json.dumps(soundalong_block(timing), ensure_ascii=False))
+    if stitched.cards:
+        (data_dir / f"{pid}.cards.json").write_text(json.dumps(retarget_ids(stitched.cards, chunk_ids, pid), ensure_ascii=False))
+        for source in work.iterdir():
+            for old in chunk_ids:
+                rest = source.name[len(old) + 1:] if source.name.startswith(f"{old}.") else ""
+                if rest.startswith(PICTURE_PREFIXES):
+                    shutil.copyfile(source, data_dir / f"{pid}.{rest}")
+    (data_dir / f"{pid}.timing.json").write_text(json.dumps(timing, ensure_ascii=False))
+
+
+def run_document(passage: dict[str, Any], data_dir: Path, on_chunk: Callable[[int, int], None] = _emit_chunk, on_step: Callable[[str], None] = _emit_step,
+                 run_fn: Callable[..., dict[str, Any]] = run, translate_fn: Callable[..., Optional[str]] = translate_after_publish) -> dict[str, Any]:
+    """A long upload as ONE passage. `passage["chunks"]` are the HTML pieces (each fits one generator run). Every chunk is narrated and translated in a work
+    folder, then stitch.py joins them into a single passage per language, published together. Nothing in the Library ever shows a chunk."""
+    from translate_flow import other_language, release, should_translate, translated_id
+
+    data_dir.mkdir(parents=True, exist_ok=True)
+    final_id, chunks_html = passage["uuid"], passage["chunks"]
+    work = data_dir / "work" / final_id
+    shutil.rmtree(work, ignore_errors=True)
+    work.mkdir(parents=True)
+    ids = [chunk_id(final_id, k) for k in range(len(chunks_html))]
+    translating = should_translate(passage)
+    try:
+        for k, (cid, html) in enumerate(zip(ids, chunks_html)):
+            job = {**passage, "uuid": cid, "content": html, "chunks": None, "series": None, "keepPcm": True, "force": True}
+            summary = run_fn(job, work, on_step=lambda step: None)
+            if translating:
+                translate_fn(job, work, summary)
+            on_chunk(k + 1, len(chunks_html))
+        on_step("publish")
+        kbps = resolve_kbps((passage.get("settings") or {}).get("mp3Kbps"))
+        source_lang = passage.get("language") or "en"
+        lang = other_language(source_lang)
+        en_chunks = [_load_chunk(work, cid) for cid in ids]
+        en = stitch(en_chunks, final_id, passage.get("title") or "Untitled passage", fingerprint=fingerprint({**passage, "chunks": None}))
+        target_ids = [translated_id(cid, lang) for cid in ids]
+        complete = translating and all((work / f"{t}.timing.json").exists() and (work / f"{t}.pcm.npy").exists() for t in target_ids)
+        if not complete:  # no translation, or one chunk of it failed: the passage is published in its own language only, never half translated
+            _publish_stitched(data_dir, work, en, en.timing, ids, kbps)
+            return {"id": final_id, "humanPassageId": None, "title": passage.get("title"), **en.timing["metrics"]}
+        es_chunks = [_load_chunk(work, t) for t in target_ids]
+        tid = translated_id(final_id, lang)
+        es = stitch(es_chunks, tid, es_chunks[0].timing.get("title") or passage.get("title") or "")
+        en_timing, es_timing = link_translation(en, es, en_chunks, es_chunks, lang, source_lang, final_id, tid)
+        _publish_stitched(data_dir, work, es, {**es_timing, "held": True}, target_ids, kbps)
+        _publish_stitched(data_dir, work, en, {**en_timing, "held": True}, ids, kbps)
+        release(data_dir, [tid, final_id])  # both languages appear together
+        return {"id": final_id, "humanPassageId": None, "title": passage.get("title"), **en.timing["metrics"]}
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def main(passage_path: str, data_dir: str) -> int:
     passage = json.loads(Path(passage_path).read_text())
+    if passage.get("chunks"):
+        sys.stdout.write(json.dumps({"result": run_document(passage, Path(data_dir))}) + "\n")
+        sys.stdout.flush()
+        return 0
     summary = run(passage, Path(data_dir))
     # The job is reported done only after the translation is in place (or has failed), and the passage is released then, never before.
     from translate_flow import release

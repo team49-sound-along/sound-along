@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { stepStates, isFinished, elapsedSeconds } from "./jobSteps.js";
+import { stepStates, isFinished, elapsedSeconds, longProgress, timeLeftText } from "./jobSteps.js";
 
 const states = (job) => stepStates(job).map((s) => s.state);
 
@@ -49,4 +49,18 @@ test("a failed job shows a friendly message and never internal details", () => {
   ]) assert.equal(friendlyJobError(leak), generic, leak);
   assert.equal(friendlyJobError("Text must be at least 20 characters."), "Text must be at least 20 characters.");
   assert.equal(friendlyJobError("x".repeat(300)), generic);
+});
+
+test("a long text shows progress and the time left from the stretches already finished, and never the word part", () => {
+  const job = (extra) => ({ status: "running", startedAt: "2026-11-04T10:00:00Z", finishedAt: null, chunksTotal: 5, chunksDone: 0, ...extra });
+  const at = (s) => Date.parse("2026-11-04T10:00:00Z") + s * 1000;
+  assert.equal(longProgress({ status: "running", startedAt: "2026-11-04T10:00:00Z" }, at(60)), null);  // an ordinary job has no chunks
+  assert.deepEqual(longProgress(job(), at(30)), { done: 0, total: 5, percent: 0, remainingSeconds: null });  // nothing finished yet: no estimate
+  assert.deepEqual(longProgress(job({ chunksDone: 2 }), at(240)), { done: 2, total: 5, percent: 40, remainingSeconds: 360 });  // 120 s per stretch, 3 left
+  assert.deepEqual(longProgress(job({ chunksDone: 5, status: "done", finishedAt: "2026-11-04T10:09:00Z" }), at(600)), { done: 5, total: 5, percent: 100, remainingSeconds: 0 });
+  assert.equal(longProgress(job({ chunksDone: 5 }), at(600)).percent, 99, "100% only when the job is really done (the stretches are still being joined)");
+  assert.equal(timeLeftText(null), "");
+  assert.equal(timeLeftText(20), "less than a minute left");
+  assert.equal(timeLeftText(360), "about 6 minutes left");
+  assert.equal(timeLeftText(60), "about 1 minute left");
 });

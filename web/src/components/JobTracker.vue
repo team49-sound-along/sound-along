@@ -1,7 +1,7 @@
 <script setup>
 import { computed, useId } from "vue";
 import Icon from "./Icon.vue";
-import { elapsedSeconds, friendlyJobError, stepStates } from "../jobSteps.js";
+import { elapsedSeconds, friendlyJobError, longProgress, stepStates, timeLeftText } from "../jobSteps.js";
 import { formatCount, formatMinutes, formatSeconds } from "../format.js";
 
 const props = defineProps({ job: { type: Object, required: true }, now: { type: Number, required: true } });
@@ -15,6 +15,8 @@ const summary = computed(() => [
   { label: "Time to create", value: formatSeconds(m.value.generateSeconds) },
 ]);
 const errorText = computed(() => friendlyJobError(props.job.error));
+const long = computed(() => longProgress(props.job, props.now));
+const timeLeft = computed(() => timeLeftText(long.value?.remainingSeconds));
 </script>
 
 <template>
@@ -22,6 +24,11 @@ const errorText = computed(() => friendlyJobError(props.job.error));
     <div class="head">
       <h3 :id="headId">{{ job.title }}</h3>
       <span class="elapsed num" aria-label="Elapsed time">{{ elapsed === null ? "—" : `${elapsed}s` }} elapsed</span>
+    </div>
+    <div v-if="long && job.status !== 'failed'" class="progress-row" role="status">
+      <progress class="bar" max="100" :value="long.percent" :aria-label="`${long.percent}% done`"></progress>
+      <span class="num">{{ long.percent }}% done<template v-if="timeLeft && job.status !== 'done'"> &middot; {{ timeLeft }}</template></span>
+      <span v-if="!timeLeft && job.status !== 'done'" class="small muted">The time left appears once it is under way. A long text takes a few minutes; you can leave this page open.</span>
     </div>
     <ol class="steps">
       <li v-for="(s, n) in steps" :key="s.key" :class="s.state" :aria-current="s.state === 'current' ? 'step' : undefined">
@@ -58,6 +65,8 @@ const errorText = computed(() => friendlyJobError(props.job.error));
 
 <style scoped>
 .tracker { display: grid; gap: var(--s3); }
+.progress-row { display: grid; gap: 6px; }
+.progress-row .bar { width: 100%; height: 12px; accent-color: var(--primary); }
 .head { display: flex; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; align-items: baseline; }
 .elapsed { color: var(--muted); font-size: 14px; }
 .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s2); }

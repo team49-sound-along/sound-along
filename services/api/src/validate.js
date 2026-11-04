@@ -8,7 +8,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const EVENT_TYPES = new Set(["play", "word_tap", "complete"]);
 
 // singleWordsMax: one passage; measured about 0.45 s of narration per word in the generator, so a part of up to 1,000 words stays well inside one 900 s Lambda run together with its translation.
-// Longer text becomes a series of parts (see splitDocument.js) up to documentWordsMax words, which bounds the cost of one submission.
+// Longer text is narrated in chunks and joined into one passage (see splitDocument.js) up to documentWordsMax words, which bounds the cost of one submission.
 export const LIMITS = { titleMax: 120, textMin: 20, textMax: 100000, singleWordsMax: 1000, documentWordsMax: 12000 };
 
 const bad = (message) => {
@@ -40,12 +40,6 @@ export function parseLanguage(value) {
   return value;
 }
 
-/** "The Story (Part 2 of 5)", shortened so the whole title still fits. */
-export function partTitle(title, index, total) {
-  const suffix = ` (Part ${index} of ${total})`;
-  return title.slice(0, LIMITS.titleMax - suffix.length).trimEnd() + suffix;
-}
-
 export function parseGenerateInput(body) {
   if (!isObject(body)) bad("Send a JSON object.");
   const title = typeof body.title === "string" ? stripHtml(body.title).replace(/\s+/g, " ").trim() : "";
@@ -67,13 +61,13 @@ export function parseGenerateInput(body) {
   const language = parseLanguage(body.language);
   const mismatch = languageMismatch(text, language);
   if (mismatch) bad(mismatch);
-  let parts = null;
+  // A long text is narrated in internal chunks (see splitDocument.js) that are joined into ONE passage; nobody ever sees a chunk.
+  let chunks = null;
   if (words > LIMITS.singleWordsMax) {
     if (recordingId) bad(`A recording can only be added to a passage of up to ${LIMITS.singleWordsMax.toLocaleString("en-US")} words. Add this document without a recording, or split it.`);
-    const pieces = splitIntoParts(cleaned);
-    parts = pieces.map((piece, i) => ({ title: partTitle(title, i + 1, pieces.length), text: piece }));
+    chunks = splitIntoParts(cleaned);
   }
-  return { title, text, recordingId, language, parts };
+  return { title, text, recordingId, language, chunks };
 }
 
 export function parseEvent(body, passageIds) {

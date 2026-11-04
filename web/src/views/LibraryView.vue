@@ -7,7 +7,6 @@ import { api, passageIndex } from "../api.js";
 import { useResource } from "../useResource.js";
 import { LANGUAGE_FILTERS, VOICE_FILTERS, filterLibrary } from "../libraryFilters.js";
 import { groupVariants } from "../voices.js";
-import { groupSeries } from "../series.js";
 import { role } from "../session.js";
 
 const { data, loading, error, reload } = useResource(passageIndex);
@@ -15,12 +14,12 @@ const query = ref("");
 const voice = ref("any");
 const language = ref("all");
 const layout = ref("grid");
-const passages = computed(() => groupSeries(groupVariants(data.value ?? [])));
+const passages = computed(() => groupVariants(data.value ?? []));
 const shown = computed(() => filterLibrary(passages.value, { query: query.value, voice: isTeacher.value ? voice.value : "any", language: language.value }));
 const filtering = computed(() => Boolean(query.value.trim()) || (isTeacher.value && voice.value !== "any") || language.value !== "all");
 const isTeacher = computed(() => role.value === "teacher");
 
-// A teacher also sees what is still being made (a long document's parts and the translation). It is never offered for reading until it is complete.
+// A teacher also sees what is still being made (the audio and its translation). It is never offered for reading until it is complete.
 const pending = ref([]);
 async function checkPending() {
   if (!isTeacher.value) {
@@ -28,7 +27,7 @@ async function checkPending() {
     return;
   }
   try {
-    const next = groupSeries(groupVariants(await api.pendingPassages()));
+    const next = groupVariants(await api.pendingPassages());
     const had = pending.value.length;
     pending.value = next;
     if (had && !next.length) reload(); // it just became ready
@@ -84,7 +83,7 @@ onBeforeUnmount(() => { clearTimeout(pendingTimer); document.removeEventListener
     <section v-if="isTeacher && pending.length" class="card pending" aria-labelledby="pend-h" role="status">
       <h3 id="pend-h">Being created</h3>
       <ul>
-        <li v-for="p in pending" :key="p.id"><strong>{{ p.title }}</strong> <span class="muted small">{{ p.isSeries ? `${p.parts.length} of ${p.total} parts so far` : "adding the other language" }}</span></li>
+        <li v-for="p in pending" :key="p.id"><strong>{{ p.title }}</strong> <span class="muted small">being made</span></li>
       </ul>
       <p class="small muted">A passage appears in the Library when every part and its translation are ready. This list updates by itself.</p>
     </section>

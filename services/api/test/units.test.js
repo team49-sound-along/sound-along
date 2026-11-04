@@ -162,14 +162,15 @@ test("an italic phrase that wraps across lines is cleaned too", () => {
 const words = (n) => Array.from({ length: n }, (_, i) => `w${i}`).join(" ");
 const longEnglish = (n) => Array.from({ length: Math.ceil(n / 9) }, (_, i) => `The red fox ran across the green field number ${i}.`).join(" ");
 
-test("up to 1,000 words is a single passage; more becomes parts that each carry their own title", async () => {
-  const { parseGenerateInput, LIMITS, partTitle } = await import("../src/validate.js");
+test("up to 1,000 words is a single run; more is cut into internal chunks of ONE passage, with no part titles anywhere", async () => {
+  const { parseGenerateInput } = await import("../src/validate.js");
   const single = parseGenerateInput({ title: "T", text: longEnglish(900) });
-  assert.equal(single.parts, null);
+  assert.equal(single.chunks, null);
   const long = parseGenerateInput({ title: "The Story", text: longEnglish(2500) });
-  assert.ok(long.parts.length >= 3);
-  assert.equal(long.parts[0].title, `The Story (Part 1 of ${long.parts.length})`);
-  assert.equal(partTitle("x".repeat(200), 2, 10).length <= LIMITS.titleMax, true);
+  assert.ok(long.chunks.length >= 3 && long.chunks.every((c) => typeof c === "string"));
+  assert.equal(long.title, "The Story");
+  assert.equal(JSON.stringify(long).includes("Part "), false, "nothing returned to the caller mentions a part");
+  assert.equal("parts" in long, false);
 });
 
 test("a document over the overall cap is refused with a friendly message", async () => {
@@ -184,7 +185,7 @@ test("the cap counts dash-joined words and U+0085 separators the way the tokeniz
   assert.throws(() => parseGenerateInput({ title: "T", text: "go\u0085".repeat(LIMITS.documentWordsMax + 1) }), (err) => err.status === 400);
 });
 
-test("a recording cannot be attached to a document that is split into parts", async () => {
+test("a recording cannot be attached to a document long enough to need chunks", async () => {
   const { parseGenerateInput } = await import("../src/validate.js");
   assert.throws(() => parseGenerateInput({ title: "T", text: longEnglish(2500), recordingId: "123e4567-e89b-42d3-a456-426614174000" }), (err) => err.status === 400 && /recording can only be added/.test(err.message));
 });

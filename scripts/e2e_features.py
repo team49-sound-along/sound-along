@@ -108,25 +108,25 @@ with sync_playwright() as pw:
         return (seen and not bad) or f"events {len(seen)}; unexpected payloads: {bad[:2]}"
     step("analytics events carry only passage id, event type and class (never a word or a person)", event_payloads)
 
-    # ---- series on the series server
-    def series():
-        lib = api(SERIES, "passages")["data"]; parts = [p for p in lib if p.get("series")]
-        if not parts: return "no series passage in the data"
-        first = sorted((p for p in parts if p["series"]["index"] == 1 and p["language"] == "en"), key=lambda p: -p["words"])[0]
-        go("#/library", SERIES); pg.wait_for_selector(".pcard"); card = pg.locator(".pcard", has_text=re.compile(r"\d+ parts"))
-        if card.count() < 1: return "library shows no 'N parts' card"
-        pg.goto(SERIES + f"#/read/{first['id']}"); pg.wait_for_selector(".w"); pg.wait_for_timeout(1000)
-        if not re.search(r"Part 1 of \d+", pg.inner_text("main")): return "no 'Part 1 of N'"
-        nxt = pg.get_by_role("link", name=re.compile("Next part")).first; nxt.click(); pg.wait_for_timeout(1500)
-        if not re.search(r"Part 2 of", pg.inner_text("main")): return "next part did not open part 2"
-        pg.get_by_role("link", name=re.compile("Previous part")).first.click(); pg.wait_for_timeout(1200)
-        return re.search(r"Part 1 of", pg.inner_text("main")) is not None or "previous part did not return"
-    step("long document: library card, Part N of M, next/previous part", series)
-    def series_assign():
-        go("#/library", SERIES); pg.wait_for_selector(".pcard"); d = pg.locator(".pcard details summary", has_text="Parts").first; d.click()
-        pg.get_by_role("link", name=re.compile("^Assign part 2")).first.click(); pg.wait_for_timeout(700)
-        return "assignments" in pg.url or pg.url
-    step("long document: a single part can be assigned", series_assign)
+    # ---- a long document is ONE passage, on the second server (which holds one made from a long upload)
+    def one_passage():
+        passages = api(SERIES, "passages")["data"]
+        parts = [p for p in passages if p.get("series") or re.search(r"\((?:Part|Parte) \d+ (?:of|de) \d+\)", p["title"])]
+        if parts: return f"{len(parts)} passage(s) still look like parts of a document: {parts[0]['title']}"
+        long = sorted((p for p in passages if p["words"] > 1000 and p["language"] == "en" and not p.get("translationOf")), key=lambda p: -p["words"])
+        if not long: return "no long passage on the second server to check"
+        go("#/library", SERIES); pg.wait_for_selector(".pcard"); text = pg.inner_text("main")
+        if re.search(r"\bParts?\b|parts", text): return "the Library mentions parts"
+        pg.goto(SERIES + f"#/read/{long[0]['id']}"); pg.wait_for_selector(".w"); pg.wait_for_timeout(1000)
+        if re.search(r"\bParts?\b|Next part", pg.inner_text("main")): return "the reader mentions parts"
+        t = json.load(urllib.request.urlopen(SERIES + f"data/{long[0]['id']}.timing.json"))
+        w = t["words"]
+        if not all(w[k]["start_ms"] <= w[k + 1]["start_ms"] for k in range(len(w) - 1)): return "word times are not in order"
+        pg.locator("button[aria-label=Play]").click(); pg.wait_for_timeout(1500)
+        pg.locator(".w").nth(len(w) - 5).click(); pg.wait_for_timeout(800)  # tap near the very end of the long passage: one audio, one timeline
+        now = pg.evaluate("document.querySelector('audio').currentTime")
+        return abs(now - w[len(w) - 5]["start_ms"] / 1000) < 1.5 or f"tapping the end played {now}s, the word is at {w[len(w) - 5]['start_ms'] / 1000}s"
+    step("long document: one passage, no parts anywhere, one audio and timeline from start to end", one_passage)
 
     # ---- student view
     def student_reader():

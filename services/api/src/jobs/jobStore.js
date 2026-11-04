@@ -11,7 +11,7 @@ export function createJobStore() {
   const snapshot = (job) => ({ ...job });
 
   return {
-    create(title, { humanPassageId = null } = {}) {
+    create(title, { humanPassageId = null, chunks = 0 } = {}) {
       const job = {
         id: randomUUID(),
         title,
@@ -19,6 +19,8 @@ export function createJobStore() {
         step: "parse",
         passageId: null,
         humanPassageId,
+        chunksDone: 0,
+        chunksTotal: chunks, // a long document is narrated in this many internal chunks (0 = one run); the page shows progress and time left from these two
         error: null,
         metrics: null,
         startedAt: new Date().toISOString(),

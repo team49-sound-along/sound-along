@@ -43,7 +43,7 @@ async function request(method, path, body, signal) {
 export const api = {
   health: () => request("GET", "/api/health"),
   passages: () => request("GET", "/api/passages"),
-  /** Passages still being made (parts or the translation not finished). A teacher sees them as "Being created"; they are never offered for reading. */
+  /** Passages still being made (the audio or its translation is not finished). A teacher sees them as "Being created"; they are never offered for reading. */
   pendingPassages: () => request("GET", "/api/passages?pending=1"),
   classes: () => request("GET", "/api/classes"),
   assignments: () => request("GET", "/api/assignments"),
