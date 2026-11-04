@@ -46,6 +46,16 @@ def _noop(_: str) -> None:
     return None
 
 
+MAX_WORDS_PER_MINUTE = 330  # people read aloud at 100 to 200; far beyond this the engine dropped part of the text
+MIN_WORDS_JUDGED = 40
+
+
+def check_pace(words: int, seconds: float) -> None:
+    """An engine can cut a long sentence off without any error. Publishing narration that stops after a fraction of the text would be worse than a failed job."""
+    if words >= MIN_WORDS_JUDGED and seconds > 0 and words / (seconds / 60) > MAX_WORDS_PER_MINUTE:
+        raise ValueError(f"The narration came out too short for {words} words ({seconds:.0f} s); part of the text was not spoken.")
+
+
 def generate(content_html: str, engine: Engine, on_step: StepCallback = _noop) -> Generated:
     started = time.perf_counter()
 
@@ -92,6 +102,7 @@ def generate(content_html: str, engine: Engine, on_step: StepCallback = _noop) -
         clock += len(sentence_audio) / SAMPLE_RATE
 
     audio = peak_normalize(concat(parts))
+    check_pace(len(words), len(audio) / SAMPLE_RATE)
     return Generated(
         audio=audio,
         words=tuple(words),

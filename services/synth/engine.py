@@ -6,6 +6,7 @@ Polly (speech marks) and others implement the same Protocol later.
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol, Sequence
@@ -48,6 +49,29 @@ def _shared_pipeline(language: str = "en") -> Any:
         return _PIPELINES[language]
 
 
+SPANISH_MAX_WORDS = 40  # Kokoro drops everything after about 510 phonemes of a non-English text; 40 Spanish words stay well under that
+PIECE_GAP_S = 0.12  # a short breath where a long sentence was cut at a comma or semicolon
+
+
+def split_for_tts(text: str, max_words: int = SPANISH_MAX_WORDS) -> list[str]:
+    """Pieces of at most `max_words` words, cut after commas, semicolons, colons and dashes where possible, otherwise by words."""
+    clauses = [c for c in re.split(r"(?<=[,;:—–])\s+", text.strip()) if c.strip()]
+    pieces: list[str] = []
+    current: list[str] = []
+    for clause in clauses:
+        words = clause.split()
+        if current and len(current) + len(words) > max_words:
+            pieces.append(" ".join(current))
+            current = []
+        while len(words) > max_words:
+            pieces.append(" ".join(words[:max_words]))
+            words = words[max_words:]
+        current += words
+    if current:
+        pieces.append(" ".join(current))
+    return pieces or [text]
+
+
 class KokoroEngine:
     """Kokoro-82M (Apache-2.0) via the PyTorch ``kokoro`` package; English only for word timestamps.
 
@@ -80,20 +104,29 @@ class KokoroEngine:
         tokens: list[EngineToken] = []
         offset = 0.0
         spoken_text = apply_overrides(sentence, self._phonemes)
-        for result in self._pipeline(spoken_text, voice=self.voice, speed=self._speed):
-            if result.audio is None:
-                continue
-            audio = np.asarray(result.audio, dtype=np.float32)
-            for token in result.tokens or []:
-                start = None if token.start_ts is None else token.start_ts + offset
-                end = None if token.end_ts is None else token.end_ts + offset
-                tokens.append(EngineToken(token.text, start, end))
-            chunks.append(audio)
-            offset += len(audio) / SAMPLE_RATE
+        pieces = [spoken_text] if self.language == "en" else split_for_tts(spoken_text)  # English: Kokoro splits by tokens itself
+        for n, piece in enumerate(pieces):
+            if n and piece_gap(pieces[n - 1]):
+                chunks.append(silence(PIECE_GAP_S))
+                offset += PIECE_GAP_S
+            for result in self._pipeline(piece, voice=self.voice, speed=self._speed):
+                if result.audio is None:
+                    continue
+                audio = np.asarray(result.audio, dtype=np.float32)
+                for token in result.tokens or []:
+                    start = None if token.start_ts is None else token.start_ts + offset
+                    end = None if token.end_ts is None else token.end_ts + offset
+                    tokens.append(EngineToken(token.text, start, end))
+                chunks.append(audio)
+                offset += len(audio) / SAMPLE_RATE
         if not chunks:
             LOG.warning("engine returned no audio for sentence: %.40s", sentence)
             return SentenceAudio(np.zeros(0, dtype=np.float32), ())
         return SentenceAudio(np.concatenate(chunks), tuple(tokens))
+
+
+def piece_gap(previous: str) -> bool:
+    return previous.rstrip()[-1:] in ",;:—–"
 
 
 def silence(seconds: float) -> np.ndarray:
