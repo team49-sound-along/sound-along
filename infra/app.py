@@ -10,6 +10,7 @@ import re
 
 import aws_cdk as cdk
 
+from sound_along.certificate_stack import SiteCertificateStack
 from sound_along.config import (
     DEFAULT_POLLY_VOICE,
     DEFAULT_POLLY_VOICE_ES,
@@ -21,6 +22,7 @@ from sound_along.config import (
     parse_questions_enabled,
     parse_reader_insights,
     parse_questions_model,
+    parse_site_domain,
     parse_translate_model,
     parse_tts_engine,
 )
@@ -50,7 +52,23 @@ def main() -> None:
         polly_engine=parse_polly_engine(app.node.try_get_context("pollyEngine")),
     )
 
-    env = cdk.Environment(account=os.environ.get("CDK_DEFAULT_ACCOUNT"), region=REGION)
+    account = os.environ.get("CDK_DEFAULT_ACCOUNT")
+    env = cdk.Environment(account=account, region=REGION)
+
+    # Optional custom public domain (-c siteDomain=sound-along.online). When set, the ACM certificate lives in a
+    # us-east-1 stack (CloudFront only reads certificates from us-east-1) and the application stack references it
+    # across regions. The hosted zone must already exist and be delegated from the registrar.
+    site_domain = parse_site_domain(app.node.try_get_context("siteDomain"))
+    site_certificate = None
+    if site_domain:
+        cert_stack = SiteCertificateStack(
+            app,
+            "SoundAlongCertificate",
+            site_domain=site_domain,
+            env=cdk.Environment(account=account, region="us-east-1"),
+            cross_region_references=True,
+        )
+        site_certificate = cert_stack.certificate
 
     SoundAlongStack(
         app,
@@ -61,8 +79,11 @@ def main() -> None:
             questions_enabled=parse_questions_enabled(app.node.try_get_context("questionsEnabled")),
             reader_insights=parse_reader_insights(app.node.try_get_context("readerInsights")),
             translate_model=parse_translate_model(app.node.try_get_context("translateModel")),
+            site_domain=site_domain,
+            site_certificate=site_certificate,
         ),
         env=env,
+        cross_region_references=True,
     )
 
     # CI/CD pipeline. The build+deploy runs on AWS CodeBuild (ARM, Docker), so the heavy generator image build no
@@ -78,7 +99,7 @@ def main() -> None:
             tts_engine=tts.engine,
             cms_host=cms_host,
             alert_email=alert_email,
-            extra_context=tuple((key, str(app.node.try_get_context(key))) for key in ("pollyVoice", "pollyVoiceEs", "pollyEngine", "translateModel") if app.node.try_get_context(key) is not None),
+            extra_context=tuple((key, str(app.node.try_get_context(key))) for key in ("pollyVoice", "pollyVoiceEs", "pollyEngine", "translateModel", "siteDomain") if app.node.try_get_context(key) is not None),
         ),
         env=env,
     )
