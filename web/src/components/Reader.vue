@@ -355,9 +355,9 @@ function onKey(event) {
         </div>
         <PartNav :timing="timing" :show-label="false" class="after" />
       </div>
-      <aside v-if="soundAlong" class="side">
+      <div v-if="soundAlong" class="side">
         <WordHelp :card="card" :place="place" :show-note="wordHelp" :word="selectedWord?.text ?? ''" :can-hear="canHear" :starred="isStarred" @hear="hearWord" @star="toggleSaved" />
-      </aside>
+      </div>
     </div>
 
     <div v-if="soundAlong" ref="dock" class="dock">

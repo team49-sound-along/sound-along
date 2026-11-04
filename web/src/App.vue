@@ -68,6 +68,7 @@ watch(
       </div>
     </header>
     <main id="main" ref="main" tabindex="-1">
+      <h1 class="sr-only">Sound Along</h1>
       <component :is="view" :key="route.name + (route.params.id || '')" />
     </main>
     <footer class="demo small muted">Demo data. Sign-in is simulated.</footer>

@@ -27,7 +27,7 @@ const href = (id) => `#/read/${encodeURIComponent(id)}`;
 </script>
 
 <template>
-  <nav v-if="info" class="parts" :lang="timing.language === 'es' ? 'es' : 'en'" :aria-label="`Parts of ${info.title || 'this document'}`">
+  <nav v-if="info" class="parts" :class="{ top: showLabel }" :lang="timing.language === 'es' ? 'es' : 'en'" :aria-label="`${showLabel ? 'Parts of' : 'More parts of'} ${info.title || 'this document'}`">
     <p v-if="showLabel" class="where"><strong>{{ t.part }} {{ info.index }} {{ t.of }} {{ info.total }}</strong><span v-if="info.title" class="muted"> &middot; {{ info.title }}</span></p>
     <div class="links">
       <a v-if="prev?.state === 'ready'" class="btn" :href="href(prev.id)">&larr; {{ t.prev }}</a>
@@ -43,6 +43,8 @@ const href = (id) => `#/read/${encodeURIComponent(id)}`;
 <style scoped>
 .parts { display: grid; gap: var(--s1); }
 .where { margin: 0; }
+/* On a phone the passage should start high on the screen: the top bar keeps only "Part 1 of 4", and the buttons are at the end of the passage. */
+@media (max-width: 640px) { .parts.top .links { display: none; } .parts.top .where { font-size: 14px; } }
 .links { display: flex; gap: var(--s1); flex-wrap: wrap; align-items: center; }
 .linklike { background: none; border: 0; padding: 0; color: var(--primary); text-decoration: underline; cursor: pointer; font: inherit; min-height: 32px; }
 </style>
