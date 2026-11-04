@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { classTakeaway, defaultPassage, finishSplit, finishWords, hardWords, headline, suggestions } from "./readAloudStory.js";
+import { defaultPassage, finishSplit, finishWords, hardWords, headline, suggestions } from "./readAloudStory.js";
 
 const w = (word, missed, sessions = 14) => ({ word, skipped: missed, differs: 0, missed, sessions, share: missed / sessions });
 const totals = (sessions, finished, retried = 0) => ({ sessions, finished, retried, finishRate: sessions ? finished / sessions : null, retryRate: sessions ? retried / sessions : null });
@@ -58,18 +58,10 @@ describe("finishSplit", () => {
   });
 });
 
-describe("classTakeaway", () => {
-  test("one line per class card", () => {
-    assert.equal(classTakeaway({ enough: true, finishRate: 0.71 }), "Most finished");
-    assert.equal(classTakeaway({ enough: true, finishRate: 0.2 }), "Fewer than half finished");
-    assert.equal(classTakeaway({ enough: false, finishRate: null }), "Not enough reads yet");
-  });
-});
-
 describe("defaultPassage", () => {
-  test("the passage with the most reads that can be shown, else none", () => {
+  test("the passage with the most reads that can be shown, else the first listed, else none", () => {
     assert.equal(defaultPassage([{ id: "a", sessions: 0 }, { id: "b", sessions: 5 }]), "b");
-    assert.equal(defaultPassage([{ id: "a", sessions: 0 }]), "");
+    assert.equal(defaultPassage([{ id: "a", sessions: 0 }]), "a");
     assert.equal(defaultPassage([]), "");
   });
 });

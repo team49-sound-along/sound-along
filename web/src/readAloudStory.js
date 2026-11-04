@@ -43,11 +43,8 @@ export function finishSplit(totals) {
   return { finished, stopped: totals.sessions - finished, total: totals.sessions, finishedPercent, stoppedPercent: 100 - finishedPercent };
 }
 
-/** The one line under a class card. */
-export const classTakeaway = (c) => (c.enough ? `${finishWords(c.finishRate)} finished` : "Not enough reads yet");
-
-/** The passage to open first: the one with the most reads that can be shown. */
-export const defaultPassage = (passages) => (passages ?? []).find((p) => p.sessions > 0)?.id ?? "";
+/** The passage to open first: the one with the most reads that can be shown, else the first one listed (it explains what is missing). */
+export const defaultPassage = (passages) => (passages ?? []).find((p) => p.sessions > 0)?.id ?? passages?.[0]?.id ?? "";
 
 /** The paragraph where most of the stumbling happens, or null (needs two paragraphs and a clear hot spot). */
 function hotParagraph(heat) {

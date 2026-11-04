@@ -3,12 +3,14 @@ import assert from "node:assert/strict";
 import { annotateTokens, heatLevel, missedText, topWordRows, wordKey } from "./heatMap.js";
 
 describe("heatLevel", () => {
-  test("zero means not shaded; the share of reads picks one of four levels", () => {
+  test("zero means not shaded; the share of reads picks one of three yellows", () => {
     assert.equal(heatLevel(0, 14), 0);
     assert.equal(heatLevel(2, 14), 1);
+    assert.equal(heatLevel(3, 14), 1);
     assert.equal(heatLevel(4, 14), 2);
+    assert.equal(heatLevel(6, 14), 2);
     assert.equal(heatLevel(7, 14), 3);
-    assert.equal(heatLevel(14, 14), 4);
+    assert.equal(heatLevel(14, 14), 3);
     assert.equal(heatLevel(3, 0), 0);
   });
 });
@@ -37,7 +39,7 @@ describe("annotateTokens", () => {
     const out = annotateTokens(tokens, 14, new Set(["dragged"]));
     assert.equal(out.length, 2);
     assert.deepEqual(out[0].map((t) => [t.text, t.level, t.top]), [["The", 0, false], ["kite", 3, false]]);
-    assert.deepEqual(out[1].map((t) => [t.text, t.level, t.top]), [["dragged.", 4, true], ["dragged", 1, true]]);
+    assert.deepEqual(out[1].map((t) => [t.text, t.level, t.top]), [["dragged.", 3, true], ["dragged", 1, true]]);
     assert.equal(out[1][0].title, "Missed by 14 of 14 readers");
     assert.equal(out[0][0].title, "");
   });

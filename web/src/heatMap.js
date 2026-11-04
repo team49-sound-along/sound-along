@@ -5,14 +5,13 @@ export const TOP_WORDS = 5;
 /** A word's letters only, lower case ("Laughed." and "laughed" are one word), like the server's own key. */
 export const wordKey = (text) => String(text ?? "").toLowerCase().normalize("NFC").replace(/[^\p{L}\p{N}]/gu, "");
 
-/** 0 = not shaded, 1 (light yellow) to 4 (orange): the share of reads that missed the word. */
+/** 0 = not shaded, 1 (light yellow) to 3 (deep yellow): the share of reads that missed the word. */
 export function heatLevel(missed, sessions) {
   if (!missed || !sessions) return 0;
   const share = missed / sessions;
-  if (share < 0.2) return 1;
-  if (share < 0.4) return 2;
-  if (share < 0.6) return 3;
-  return 4;
+  if (share < 0.25) return 1;
+  if (share < 0.5) return 2;
+  return 3;
 }
 
 export const missedText = (missed, sessions) => `Missed by ${missed} of ${sessions} readers`;
