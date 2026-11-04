@@ -14,14 +14,16 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..", "..");
 const env = process.env;
 
+const dataDir = path.resolve(env.DATA_DIR ?? path.join(root, "data"));
 const config = {
   port: Number(env.PORT ?? 3101),
   host: env.HOST ?? "127.0.0.1",
-  dataDir: path.resolve(env.DATA_DIR ?? path.join(root, "data")),
+  dataDir,
   webDist: existsSync(path.join(root, "web", "dist")) ? path.join(root, "web", "dist") : null,
   generationEnabled: (env.GENERATION_ENABLED ?? "true") === "true",
   generatePerMinute: Number(env.GENERATE_PER_MINUTE ?? 3),
   maxConcurrentJobs: Number(env.MAX_CONCURRENT_JOBS ?? 1),
+  questionDraftsDir: path.resolve(env.QUESTION_DRAFTS_DIR ?? path.join(dataDir, "question-drafts")),
   trustProxy: false,
 };
 const python = env.PYTHON ?? path.join(root, ".venv", "bin", "python");

@@ -5,26 +5,17 @@ import StateBlock from "../components/StateBlock.vue";
 import { audioUrl, fetchCards, fetchTiming } from "../api.js";
 import { findWordCard } from "../cards.js";
 import { route } from "../router.js";
+import { loadQuiz } from "../quizLoad.js";
 import { useResource } from "../useResource.js";
-import { approvedQuestions, clearState, dueWords, firstAlignedIndex, loadState, review, saveState } from "../practice.js";
+import { clearState, dueWords, firstAlignedIndex, loadState, review, saveState } from "../practice.js";
 
 const id = route.value.params.id;
-
-async function fetchJson(url) {
-  try {
-    const res = await fetch(url);
-    return res.ok ? await res.json() : null;
-  } catch {
-    return null;
-  }
-}
 
 async function load() {
   const timing = await fetchTiming(id);
   const pair = timing.pairId;
   const cards = (await fetchCards(id)) ?? (pair ? await fetchCards(pair) : null);
-  const qdoc = (await fetchJson(`/data/${encodeURIComponent(id)}.questions.json`)) ?? (pair ? await fetchJson(`/data/${encodeURIComponent(pair)}.questions.json`) : null);
-  return { timing, cards, questions: approvedQuestions(qdoc) };
+  return { timing, cards, quiz: await loadQuiz(id, timing) };
 }
 const { data, loading, error, reload } = useResource(load);
 
@@ -76,18 +67,6 @@ function clearAll() {
   revealed.value = false;
   announce.value = "Your saved words were cleared on this device.";
 }
-
-// ---- practice questions (only ones a person approved) ------------------------------------------------------------------------------
-const qIndex = ref(0);
-const qPicked = ref(null);
-const question = computed(() => data.value?.questions[qIndex.value] ?? null);
-function pickQ(i) {
-  if (qPicked.value === null) qPicked.value = i;
-}
-function nextQ() {
-  qPicked.value = null;
-  qIndex.value = (qIndex.value + 1) % data.value.questions.length;
-}
 </script>
 
 <template>
@@ -138,16 +117,10 @@ function nextQ() {
           </p>
         </section>
 
-        <section v-if="question" class="card" aria-labelledby="pq">
-          <h3 id="pq">Practice questions</h3>
-          <p class="small muted">Checked by a person before you see them.</p>
-          <p class="prompt">{{ question.question }}</p>
-          <div class="qchoices" role="group" aria-label="Answers">
-            <button v-for="(c, i) in question.choices" :key="i" type="button" class="btn" :disabled="qPicked !== null" @click="pickQ(i)">
-              {{ c }}<span v-if="qPicked !== null && i === question.answerIndex"> &#10003; correct</span><span v-else-if="qPicked === i"> &#10007; your choice</span>
-            </button>
-          </div>
-          <p v-if="qPicked !== null"><button type="button" class="btn primary" @click="nextQ">Next question</button></p>
+        <section v-if="data.quiz" class="card" aria-labelledby="pq">
+          <h3 id="pq">Passage quiz</h3>
+          <p class="small muted">Questions a teacher checked before you see them.</p>
+          <p><a class="btn primary" :href="`#/quiz/${encodeURIComponent(id)}`">Take the quiz</a></p>
         </section>
       </template>
     </StateBlock>
@@ -164,7 +137,5 @@ function nextQ() {
 .prompt { font-size: 20px; }
 .answer { font-size: 28px; }
 .row { display: flex; flex-wrap: wrap; gap: var(--s1); }
-.qchoices { display: grid; gap: var(--s1); max-width: 520px; }
-.qchoices .btn { justify-content: flex-start; text-align: left; }
 .label { font-weight: 700; }
 </style>

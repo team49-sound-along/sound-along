@@ -14,13 +14,15 @@ import ReviewView from "./views/ReviewView.vue";
 import ListeningView from "./views/ListeningView.vue";
 import PracticeView from "./views/PracticeView.vue";
 import MyWordsView from "./views/MyWordsView.vue";
+import QuizView from "./views/QuizView.vue";
+import QuestionsView from "./views/QuestionsView.vue";
 import SectionTabs from "./components/SectionTabs.vue";
 import TeacherOnly from "./components/TeacherOnly.vue";
 import { route, isTeacherOnly, VOICE_SECTION } from "./router.js";
 import { role, USERS } from "./session.js";
 
-const VIEWS = { library: LibraryView, read: ReaderView, assignments: AssignmentsView, generate: GenerateView, insights: InsightsView, settings: SettingsView, pronunciations: PronunciationsView, review: ReviewView, listening: ListeningView, practice: PracticeView, words: MyWordsView };
-const TITLES = { library: "Library", read: "Reader", assignments: "Assignments", generate: "Create a passage", insights: "Insights", settings: "Voice settings", pronunciations: "Pronunciations", review: "Pronunciation review", listening: "Listening test", practice: "Practice", words: "My words" };
+const VIEWS = { library: LibraryView, read: ReaderView, assignments: AssignmentsView, generate: GenerateView, insights: InsightsView, settings: SettingsView, pronunciations: PronunciationsView, review: ReviewView, listening: ListeningView, practice: PracticeView, words: MyWordsView, quiz: QuizView, questions: QuestionsView };
+const TITLES = { library: "Library", read: "Reader", assignments: "Assignments", generate: "Create a passage", insights: "Insights", settings: "Voice settings", pronunciations: "Pronunciations", review: "Pronunciation review", listening: "Listening test", practice: "Practice", words: "My words", quiz: "Quiz", questions: "Question review" };
 const view = computed(() => (isTeacherOnly(route.value.name) && role.value !== "teacher" ? TeacherOnly : VIEWS[route.value.name]));
 const showVoiceTabs = computed(() => role.value === "teacher" && VOICE_SECTION.includes(route.value.name));
 const user = computed(() => USERS[role.value]);

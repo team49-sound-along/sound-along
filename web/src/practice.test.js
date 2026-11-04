@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  DAY, approvedQuestions, clearState, dueWords, emptyState, firstAlignedIndex, loadState, review, saveState,
+  DAY, clearState, dueWords, emptyState, firstAlignedIndex, loadState, review, saveState,
   storageKey, toggleStar,
 } from "./practice.js";
 
@@ -79,14 +79,6 @@ test("audio comes from the first word that is truly aligned, otherwise there is 
   assert.equal(firstAlignedIndex(words, "tea"), null);
   assert.equal(firstAlignedIndex(words, "none"), null);
   assert.equal(firstAlignedIndex(undefined, "x"), null);
-});
-
-test("only questions a person has approved are ever offered", () => {
-  const q = [{ id: "q1", question: "?", choices: ["a", "b"], answerIndex: 0 }];
-  assert.deepEqual(approvedQuestions({ reviewed: true, questions: q }), q);
-  for (const bad of [null, undefined, {}, { reviewed: false, questions: q }, { reviewed: "true", questions: q }, { reviewed: true, questions: "x" }, { reviewed: true, questions: [{ id: "q" }] }]) {
-    assert.deepEqual(approvedQuestions(bad), []);
-  }
 });
 
 test("any word can be starred, with or without a card", () => {

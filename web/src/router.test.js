@@ -43,3 +43,17 @@ test("My words and the Voice section routes", async () => {
   assert.equal(isTeacherOnly("words"), false);
   assert.deepEqual(VOICE_SECTION, ["settings", "pronunciations", "review", "listening"]);
 });
+
+test("quiz route needs a passage id and is open to both roles", () => {
+  assert.deepEqual(parseHash("#/quiz/abc-1").params, { id: "abc-1" });
+  assert.equal(parseHash("#/quiz/abc-1").name, "quiz");
+  assert.equal(parseHash("#/quiz").name, "library");
+  assert.equal(isTeacherOnly("quiz"), false);
+});
+
+test("question review is a teacher screen: a list, and one passage's draft", () => {
+  assert.equal(parseHash("#/questions").name, "questions");
+  assert.deepEqual(parseHash("#/questions").params, {});
+  assert.deepEqual(parseHash("#/questions/abc-1").params, { id: "abc-1" });
+  assert.equal(isTeacherOnly("questions"), true);
+});

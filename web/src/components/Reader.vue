@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import Icon from "./Icon.vue";
 import AudioBar from "./AudioBar.vue";
 import WordHelp from "./WordHelp.vue";
+import QuizButton from "./QuizButton.vue";
 import ReadingSettings from "./ReadingSettings.vue";
 import ReadAloudPanel from "./ReadAloudPanel.vue";
 import { recognitionSupported } from "../speechRecognizer.js";
@@ -340,6 +341,7 @@ function onKey(event) {
         </div>
         <a class="btn" :href="`#/practice/${encodeURIComponent(practiceId)}`">Practice words</a>
         <button v-if="canReadAloud" ref="readAloudButton" type="button" class="btn" :aria-expanded="readAloudOn" @click="readAloudOn = !readAloudOn"><Icon name="speak" /> Read aloud with the mic</button>
+        <QuizButton :passage-id="passageId" :timing="timing" />
         <button ref="settingsButton" type="button" class="btn" :aria-expanded="showSettings" :aria-controls="showSettings ? 'reading-settings' : undefined" @click="showSettings = !showSettings">
           <Icon name="settings" /> Reading settings
         </button>
