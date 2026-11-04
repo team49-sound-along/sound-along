@@ -446,6 +446,9 @@ def load_model(source: str, target: str, words: Optional[int] = None) -> Transla
     with _LOCK:
         if key in _MODELS:
             return _MODELS[key]
+        from engine import configure_torch
+
+        configure_torch()  # on Lambda PyTorch cannot read the CPU list: fix the threads and switch off NNPACK before any model is loaded
         import torch
         from transformers import MarianMTModel, MarianTokenizer
 
