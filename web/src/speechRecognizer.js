@@ -51,12 +51,15 @@ export function createRecognizer({ language, onResult, onStatus = () => {}, onEr
     onStatus("idle");
   };
 
-  function handleResult(event) {
+  // Every handler belongs to one recognizer instance and acts only while that instance is the current one, so a late event from a
+  // stopped or replaced recognizer can never touch the next session.
+  function handleResult(rec, token, event) {
+    if (current !== rec) return;
     heardSpeech = true;
     silentSessions = 0;
     for (let i = event.resultIndex ?? 0; i < event.results.length; i += 1) {
       const res = event.results[i];
-      const id = session * SESSION_SPAN + i;
+      const id = token * SESSION_SPAN + i;
       const transcript = String(res?.[0]?.transcript ?? "");
       if (res?.isFinal) open.delete(id);
       else open.set(id, transcript);
@@ -64,9 +67,22 @@ export function createRecognizer({ language, onResult, onStatus = () => {}, onEr
     }
   }
 
-  function handleEnd() {
+  function flushOpen() {
     open.forEach((transcript, id) => onResult({ id, transcript, isFinal: true })); // a session ended mid-sentence: keep what was heard
     open = new Map();
+  }
+
+  function detach(rec) {
+    rec.onresult = null;
+    rec.onend = null;
+    rec.onerror = null;
+    rec.onstart = null;
+  }
+
+  function handleEnd(rec, token) {
+    if (current !== rec) return;
+    flushOpen();
+    detach(rec);
     current = null;
     if (!wanted) {
       onStatus("idle");
@@ -78,12 +94,15 @@ export function createRecognizer({ language, onResult, onStatus = () => {}, onEr
       return;
     }
     onStatus("restarting");
-    timer = setTimer(begin, RESTART_DELAY_MS);
+    timer = setTimer(() => {
+      if (token === session && wanted && !current) begin();
+    }, RESTART_DELAY_MS);
   }
 
   function begin() {
     if (!wanted) return;
     session += 1;
+    const token = session;
     heardSpeech = false;
     try {
       const rec = new Ctor();
@@ -91,16 +110,20 @@ export function createRecognizer({ language, onResult, onStatus = () => {}, onEr
       rec.interimResults = true;
       rec.maxAlternatives = 1;
       rec.lang = recognitionLang(language);
-      rec.onstart = () => onStatus("listening");
-      rec.onresult = handleResult;
+      rec.onstart = () => {
+        if (current === rec) onStatus("listening");
+      };
+      rec.onresult = (event) => handleResult(rec, token, event);
       rec.onerror = (event) => {
+        if (current !== rec) return;
         const info = describeError(event?.error);
         if (info.fatal) fail(event?.error);
       };
-      rec.onend = handleEnd;
+      rec.onend = () => handleEnd(rec, token);
       current = rec;
       rec.start();
     } catch {
+      current = null;
       fail("generic");
     }
   }
@@ -121,12 +144,18 @@ export function createRecognizer({ language, onResult, onStatus = () => {}, onEr
     stop() {
       wanted = false;
       clearTimer(timer);
-      try {
-        current?.stop();
-      } catch {
-        // already stopped
+      const old = current;
+      current = null;
+      if (old) {
+        flushOpen();
+        detach(old);
+        try {
+          old.stop();
+        } catch {
+          // already stopped
+        }
       }
-      if (!current) onStatus("idle");
+      onStatus("idle");
     },
     isRunning: () => wanted,
   };
