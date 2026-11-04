@@ -18,7 +18,7 @@ def _w(s: str) -> frozenset[str]:
 def _p(s: str) -> dict[str, tuple[tuple[str, ...], ...]]:
     """'a b|c d' -> {'a': (('a','b'),), 'c': (('c','d'),)} longest first."""
     out: dict[str, list[tuple[str, ...]]] = {}
-    for phrase in s.split("|"):
+    for phrase in s.replace("\n", "|").split("|"):
         words = tuple(phrase.split())
         if words:
             out.setdefault(words[0], []).append(words)
