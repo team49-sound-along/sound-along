@@ -107,15 +107,19 @@ const optionOf = (item) => questions.value.find((q) => q.id === item.id);
             <p id="qh" class="eyebrow">Question {{ attempt.index + 1 }} of {{ total }}</p>
             <progress class="bar" :value="attempt.index + (answered ? 1 : 0)" :max="total" :aria-label="`Quiz progress: ${attempt.index + (answered ? 1 : 0)} of ${total} answered`"></progress>
           </div>
-          <fieldset class="choices" :lang="questionLang">
-            <legend class="prompt">{{ current.question }}</legend>
-            <label v-for="(c, i) in current.choices" :key="`${current.id}-${i}`" class="choice" :class="{ right: answered && i === current.answerIndex, wrong: answered && picked === i && i !== current.answerIndex, picked: picked === i }">
-              <input type="radio" :name="`q-${current.id}`" :value="i" :checked="picked === i" :disabled="answered" @change="choose(i)" />
+          <div class="choices" role="group" aria-labelledby="qprompt" :lang="questionLang">
+            <p id="qprompt" class="prompt">{{ current.question }}</p>
+            <button
+              v-for="(c, i) in current.choices" :key="`${current.id}-${i}`" type="button" class="choice" :disabled="answered"
+              :class="{ right: answered && i === current.answerIndex, wrong: answered && picked === i && i !== current.answerIndex, picked: picked === i }"
+              @click="choose(i)"
+            >
+              <span class="dot" aria-hidden="true"></span>
               <span class="text">{{ c }}</span>
               <span v-if="answered && i === current.answerIndex" class="tag">&#10003; Correct answer</span>
               <span v-else-if="answered && picked === i" class="tag">&#10007; Your answer</span>
-            </label>
-          </fieldset>
+            </button>
+          </div>
           <div class="feedback" aria-live="polite">
             <template v-if="answered">
               <p v-if="picked === current.answerIndex" class="verdict good"><strong>Correct!</strong> Well done.</p>
@@ -163,18 +167,18 @@ h2:focus { outline: none; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s3); display: grid; gap: var(--s2); }
 .progress-row { display: grid; gap: 6px; }
 .bar { width: 100%; height: 10px; accent-color: var(--primary); }
-fieldset.choices { margin: 0; padding: 0; border: 0; min-width: 0; display: grid; gap: var(--s1); }
-.prompt { font-size: 20px; line-height: 1.4; padding: 0; margin-bottom: var(--s1); font-weight: 600; }
-.choice { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 56px; padding: 12px var(--s2); border: 2px solid var(--border); border-radius: var(--r-sm); background: var(--surface); cursor: pointer; font-size: 18px; }
-.choice:hover { background: var(--surface-2); }
-.choice input { width: 22px; height: 22px; flex: none; accent-color: var(--primary); margin: 0; }
-.choice:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+.choices { display: grid; gap: var(--s1); }
+.prompt { font-size: 20px; line-height: 1.4; margin-bottom: var(--s1); font-weight: 600; }
+.choice { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; width: 100%; min-height: 56px; padding: 12px var(--s2); border: 2px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text); cursor: pointer; font-size: 18px; text-align: left; }
+.choice:hover:not(:disabled) { background: var(--surface-2); }
+.choice .dot { width: 22px; height: 22px; flex: none; border: 2px solid var(--muted); border-radius: 50%; background: var(--surface); }
 .choice .text { flex: 1 1 8ch; min-width: 0; overflow-wrap: anywhere; }
 .choice .tag { font-size: 14px; font-weight: 700; }
 .choice.picked { border-color: var(--primary); background: var(--primary-soft); }
+.choice.picked .dot { border-color: var(--primary); background: radial-gradient(circle, var(--primary) 0 45%, var(--surface) 50%); }
 .choice.right { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); }
 .choice.wrong { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
-.choice:has(input:disabled) { cursor: default; }
+.choice:disabled { cursor: default; opacity: 1; }
 .verdict { font-size: 18px; }
 .verdict.good { color: var(--ok); }
 .verdict.bad { color: var(--danger); }
