@@ -11,9 +11,9 @@ const words = [
 test("slow window is the word's slice at the slow rate", () => {
   const w = slowWindow(words, 1);
   assert.equal(w.rate, SLOW_RATE);
-  assert.equal(SLOW_RATE, 0.6);
+  assert.equal(SLOW_RATE, 0.4);
   assert.ok(Math.abs(w.startSec - 0.96) < 1e-9 && Math.abs(w.endSec - 1.68) < 1e-9);
-  assert.ok(Math.abs(w.wallSec - 0.72 / 0.6) < 1e-9); // real time it takes at the slow rate
+  assert.ok(Math.abs(w.wallSec - 0.72 / SLOW_RATE) < 1e-9); // real time it takes at the slow rate
 });
 
 test("a word at the very start never starts before zero", () => {
@@ -29,8 +29,8 @@ test("no window when timing is only estimated, missing, or out of range", () => 
   assert.equal(slowWindow([{ i: 0, text: "x" }], 0), null);
 });
 
-test("the rate is kept between half speed and normal speed", () => {
-  assert.equal(slowWindow(words, 1, { rate: 0.1 }).rate, 0.5);
+test("the rate is kept between quarter speed and normal speed", () => {
+  assert.equal(slowWindow(words, 1, { rate: 0.1 }).rate, 0.25);
   assert.equal(slowWindow(words, 1, { rate: 3 }).rate, 1);
   assert.equal(slowWindow(words, 1, { rate: "x" }).rate, SLOW_RATE);
 });

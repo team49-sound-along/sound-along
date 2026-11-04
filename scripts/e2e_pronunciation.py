@@ -122,8 +122,8 @@ with sync_playwright() as pw:
     axe_clean(page, "help open")
 
     page.get_by_role("button", name="Hear it slowly").click()
-    page.wait_for_function("window.__rates.includes(0.6)")
-    check("Hear it slowly plays at 0.6 speed", page.evaluate("window.__rates.includes(0.6)"))
+    page.wait_for_function("window.__rates.includes(0.4)")
+    check("Hear it slowly plays at 0.4 speed", page.evaluate("window.__rates.includes(0.4)"))
     page.wait_for_function("window.__rates[window.__rates.length - 1] === 1", timeout=5000)
     check("the learner's own speed is put back afterwards", page.evaluate("window.__rates[window.__rates.length - 1]") == 1)
     check("pitch is kept", page.evaluate("document.querySelector('audio').preservesPitch") is True)

@@ -2,8 +2,8 @@
 // only offered for words whose timing is trusted (the same rule as "Hear it", wordSlice in timing.js).
 import { wordSlice } from "./timing.js";
 
-export const SLOW_RATE = 0.6;
-const MIN_RATE = 0.5;
+export const SLOW_RATE = 0.4; // clearly slow: a single word is only about a third of a second at normal speed
+const MIN_RATE = 0.25;
 const MAX_RATE = 1;
 
 /** { startSec, endSec, rate, wallSec } for a word, or null when there is no trusted timing. wallSec is how long it takes at that rate. */
