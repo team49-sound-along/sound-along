@@ -1,7 +1,7 @@
 # AWS services used by Sound Along
 
 This document lists every AWS service the app uses and what each one is for. It is based on the CDK code in
-`infra/` (`app.py` and `infra/sound_along/*.py`). Everything runs in `us-west-2`, and every resource is tagged
+`infra/` (`app.py` and `infra/sound_along/*.py`). Everything runs in `us-west-2` (except the optional global Route 53 records and the optional us-east-1 ACM certificate), and every resource is tagged
 `project=sound-along`.
 
 ![Sound Along architecture](architecture/sound-along-architecture.png)
@@ -28,7 +28,8 @@ headless Edge or Chrome to render the PNG.
 | `translateModel` | none | `bedrock:<modelId>` uses Amazon Bedrock and `amazon[:formal\|informal]` uses Amazon Translate. With no value, only the built-in Opus-MT translator runs. |
 | `questionsModel` + `questionsEnabled=true` | none / off | Turns on question drafting with Amazon Bedrock. |
 | `alertEmail` | none | Creates the AWS Budgets cost budget. |
-| `siteDomain` | none | A custom public hostname (for example `sound-along.online`). Adds an Amazon Route 53 hosted-zone lookup, alias records, and a us-east-1 ACM certificate on the CloudFront distribution. With no value, the site is served only on its `*.cloudfront.net` domain. |
+| `siteDomain` | none (optional) | A custom public hostname (for example `sound-along.online`). Adds an Amazon Route 53 hosted-zone lookup, alias records, and a us-east-1 ACM certificate (stack `SoundAlongCertificate`) on the CloudFront distribution. With no value, the site is served only on its `*.cloudfront.net` domain. |
+| `readerInsights` | `false` | `true` lets a device add an anonymous per-reader code to the read-aloud class insights. The default is off when deployed, and the teacher must sign in first. It changes no AWS resource, only an environment variable on the API. |
 
 ## Services
 
@@ -37,7 +38,7 @@ headless Edge or Chrome to render the PNG.
 | Service | Resources | Use case |
 |---|---|---|
 | **Amazon CloudFront** | One distribution, Origin Access Control, custom audio cache policy | The single public entry point (HTTPS). `/*` serves the web app from S3 `app/`. `/data/*` serves the MP3, timing and card files from S3 `data/`, and CloudFront handles Range requests for audio seeking. `/api/*` forwards to the CMS API with caching off. It uses PriceClass 100 and the managed security-headers policy. |
-| **Amazon Route 53** | Existing public hosted zone (looked up by name) with apex alias `A`/`AAAA` records to the CloudFront distribution | Created only when `siteDomain` is set. Maps the custom domain to CloudFront. The domain is registered at an external registrar (Namecheap) and its nameservers are delegated to the Route 53 hosted zone; the hosted zone itself is created once outside the stack, and the stack looks it up and manages the alias records. |
+| **Amazon Route 53** | Existing public hosted zone (looked up by name) with apex alias `A`/`AAAA` records to the CloudFront distribution | A global service (drawn outside the Region box in the diagram). Created only when `siteDomain` is set. Maps the custom domain to CloudFront. The domain is registered at an external registrar (Namecheap) and its nameservers are delegated to the Route 53 hosted zone; the hosted zone itself is created once outside the stack, and the stack looks it up and manages the alias records. |
 | **AWS Certificate Manager (ACM)** | One DNS-validated public certificate for `siteDomain`, in `us-east-1` | Created only when `siteDomain` is set. CloudFront reads certificates only from `us-east-1`, so the certificate lives in a small `us-east-1` stack (`SoundAlongCertificate`) and the application stack references it across regions. DNS validation records are written automatically into the Route 53 hosted zone, and the certificate is attached to the distribution as its viewer certificate alongside the alternate domain name. |
 | **Amazon VPC** | VPC with 1 AZ and one public `/24` subnet, internet gateway, security group. No NAT gateway. | Created only when `cmsHost=ec2`. It hosts the CMS instance. The security group admits only CloudFront's origin-facing prefix list on port 8080 and has no SSH rule. Skipping the NAT gateway keeps the idle cost low. |
 
@@ -45,12 +46,12 @@ headless Edge or Chrome to render the PNG.
 
 | Service | Resources | Use case |
 |---|---|---|
-| **Amazon EC2** | One `t4g.small` instance: Amazon Linux 2023 arm64, IMDSv2, encrypted 8 GB gp3 volume | Default CMS API host (`cmsHost=ec2`). A Node 18 systemd service on `:8080` handles uploads, job submission and card review. Its first-boot script installs Node from a checksum-verified tarball and the app bundle from a CDK S3 asset. |
-| **AWS Lambda** | `GeneratorFunction` (container image, arm64, 4 GB, 15 min) | Turns a passage into audio. It parses the text, synthesizes speech (Kokoro by default, Polly when `ttsEngine=polly`), and writes the MP3 and word-timing JSON to S3 `data/`. In `mode=translate` the same image translates the passage (Opus-MT, or Bedrock or Amazon Translate when configured). |
-| | `QuestionsFunction` (Python 3.14, 256 MB, 2 min) | Drafts 4 practice questions for English passages with Bedrock. It writes only to `raw/questions/*`, so a draft is never served before review. It is off unless `questionsEnabled=true`. |
+| **Amazon EC2** | One `t4g.small` instance: Amazon Linux 2023 arm64, IMDSv2, encrypted 8 GB gp3 volume | Default CMS API host (`cmsHost=ec2`). A Node 18 systemd service on `:8080` handles uploads, job submission, card review, the quiz, teacher question review (drafts and publishing), read-aloud class insights and the school switches. Its first-boot script installs Node from a checksum-verified tarball and the app bundle from a CDK S3 asset. |
+| **AWS Lambda** | `GeneratorFunction` (container image, arm64, 4 GB, 15 min) | Turns a passage into audio. It has three modes. `generate` parses the text, synthesizes speech (Kokoro by default, Polly when `ttsEngine=polly`), and writes the MP3 and word-timing JSON to S3 `data/`. `translate` translates the passage (Opus-MT, or Bedrock or Amazon Translate when configured). `stitch` joins the chunks of a long document into one passage per language and deletes the temporary work folder `raw/work/<id>/`. |
+| | `QuestionsFunction` (Python 3.14, 256 MB, 2 min) | Drafts 4 practice questions for English passages with Bedrock, once per document. It writes only to `raw/questions/*`, so a draft is never served before a teacher approves it. It is off unless `questionsEnabled=true`. |
 | | `ApiFunction` (Node 18, arm64, 512 MB, Function URL with `AWS_IAM` auth) | The CMS API when `cmsHost=lambda`. CloudFront signs the requests through OAC. |
 | | CDK custom-resource function | Looks up the CloudFront prefix list ID at deploy time for the EC2 security group. |
-| **AWS Step Functions** | `GenerateStateMachine` (Standard, 8 h timeout) | Runs one execution per submitted document. A Map state processes the parts one at a time: Generator, then Questions (English only), then Translation. Questions and translation are caught so they can never fail an audio job. A crashed part is marked `failed` directly in DynamoDB so the page shows it. |
+| **AWS Step Functions** | `GenerateStateMachine` (Standard, 8 h timeout) | Runs one execution per submitted text; an `IsDocument` choice picks the path. A short text runs straight through: Generator, then Questions (English only), then Translation. A long document is narrated in internal chunks, one at a time (`EachChunk` Map, max concurrency 1): each chunk is generated and translated, and the progress is counted on the job in DynamoDB. A stitch step then joins the chunks into one passage, and Questions run once for the whole document (English only). Questions and translation are caught so they can never fail an audio job. A crash is marked `failed` directly in DynamoDB so the page shows it. |
 
 ### AI services (optional)
 
@@ -64,9 +65,13 @@ headless Edge or Chrome to render the PNG.
 
 | Service | Resources | Use case |
 |---|---|---|
-| **Amazon S3** | App bucket (Block Public Access, SSE-S3, SSL enforced) | `app/` holds the web build. `data/` holds the published MP3, timing, cards and pictures, served through CloudFront. `raw/` holds uploaded source text and question drafts, which expire after 7 days. |
+| **Amazon S3** | App bucket (Block Public Access, SSE-S3, SSL enforced) | `app/` holds the web build. `data/` holds the published MP3, timing, cards and pictures, served through CloudFront, plus `data/<id>.questions.json` (only teacher-approved questions; the API role may write only that pattern and read only `data/*.timing.json`). `raw/` holds uploaded source text and expires after 7 days. Inside it, `raw/work/<id>/` is the temporary chunk work folder of a long document (deleted after the join) and `raw/questions/` holds unpublished question drafts. |
 | | Pipeline artifact bucket | CodePipeline source and build artifacts. |
-| **Amazon DynamoDB** | One table (`pk`/`sk`, on-demand, TTL on `ttl`) | Jobs, passages and CMS state. The API and the generator read and write it, and Step Functions updates it when a part fails. |
+| **Amazon DynamoDB** | One table (`pk`/`sk`, on-demand, TTL on `ttl`) | Jobs (with chunk progress), passages and CMS state, plus the read-aloud data: anonymous word counters per passage and class (they expire after 400 days) and the class settings (microphone, sharing, reader codes). The API and the generator read and write it, and Step Functions updates it when a job fails and as each chunk finishes. |
+
+### Speech recognition for read-aloud
+
+No AWS speech service is used. Read-aloud uses the browser's own speech recognition: the audio goes to the browser maker's speech service, never to this AWS account, and it is never stored here. Only anonymous word counts reach the API.
 
 ### Operations, security and cost
 
