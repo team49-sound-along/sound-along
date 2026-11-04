@@ -72,6 +72,7 @@ def require_bundle(path: Path, what: str) -> Path:
 
 
 _MODEL_ID = re.compile(r"^bedrock:[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+_AMAZON_TRANSLATE = re.compile(r"^amazon(:(informal|formal))?$")
 
 
 def parse_questions_model(value: object) -> str | None:
@@ -84,14 +85,45 @@ def parse_questions_model(value: object) -> str | None:
 
 
 def parse_translate_model(value: object) -> str | None:
-    """Validate the `translateModel` CDK context value: `bedrock:<modelId>` or absent. Absent means the built-in Opus-MT translator only; there is no default model."""
+    """Validate the `translateModel` CDK context value: `bedrock:<modelId>`, `amazon`, `amazon:informal`, `amazon:formal`, or absent. Absent means the built-in Opus-MT translator only; there is no default model."""
     if value is None:
         return None
+    if isinstance(value, str) and _AMAZON_TRANSLATE.match(value):
+        return value  # Amazon Translate: amazon, amazon:informal or amazon:formal
     if not isinstance(value, str) or not _MODEL_ID.match(value) or ".." in value:
-        raise ValueError(f'Invalid CDK context "translateModel": {value!r}. Use -c translateModel=bedrock:<modelId> (there is no default).')
+        raise ValueError(f'Invalid CDK context "translateModel": {value!r}. Use -c translateModel=bedrock:<modelId>, amazon or amazon:informal (there is no default).')
     return value
 
 
 def parse_questions_enabled(value: object) -> bool:
     """The `questionsEnabled` switch is on only for the exact value true; anything else is off."""
     return value is True or value == "true"
+
+
+TTS_ENGINES = ("kokoro", "polly")
+_POLLY_VOICE = re.compile(r"^[A-Za-zÁ-ú]{3,20}$")
+POLLY_ENGINES = ("neural", "generative", "long-form", "standard")
+
+
+def parse_tts_engine(value: object) -> str:
+    """The `ttsEngine` CDK context value: kokoro (default, runs inside the image) or polly (Amazon Polly, billed per character)."""
+    if value is None:
+        return "kokoro"
+    if not isinstance(value, str) or value.lower() not in TTS_ENGINES:
+        raise ValueError(f'Invalid CDK context "ttsEngine": {value!r}. Use -c ttsEngine=kokoro or -c ttsEngine=polly.')
+    return value.lower()
+
+
+def parse_polly_options(voice_en: object, voice_es: object, engine: object) -> dict[str, str]:
+    """Optional Polly choices, validated: -c pollyVoice=Joanna -c pollyVoiceEs=Lupe -c pollyEngine=neural. Empty when none are given."""
+    out: dict[str, str] = {}
+    for key, value in (("POLLY_VOICE", voice_en), ("POLLY_VOICE_ES", voice_es)):
+        if value is not None:
+            if not isinstance(value, str) or not _POLLY_VOICE.match(value):
+                raise ValueError(f"Invalid Polly voice {value!r} for {key}: letters only, for example Joanna or Lupe.")
+            out[key] = value
+    if engine is not None:
+        if not isinstance(engine, str) or engine.lower() not in POLLY_ENGINES:
+            raise ValueError(f'Invalid CDK context "pollyEngine": {engine!r}. Use one of {", ".join(POLLY_ENGINES)}.')
+        out["POLLY_ENGINE"] = engine.lower()
+    return out

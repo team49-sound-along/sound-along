@@ -106,3 +106,16 @@ def test_estimated_words_squeezed_into_a_short_stretch_never_overlap_the_next_wo
 def test_a_normal_aligned_word_keeps_its_own_end_time():
     words = align_words(["Hello", "world"], [Heard("hello", 0.0, 0.5), Heard("world", 0.6, 1.1)])
     assert (words[0].start_s, words[0].end_s, words[1].end_s) == (0.0, 0.5, 1.1)
+
+
+def test_words_the_recognizer_missed_at_the_end_never_run_past_the_audio():
+    display = ["a", "b", "c", "d", "e", "f"]
+    out = align_words(display, [Heard("a", 0.0, 0.3), Heard("b", 0.4, 0.7)], duration_s=2.0)
+    assert all(w.end_s <= 2.0 for w in out) and all(w.start_s < 2.0 for w in out)
+    assert [w.start_s for w in out] == sorted(w.start_s for w in out)
+    assert [w.aligned for w in out] == [True, True, False, False, False, False]
+
+
+def test_without_a_duration_nothing_changes():
+    out = align_words(["a", "b", "c"], [Heard("a", 0.0, 0.3)])
+    assert out[2].start_s == out[0].end_s + 2 * 0.3

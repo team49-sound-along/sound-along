@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from difflib import SequenceMatcher
-from typing import Sequence
+from typing import Optional, Sequence
 
 from asr_words import Heard, expand_spoken_numbers, norm
 
@@ -22,8 +22,8 @@ class AlignedWord:
     aligned: bool
 
 
-def align_words(display: Sequence[str], heard: Sequence[Heard]) -> list[AlignedWord]:
-    """One AlignedWord per display word, in order, with non-decreasing starts."""
+def align_words(display: Sequence[str], heard: Sequence[Heard], duration_s: Optional[float] = None) -> list[AlignedWord]:
+    """One AlignedWord per display word, in order, with non-decreasing starts. With `duration_s` (the length of the audio) no word runs past the end."""
     heard = expand_spoken_numbers(list(heard), display)
     shown = [(i, norm(w)) for i, w in enumerate(display) if norm(w)]
     spoken = [(j, norm(h.text)) for j, h in enumerate(heard) if norm(h.text)]
@@ -38,7 +38,21 @@ def align_words(display: Sequence[str], heard: Sequence[Heard]) -> list[AlignedW
             h = heard[spoken[b0 + k][0]]
             times[shown[a0 + k][0]] = (h.start_s, h.end_s, tag == "equal")
 
-    return _fill_gaps(len(display), times)
+    return _fit_to_audio(_fill_gaps(len(display), times), duration_s)
+
+
+def _fit_to_audio(words: list[AlignedWord], duration_s: Optional[float]) -> list[AlignedWord]:
+    """Trailing words the recognizer missed are given fixed steps after the last matched word; a long tail can end up beyond the audio. Squeeze those
+    estimated words evenly into the time that is left."""
+    if duration_s is None or not words or words[-1].end_s <= duration_s:
+        return words
+    last_real = max((i for i, w in enumerate(words) if w.aligned), default=-1)
+    tail = words[last_real + 1:]
+    start = min(words[last_real].end_s if last_real >= 0 else 0.0, duration_s)
+    step = (duration_s - start) / max(len(tail), 1)
+    squeezed = [AlignedWord(start + k * step, start + (k + 1) * step, False) for k in range(len(tail))]
+    head = [AlignedWord(w.start_s, min(w.end_s, duration_s), w.aligned) for w in words[: last_real + 1]]
+    return head + squeezed
 
 
 def _fill_gaps(count: int, times: dict[int, tuple[float, float, bool]]) -> list[AlignedWord]:

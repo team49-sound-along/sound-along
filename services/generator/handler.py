@@ -305,11 +305,13 @@ def _mark_failed(tracker: JobTracker, job_id: str) -> None:
 
 
 def _load_translator(source: str, target: str, words: Optional[int] = None) -> Callable[[list[str]], list[str]]:
-    from bedrock_translate import from_environment
+    from amazon_translate import from_environment as amazon
+    from bedrock_translate import from_environment as bedrock
     from translate import load_model
 
-    # Opus-MT always; in front of it a Bedrock language model when TRANSLATE_MODEL=bedrock:<id> is set (it falls back to Opus-MT per batch).
-    return from_environment(source, target, load_model(source, target, words))
+    # Opus-MT always; in front of it Amazon Translate (TRANSLATE_MODEL=amazon[:informal]) or a Bedrock language model (TRANSLATE_MODEL=bedrock:<id>).
+    # Only one of the two is ever active, and each falls back to Opus-MT per sentence or batch.
+    return bedrock(source, target, amazon(source, target, load_model(source, target, words)))
 
 
 def _names_for(language: str) -> Callable[[str], list[str]]:

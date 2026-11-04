@@ -29,9 +29,9 @@ def _recognize(transcribe_fn: Transcribe, audio: np.ndarray, language: str) -> l
     return transcribe_fn(audio) if language == "en" else transcribe_fn(audio, language=language)
 
 
-def _retime(words: list[dict[str, Any]], heard: list[Heard]) -> list[dict[str, Any]]:
+def _retime(words: list[dict[str, Any]], heard: list[Heard], duration_s: Optional[float] = None) -> list[dict[str, Any]]:
     """Replace word times with the recognizer's, matched to the known text (same method used for human recordings)."""
-    aligned = align_words([w["text"] for w in words], heard)
+    aligned = align_words([w["text"] for w in words], heard, duration_s)
     return [
         {**w, "start_ms": round(a.start_s * 1000), "end_ms": round(a.end_s * 1000), "aligned": a.aligned}
         for w, a in zip(words, aligned)
@@ -78,8 +78,8 @@ def _human_variant(ai_timing: dict[str, Any], passage: dict[str, Any], recording
                    transcribe_fn: Transcribe, decode_fn: Decode, language: str) -> Variant:
     heard = _recognize(transcribe_fn, decode_fn(recording_path, 16_000), language)
     audio = decode_fn(recording_path, SAMPLE_RATE)
-    words = _retime(ai_timing["words"], heard)
     seconds = len(audio) / SAMPLE_RATE
+    words = _retime(ai_timing["words"], heard, seconds)
     unaligned = sum(1 for w in words if not w["aligned"])
     metrics = {
         "characters": sum(len(w["text"]) + 1 for w in words), "words": len(words), "audioSeconds": round(seconds, 2),
@@ -129,7 +129,7 @@ def run_flow(
     if not getattr(engine, "native_timing", True):
         # The engine (Kokoro in Spanish) gives audio but no word times: take them from a recognizer pass instead.
         heard_ai = _recognize(transcribe_fn, resample_to_16k(artifacts.audio, SAMPLE_RATE), language)
-        words = _retime(timing["words"], heard_ai)
+        words = _retime(timing["words"], heard_ai, len(artifacts.audio) / SAMPLE_RATE)
         timing = {**timing, "words": words, "metrics": {**timing["metrics"], "unalignedWords": sum(1 for w in words if not w["aligned"])}}
 
     if passage.get("qualityCheck"):

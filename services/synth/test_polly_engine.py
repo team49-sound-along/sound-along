@@ -60,3 +60,42 @@ def test_non_word_marks_and_blank_lines_are_ignored():
 def test_empty_audio_returns_no_tokens():
     out = PollyEngine(FakePolly(0, [])).synthesize("")
     assert len(out.audio) == 0 and out.tokens == ()
+
+
+# ---- Generative and long-form voices -----------------------------------------------------------------------------------------------
+import pytest  # noqa: E402
+
+from polly_engine import POLLY_VOICES, polly_voice_for  # noqa: E402
+
+
+def test_a_generative_voice_makes_audio_only_and_leaves_the_word_times_to_the_recognizer():
+    client = FakePolly(16000, MARKS)
+    engine = PollyEngine(client, voice="Matthew", engine="generative")
+    out = engine.synthesize("The quick fox.")
+    assert engine.native_timing is False and out.tokens == () and len(out.audio) > 0
+    assert [c["OutputFormat"] for c in client.calls] == ["pcm"]  # no speech-mark request: Polly does not return marks for generative voices
+    assert all(c["Engine"] == "generative" for c in client.calls)
+
+
+def test_neural_and_long_form_voices_keep_native_word_times():
+    assert PollyEngine(FakePolly(16000, MARKS), voice="Lupe", engine="neural").native_timing is True
+    assert PollyEngine(FakePolly(16000, MARKS), voice="Alba", engine="long-form").native_timing is True
+
+
+def test_the_voice_catalogue_says_which_engine_each_spanish_voice_can_use():
+    assert POLLY_VOICES["Lupe"]["lang"] == "es-US" and "neural" in POLLY_VOICES["Lupe"]["engines"]
+    assert "long-form" in POLLY_VOICES["Alba"]["engines"] and POLLY_VOICES["Alba"]["lang"] == "es-ES"
+    assert "neural" not in POLLY_VOICES["Carlos"]["engines"] and "generative" in POLLY_VOICES["Carlos"]["engines"]
+
+
+def test_voice_and_engine_are_chosen_from_the_language_and_the_environment():
+    assert polly_voice_for("en", {}) == ("Joanna", "neural")
+    assert polly_voice_for("es", {}) == ("Lupe", "neural")
+    assert polly_voice_for("es", {"POLLY_VOICE_ES": "Sergio", "POLLY_ENGINE": "generative"}) == ("Sergio", "generative")
+
+
+def test_a_voice_that_cannot_use_the_chosen_engine_is_refused_before_any_billing():
+    with pytest.raises(ValueError, match="Carlos"):
+        polly_voice_for("es", {"POLLY_VOICE_ES": "Carlos", "POLLY_ENGINE": "neural"})
+    with pytest.raises(ValueError, match="(?i)engine"):
+        polly_voice_for("en", {"POLLY_ENGINE": "turbo"})

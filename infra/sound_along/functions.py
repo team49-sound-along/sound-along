@@ -91,6 +91,8 @@ class GeneratorFunctionProps:
     table: dynamodb.ITable
     translate_model: str | None = None  # "bedrock:<modelId>": a context-aware LLM translator in front of Opus-MT; None = no Bedrock permission at all
     bedrock_min_interval: float = 1.1  # seconds between this function's Bedrock requests (the account allows about one per second in total)
+    tts_engine: str = "kokoro"  # "polly": narration with Amazon Polly (adds polly:SynthesizeSpeech); "kokoro" runs inside the image and needs no permission
+    polly_options: tuple[tuple[str, str], ...] = ()  # POLLY_VOICE, POLLY_VOICE_ES, POLLY_ENGINE
 
 
 def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -> lambda_.DockerImageFunction:
@@ -103,10 +105,11 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
         architecture=lambda_.Architecture.ARM_64,
         memory_size=4096,
         timeout=Duration.seconds(900),  # the Lambda maximum: translating and narrating the longest text can take minutes on 2 CPUs
-        reserved_concurrent_executions=1 if props.translate_model else 2,  # one caller at a time keeps Bedrock under the rate limit
+        reserved_concurrent_executions=1 if (props.translate_model or "").startswith("bedrock:") else 2,  # one caller at a time keeps Bedrock under the rate limit
         log_group=_log_group(scope, "GeneratorLogs"),
         environment={"BUCKET": props.bucket.bucket_name, "TABLE_NAME": props.table.table_name,
-                     **({"TRANSLATE_MODEL": props.translate_model, "TRANSLATE_REGION": REGION, "TRANSLATE_MIN_INTERVAL": str(props.bedrock_min_interval)} if props.translate_model else {})},
+                     **({"TRANSLATE_MODEL": props.translate_model, "TRANSLATE_REGION": REGION, "TRANSLATE_MIN_INTERVAL": str(props.bedrock_min_interval)} if props.translate_model else {}),
+                     **({"TTS_ENGINE": "polly", **dict(props.polly_options)} if props.tts_engine == "polly" else {})},
     )
     props.table.grant_read_write_data(fn)
     fn.add_to_role_policy(object_access(props.bucket, ["s3:GetObject"], "raw/*"))
@@ -115,7 +118,11 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
     fn.add_to_role_policy(object_access(props.bucket, ["s3:GetObject"], "data/*"))
     fn.add_to_role_policy(list_bucket(props.bucket, ["data/*"]))
     fn.add_to_role_policy(object_access(props.bucket, ["s3:PutObject"], "data/*"))
-    if props.translate_model:  # one model only, and only when the operator chose it
+    if props.tts_engine == "polly":  # SynthesizeSpeech has no resource-level permissions
+        fn.add_to_role_policy(iam.PolicyStatement(actions=["polly:SynthesizeSpeech"], resources=["*"]))
+    if props.translate_model and props.translate_model.startswith("amazon"):  # Amazon Translate has no resource-level permissions for plain text
+        fn.add_to_role_policy(iam.PolicyStatement(actions=["translate:TranslateText"], resources=["*"]))
+    elif props.translate_model:  # one model only, and only when the operator chose it
         for statement in bedrock_invoke_statements(props.translate_model):
             fn.add_to_role_policy(statement)
     return fn
