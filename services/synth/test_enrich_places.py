@@ -399,3 +399,17 @@ def test_a_failing_word_finder_never_breaks_place_cards():
 
     out = ep.enrich_places(PASSAGE, FakeHttp(wiki([PARK]), [commons("Lake.jpg")]), ner=lambda t: ["Piedmont Park"], words=boom)
     assert "Piedmont Park" in out.cards["places"] and out.cards["words"] == {}
+
+
+def test_a_spanish_generated_passage_gets_word_cards_but_no_place_lookups():
+    seen = {}
+
+    def words(pid, text, language="en"):
+        seen["language"] = language
+        return {"elefante": {"word": "elefante"}}, {}
+
+    def boom(url, binary=False):
+        raise AssertionError("no network for a Spanish passage")
+
+    out = ep.enrich_places({"uuid": "x", "source": "generated", "language": "es", "content": "<p>El elefante camina por Madrid.</p>"}, http_get=boom, words=words, ner=lambda t: ["Madrid"])
+    assert out is not None and out.cards["words"] == {"elefante": {"word": "elefante"}} and out.cards["places"] == {} and seen["language"] == "es"

@@ -96,7 +96,7 @@ function toggleSaved() {
 const pictureKeys = computed(() => new Set(Object.entries(cards.value?.words ?? {}).filter(([, c]) => c?.imageUrl).map(([k]) => k)));
 const placeWords = computed(() => new Set(words.value.filter((w) => placeAt(words.value, w.i, cards.value?.places)).map((w) => w.i)));
 // Words with a definition card get the same dotted underline as the passage's own vocabulary.
-const definedKeys = computed(() => new Set(Object.entries(cards.value?.words ?? {}).filter(([, c]) => c?.definition).map(([k]) => k)));
+const definedKeys = computed(() => new Set(Object.entries(cards.value?.words ?? {}).filter(([, c]) => c?.definition || c?.translation?.words?.length).map(([k]) => k)));
 const hasVisual = (w) => wordHelp.value && (pictureKeys.value.has(wordKey(w.text)) || placeWords.value.has(w.i));
 // Language switch: the text's translation (or its source) is a separate passage linked in the timing document. The sentence map keeps the place.
 const langSwitch = computed(() => languageSwitch(props.timing));

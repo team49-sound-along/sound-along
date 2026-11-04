@@ -362,17 +362,18 @@ def enrich_places(
 ) -> Optional[Enriched]:
     """Cards for an English, teacher-generated passage: place cards with pictures (needs the network) and word cards (pictures for everyday nouns, definitions for harder words)
     (offline, `words` = word_cards.word_cards: pictures and definitions). None when there is nothing to show. Never raises."""
-    if passage.get("source") != "generated" or (passage.get("language") or "en") != "en":
+    language = passage.get("language") or "en"
+    if passage.get("source") != "generated" or language not in ("en", "es"):
         return None
     try:
         tokens = tokenize_html(passage.get("content") or "")
         plain = " ".join(t.text for t in tokens)
-        places, images = _place_cards(passage, tokens, plain, http_get, budget_s, clock, ner)
+        places, images = _place_cards(passage, tokens, plain, http_get, budget_s, clock, ner) if language == "en" else ({}, {})  # place cards are English only
         word_cards: dict[str, Any] = {}
         word_images: dict[str, bytes] = {}
         if words is not None:
             try:
-                word_cards, word_images = words(passage["uuid"], plain)
+                word_cards, word_images = words(passage["uuid"], plain) if language == "en" else words(passage["uuid"], plain, language=language)
             except Exception as err:  # noqa: BLE001
                 LOG.warning("word pictures skipped: %s", err)
         if not places and not word_cards:

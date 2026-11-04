@@ -21,3 +21,9 @@ def test_each_part_fails_alone():
     assert set(wc.word_cards("p", "t", pictures=boom, definitions=defs)[0]) == {"cookies", "tunnel"}
     cards, images = wc.word_cards("p", "t", pictures=pics, definitions=boom)
     assert set(cards) == {"cookies"} and images
+
+
+def test_a_spanish_passage_gets_english_meaning_cards_and_no_pictures():
+    cards, images = wc.word_cards("p", "t", language="es", spanish=lambda text: {"elefante": {"word": "elefante"}})
+    assert cards == {"elefante": {"word": "elefante"}} and images == {}
+    assert wc.word_cards("p", "t", language="es", spanish=lambda text: 1 / 0) == ({}, {})
