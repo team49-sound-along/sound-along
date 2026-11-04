@@ -11,11 +11,13 @@ license for the version you install.
 | Opus-MT `opus-mt-tc-big-en-es` (Helsinki-NLP, revision pinned in `services/synth/translate.py`) | Better English to Spanish translation of passages up to 900 words | CC-BY-4.0 (credit: Helsinki-NLP / OPUS-MT, University of Helsinki) |
 | Opus-MT `opus-mt-tc-bible-big-roa-en` (Helsinki-NLP, revision pinned in `services/synth/translate.py`) | Better Spanish to English translation of passages up to 900 words | Apache-2.0 |
 | SmolLM2-135M (HuggingFaceTB, revision pinned in `services/synth/possessives.py`) | A tiny English language model that chooses "his", "her" or "their" for Spanish su/sus from the sentences before it (not used to write text) | Apache-2.0 |
-| Phonon `phonon-31m-en` model, `gradium/phonon-voices` and the `ptts` runtime | Text-to-speech (voices Hadley and Everly) | Apache-2.0 (runtime: MIT or Apache-2.0) |
+| Phonon `phonon-31m-en` model, `gradium/phonon-voices` and the `ptts` runtime | Text-to-speech (voices Hadley, Everly, Bryony and Trevor) | Apache-2.0 (runtime: MIT or Apache-2.0) |
 | faster-whisper / Whisper models | Word timing for existing human audio; quality checks | MIT |
 | UTMOS22 via `tarepan/SpeechMOS` | Predicted naturalness in the quality lab | Check upstream |
 | spaCy `en_core_web_sm` | Text processing used by the TTS library | MIT |
 | Vue 3, Vite | Web app | MIT |
+| `fflate` | Reading Word (.docx) files in the browser | MIT |
+| `pdfjs-dist` (PDF.js) | Reading PDF files in the browser | Apache-2.0 |
 | Express 4 | API | MIT |
 | AWS CDK | Infrastructure as code | Apache-2.0 |
 
