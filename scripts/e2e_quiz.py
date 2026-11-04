@@ -102,6 +102,11 @@ with sync_playwright() as pw:
     page.get_by_role("link", name="Show me where").click()
     page.wait_for_timeout(1500)
     step("Show me where opens the reader at that sentence", lambda: (re.search(rf"#/read/{PARK}\?s=\d+$", page.url) is not None and page.locator(".w.band").count() > 0) or f"{page.url} band={page.locator('.w.band').count()}")
+    def evidence_on_screen():
+        page.wait_for_timeout(2500)  # pictures above the sentence load after the first paint and must not push it off screen
+        top = page.evaluate("(() => { const w = document.querySelector('.w.active'); const r = w && w.getBoundingClientRect(); return r ? [r.top, innerHeight] : null })()")
+        return (top is not None and 0 <= top[0] < top[1] - 120) or f"the sentence is not on screen: {top}"
+    step("the sentence is on screen after the pictures have loaded", evidence_on_screen)
     page.go_back()
     page.wait_for_timeout(800)
     step("Back returns to the same question with the answer kept", lambda: (page.get_by_text("Question 1 of 2").count() == 1 and page.locator(".feedback .verdict").count() == 1) or "progress lost")

@@ -118,6 +118,7 @@ const isBand = (w) => bandSentence.value !== null && w.sentence === bandSentence
 
 onBeforeUnmount(() => {
   window.removeEventListener("scroll", hideJumpWhenVisible);
+  endArrival();
   cancelAnimationFrame(frame);
   dockObserver?.disconnect();
 });
@@ -171,18 +172,45 @@ onMounted(() => {
 
   const bySentence = resumeSentence(route.value.query);
   const at = bySentence !== null ? firstWordOfSentence(words.value, bySentence) : resumeIndex(route.value.query, words.value.length);
+  if (at === null) return;
+  activeIndex.value = at;
+  focusIndex.value = at;
+  settleOn(at); // pictures and cards arrive after the first paint and move the text, so the arrival is kept on the word until the page settles
   const el = audio.value;
-  if (at === null || !el) return;
+  if (!el) return;
   const start = () => {
     el.currentTime = seekSeconds(words.value, at);
-    activeIndex.value = at;
-    focusIndex.value = at;
-    revealActive(at);
     if (route.value.query.play === "1") startAudio(el);
   };
   if (el.readyState >= 1) start();
   else el.addEventListener("loadedmetadata", start, { once: true });
 });
+
+// Arriving at a place in the passage ("Show me where", a language switch, a saved place): scroll there, and keep it there while pictures and
+// cards load above it. Any touch, wheel, key or click by the reader ends this at once, and it never runs for more than a few seconds.
+let arrival = null;
+let arrivalTimers = [];
+const ARRIVAL_EVENTS = ["wheel", "touchstart", "keydown", "pointerdown"];
+function endArrival() {
+  arrival = null;
+  arrivalTimers.forEach(clearTimeout);
+  arrivalTimers = [];
+  ARRIVAL_EVENTS.forEach((type) => window.removeEventListener(type, endArrival));
+}
+function scrollToArrival() {
+  if (arrival === null) return;
+  document.getElementById(`w-${arrival}`)?.scrollIntoView({ block: "center", behavior: "auto" }); // instant: a smooth scroll is cut short when the page grows
+}
+function settleOn(index) {
+  endArrival();
+  arrival = index;
+  ARRIVAL_EVENTS.forEach((type) => window.addEventListener(type, endArrival, { passive: true }));
+  nextTick(scrollToArrival);
+  arrivalTimers = [300, 900, 1800].map((ms) => setTimeout(scrollToArrival, ms));
+  arrivalTimers.push(setTimeout(endArrival, 3500));
+}
+const onPassageImageLoad = () => scrollToArrival();
+watch(cards, () => nextTick(scrollToArrival));
 
 const track = (type) => api.event({ passageId: props.passageId, type, ...(props.classId ? { classId: props.classId } : {}) });
 const reduceMotion = () => prefs.value.reduceMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -393,7 +421,7 @@ function onKey(event) {
           <span>Tap or click any word to hear it from there. Keyboard: arrow keys move between words, Enter or Space plays, H plays just that word.</span>
         </p>
         <div
-          class="passage" :class="{ phrased: prefs.phraseBreaks, calm: prefs.reduceMotion }" :style="cssVars"
+          class="passage" :class="{ phrased: prefs.phraseBreaks, calm: prefs.reduceMotion }" :style="cssVars" @load.capture="onPassageImageLoad"
           :lang="langAttr(timing.language)" role="group" aria-label="Passage text" :aria-describedby="soundAlong ? 'reader-help' : undefined" @keydown="onKey"
         >
           <template v-for="(lines, n) in layout" :key="n">
