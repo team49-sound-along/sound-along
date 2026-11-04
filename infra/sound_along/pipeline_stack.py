@@ -15,6 +15,7 @@ console (CodePipeline > Settings > Connections > Update pending connection) befo
 """
 from __future__ import annotations
 
+import shlex
 from dataclasses import dataclass
 
 from aws_cdk import Duration, RemovalPolicy, Stack
@@ -41,6 +42,7 @@ class PipelineStackProps:
     tts_engine: passed to `cdk deploy -c ttsEngine=...` (kokoro default, polly optional).
     cms_host: passed to `cdk deploy -c cmsHost=...` (ec2 default, lambda optional).
     alert_email: when set, passed to `cdk deploy -c alertEmail=...` (optional cost budget).
+    extra_context: other optional `-c key=value` switches passed to the deploy (pollyVoice, pollyVoiceEs, pollyEngine, translateModel), only those that were set.
     """
 
     github_owner: str
@@ -49,6 +51,7 @@ class PipelineStackProps:
     tts_engine: str | None = None
     cms_host: str | None = None
     alert_email: str | None = None
+    extra_context: tuple[tuple[str, str], ...] = ()
 
 
 def _buildspec(props: PipelineStackProps) -> codebuild.BuildSpec:
@@ -60,6 +63,8 @@ def _buildspec(props: PipelineStackProps) -> codebuild.BuildSpec:
         context_flags.append(f"-c cmsHost={props.cms_host}")
     if props.alert_email:
         context_flags.append(f"-c alertEmail={props.alert_email}")
+    for key, value in props.extra_context:
+        context_flags.append(f"-c {key}={shlex.quote(value)}")
     # Write the stack outputs so the declared artifact (infra/_outputs.json) exists; without --outputs-file the file
     # is never created and UPLOAD_ARTIFACTS fails with "no matching artifact paths found".
     context_flags.append("--outputs-file _outputs.json")

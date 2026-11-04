@@ -168,8 +168,9 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
   });
 
   if (config.webDist) {
-    app.use(express.static(config.webDist, { index: false }));
-    app.get(/^\/(?!api\/|data\/).*/, (req, res) => res.sendFile(path.join(config.webDist, "index.html")));
+    // Built files have a hash in their name, so the browser keeps them for a year; the page itself is always checked for a newer build.
+    app.use(express.static(config.webDist, { index: false, setHeaders: (res, file) => res.set("Cache-Control", file.includes(`${path.sep}assets${path.sep}`) ? "public, max-age=31536000, immutable" : "no-cache") }));
+    app.get(/^\/(?!api\/|data\/).*/, (req, res) => res.set("Cache-Control", "no-cache").sendFile(path.join(config.webDist, "index.html")));
   }
 
   app.use(errorHandler(logger));

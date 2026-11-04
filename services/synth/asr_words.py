@@ -4,6 +4,7 @@ Lives in ``synth`` because the generator Lambda image ships only ``parse`` and `
 """
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -124,6 +125,6 @@ def transcribe(audio: np.ndarray, language: str = "en", model_name: str | None =
 
     name = model_name or model_name_for(language)
     if name not in _MODELS:
-        _MODELS[name] = WhisperModel(name, device="cpu", compute_type="int8")
-    segments, _ = _MODELS[name].transcribe(audio, language=language, word_timestamps=True, beam_size=5, condition_on_previous_text=False)
+        _MODELS[name] = WhisperModel(name, device="cpu", compute_type="int8", cpu_threads=int(os.environ.get("WHISPER_CPU_THREADS") or min(8, os.cpu_count() or 4)))  # measured: 8 threads is 13% faster than the default, and using every core of a 14-core laptop is twice as slow
+    segments, _ = _MODELS[name].transcribe(audio, language=language, word_timestamps=True, beam_size=int(os.environ.get("WHISPER_BEAM_SIZE") or 5), condition_on_previous_text=False)
     return [Heard(w.word.strip(), float(w.start), float(w.end)) for seg in segments for w in (seg.words or [])]

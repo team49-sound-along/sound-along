@@ -1,6 +1,8 @@
 """Optional AWS services, all off by default: Amazon Translate (translateModel=amazon) and Amazon Polly narration (ttsEngine=polly)."""
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from sound_along.config import TtsConfig, parse_polly_engine, parse_polly_voice, parse_translate_model, parse_tts_engine
@@ -71,3 +73,20 @@ def test_the_polly_engine_is_only_set_when_chosen():
     assert "POLLY_ENGINE" not in TtsConfig(engine="polly").env()
     assert TtsConfig(engine="polly", polly_engine="long-form").env()["POLLY_ENGINE"] == "long-form"
     assert TtsConfig(polly_engine="generative").env() == {}  # Kokoro needs no environment, whatever Polly options are given
+
+
+def test_the_pipeline_passes_the_optional_switches_to_the_deploy_and_only_those_that_were_set():
+    import aws_cdk as cdk
+    from aws_cdk.assertions import Template
+    from sound_along.pipeline_stack import PipelineStack, PipelineStackProps
+
+    def build(**extra):
+        app = cdk.App()
+        stack = PipelineStack(app, "P", props=PipelineStackProps(github_owner="o", github_repo="r", **extra), env=cdk.Environment(region="us-west-2"))
+        return json.dumps(Template.from_stack(stack).to_json())
+
+    plain = build()
+    assert "pollyVoice" not in plain and "translateModel" not in plain
+    full = build(tts_engine="polly", extra_context=(("pollyVoiceEs", "Lupe"), ("pollyEngine", "generative"), ("translateModel", "amazon:informal")))
+    for flag in ("-c ttsEngine=polly", "-c pollyVoiceEs=Lupe", "-c pollyEngine=generative", "-c translateModel=amazon:informal"):
+        assert flag in full, flag

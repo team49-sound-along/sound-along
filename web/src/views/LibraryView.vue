@@ -36,9 +36,16 @@ async function checkPending() {
     /* the list of finished passages still works without this */
   }
 }
-checkPending();
-const pendingTimer = setInterval(checkPending, 5000);
-onBeforeUnmount(() => clearInterval(pendingTimer));
+// Checks every 5 s while something is being made, otherwise every 30 s, and not at all while the tab is hidden (it checks again as soon as it is shown).
+let pendingTimer = 0;
+async function loop() {
+  if (!document.hidden) await checkPending();
+  pendingTimer = setTimeout(loop, pending.value.length ? 5000 : 30000);
+}
+const onVisible = () => { if (!document.hidden) { clearTimeout(pendingTimer); loop(); } };
+document.addEventListener("visibilitychange", onVisible);
+loop();
+onBeforeUnmount(() => { clearTimeout(pendingTimer); document.removeEventListener("visibilitychange", onVisible); });
 </script>
 
 <template>
