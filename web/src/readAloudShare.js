@@ -5,11 +5,21 @@ import { summarize } from "./readAloud.js";
 export const MAX_FLAGS = 50;
 export const MAX_RETRIES = 20;
 
-export const readAloudSettingsFor = (view, classId) => {
-  const mine = classId ? view?.classes?.find((c) => c.id === classId) : null;
-  const source = mine ?? view?.defaults;
-  return source ? { mic: source.mic === true, share: source.share === true, readers: source.readers === true } : { mic: false, share: false, readers: false };
-};
+const OFF = Object.freeze({ mic: false, share: false, readers: false });
+const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+
+/**
+ * The switches in force for a class, FAILING SAFE: anything that is not a well-formed answer (missing, failed, wrong shape) turns everything
+ * off, so nothing is offered and nothing is sent. Only an explicit `true` counts. Reader codes also need sharing and the server's own flag.
+ */
+export function readAloudSettingsFor(view, classId) {
+  if (!isObject(view) || !isObject(view.defaults)) return { ...OFF };
+  const classes = Array.isArray(view.classes) ? view.classes : [];
+  const mine = classId ? classes.find((c) => isObject(c) && c.id === classId) : null;
+  const source = isObject(mine) ? mine : view.defaults;
+  const share = source.share === true;
+  return { mic: source.mic === true, share, readers: share && source.readers === true && view.readersAvailable === true };
+}
 
 /**
  * @param state follower state from readAloud.js

@@ -39,12 +39,31 @@ test("a reader code is added only when given; an empty passage shares nothing", 
   assert.equal(buildSharePayload({ passageId: "p", language: "en", state: stateWith(0) }), null);
 });
 
-test("settings for a class fall back to the default, and a missing view means nothing is on", () => {
-  const view = { defaults: { mic: true, share: true, readers: false }, classes: [{ id: "c", mic: false, share: true, readers: true }] };
-  assert.deepEqual(readAloudSettingsFor(view, "c"), { mic: false, share: true, readers: true });
-  assert.deepEqual(readAloudSettingsFor(view, "other"), { mic: true, share: true, readers: false });
-  assert.deepEqual(readAloudSettingsFor(view, undefined), { mic: true, share: true, readers: false });
-  assert.deepEqual(readAloudSettingsFor(null, "c"), { mic: false, share: false, readers: false });
+const ON = { defaults: { mic: true, share: true, readers: false }, readersAvailable: true, classes: [{ id: "c", mic: false, share: true, readers: true }] };
+
+test("settings for a class fall back to the default", () => {
+  assert.deepEqual(readAloudSettingsFor(ON, "c"), { mic: false, share: true, readers: true });
+  assert.deepEqual(readAloudSettingsFor(ON, "other"), { mic: true, share: true, readers: false });
+  assert.deepEqual(readAloudSettingsFor(ON, undefined), { mic: true, share: true, readers: false });
+});
+
+test("settings fail safe: a missing, failed or malformed answer turns everything off", () => {
+  const off = { mic: false, share: false, readers: false };
+  for (const bad of [undefined, null, "", "ok", 5, [], {}, { defaults: null }, { defaults: "x" }, { defaults: [] }, { success: false, error: "x" }]) {
+    assert.deepEqual(readAloudSettingsFor(bad, "c"), off, JSON.stringify(bad));
+  }
+});
+
+test("only an explicit true counts, and a malformed class entry never turns things on", () => {
+  assert.deepEqual(readAloudSettingsFor({ defaults: { mic: "true", share: 1, readers: "yes" } }, null), { mic: false, share: false, readers: false });
+  assert.deepEqual(readAloudSettingsFor({ defaults: { mic: true, share: false }, classes: "nope" }, "c"), { mic: true, share: false, readers: false });
+  assert.deepEqual(readAloudSettingsFor({ defaults: { mic: true, share: true }, classes: [null, 5, { id: "c" }] }, "c"), { mic: false, share: false, readers: false });
+});
+
+test("reader codes need sharing and the server's own flag", () => {
+  assert.equal(readAloudSettingsFor({ ...ON, readersAvailable: false }, "c").readers, false);
+  assert.equal(readAloudSettingsFor({ ...ON, readersAvailable: undefined }, "c").readers, false);
+  assert.equal(readAloudSettingsFor({ ...ON, classes: [{ id: "c", mic: true, share: false, readers: true }] }, "c").readers, false);
 });
 
 test("reader codes: random, safe letters, kept on this device only, renewable", () => {
