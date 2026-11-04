@@ -29,20 +29,20 @@ const href = (job) => `#/read/${encodeURIComponent(job.passageId)}`;
     </div>
     <progress class="bar" :max="total" :value="ready" :aria-label="`${ready} of ${total} parts ready`"></progress>
     <p v-if="!finished" class="small muted" role="status">
-      A long document is created one part at a time. You can start reading as soon as the first part is ready, and this page updates by itself.
+      A long document is created one part at a time, each with its translation. It is added to the Library only when every part is ready, and this page updates by itself.
     </p>
     <ol class="parts">
       <li v-for="(job, n) in jobs" :key="job.id" :class="job.status">
         <span class="name">Part {{ n + 1 }}</span>
         <span class="state small" :class="{ muted: job.status !== 'failed' }">{{ label(job) }}</span>
-        <a v-if="job.status === 'done' && job.passageId" class="btn" :href="href(job)">Open</a>
+        <a v-if="finished && !failed && job.passageId" class="btn" :href="href(job)">Open</a>
         <span v-if="job.status === 'failed'" class="small error-text" role="alert">{{ friendlyJobError(job.error) }}</span>
       </li>
     </ol>
     <div v-if="finished" class="result" role="status">
-      <p v-if="!failed" class="notice ok"><strong>All {{ total }} parts are ready.</strong> They are linked, so each part has a button to the next. Find the whole document in the Library.</p>
-      <p v-else class="notice warn">{{ ready }} of {{ total }} parts are ready; {{ failed }} could not be created. The ready parts are in the Library. You can add the document again to retry.</p>
-      <a v-if="first" class="btn primary" :href="href(first)">Open the first ready part</a>
+      <p v-if="!failed" class="notice ok"><strong>All {{ total }} parts are ready, in both languages.</strong> They are linked, so each part has a button to the next. Find the whole document in the Library.</p>
+      <p v-else class="notice warn">{{ failed }} of {{ total }} parts could not be created, so the document is not in the Library. Add it again to retry.</p>
+      <a v-if="first && !failed" class="btn primary" :href="href(first)">Open the first part</a>
     </div>
   </section>
 </template>

@@ -1,9 +1,10 @@
-// Maps a backend Job to the 4-step progress tracker.
+// Maps a backend Job to the 5-step progress tracker. The passage is added to the library only after the last step.
 export const STEPS = [
   { key: "parse", label: "Read", hint: "Split the text into words and sentences" },
   { key: "synthesize", label: "Voice", hint: "Create the narration audio" },
   { key: "align", label: "Match", hint: "Match each word to its sound" },
-  { key: "publish", label: "Ready", hint: "Add it to the library" },
+  { key: "publish", label: "Save", hint: "Save the audio and word timing" },
+  { key: "translate", label: "Translate", hint: "Make the other-language version, then add both to the library" },
 ];
 
 /** Returns [{key,label,hint,state}] where state is done | current | pending | failed. */

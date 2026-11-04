@@ -29,6 +29,7 @@ export function summarizePassage({ id, timing, mtimeMs, source }) {
     translationOf: timing.translationOf?.id ?? null,
     series: seriesOf(timing.series),
     language: timing.language === "es" ? "es" : "en",
+    ...(timing.held ? { held: true } : {}),
   };
 }
 

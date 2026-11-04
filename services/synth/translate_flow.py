@@ -40,6 +40,18 @@ def should_translate(passage: dict[str, Any]) -> bool:
             and (passage.get("settings") or {}).get("translate") is not False)
 
 
+def release(data_dir: Path, ids: Sequence[str]) -> None:
+    """Take the `held` marker off these passages so the Library shows them. Safe to call for any id (missing files and unmarked documents are left alone)."""
+    for pid in ids:
+        file = Path(data_dir) / f"{pid}.timing.json"
+        try:
+            doc = json.loads(file.read_text())
+        except (OSError, ValueError):
+            continue
+        if doc.get("held"):
+            file.write_text(json.dumps({k: v for k, v in doc.items() if k != "held"}, ensure_ascii=False))
+
+
 def invert_map(sentence_map: Sequence[Sequence[int]], n_target: int) -> list[int]:
     """Target sentence number -> the source sentence it came from."""
     out: list[Optional[int]] = [None] * n_target

@@ -67,7 +67,7 @@ with sync_playwright() as pw:
 
     # ---------- every nav link, both roles
     def nav_all():
-        for role, expect in (("Teacher", ["library","assignments","generate","insights","settings"]), ("Student", ["library","assignments","generate","words"])):
+        for role, expect in (("Teacher", ["library","assignments","generate","insights","settings"]), ("Student", ["library","assignments","words"])):
             go("#/library"); pg.get_by_role("radio", name=role).click(); pg.wait_for_timeout(300)
             hrefs = pg.locator("nav[aria-label=Main] a").evaluate_all("e=>e.map(x=>x.getAttribute('href').slice(2))")
             if hrefs != expect: return f"{role} nav {hrefs}"
@@ -200,7 +200,7 @@ with sync_playwright() as pw:
         try:
             pg.get_by_role("link", name="My words").click(); pg.wait_for_timeout(1000)
             if pg.locator(".card.row").count() < 1: return "no row: " + pg.inner_text("main")[:150]
-            pg.get_by_role("link", name=re.compile("^Practise words")).first.click(); pg.wait_for_timeout(500)
+            pg.get_by_role("link", name=re.compile("^Practi[sc]e words")).first.click(); pg.wait_for_timeout(500)
             return "#/practice/" in pg.url or pg.url
         finally:
             pg.get_by_role("radio", name="Teacher").click() if pg.get_by_role("radio", name="Teacher").count() else (go("#/library"), pg.get_by_role("radio", name="Teacher").click())
@@ -349,7 +349,13 @@ with sync_playwright() as pw:
         if not re.search(r"\d", t) or "Cost" not in t: return t[:200]
         pg.get_by_role("link", name=re.compile("listening test", re.I)).first.click(); pg.wait_for_timeout(500); return "#/listening" in pg.url
     step("insights: numbers and cost render, listening-test link works", insights)
-    step("teacher-only guard for student on all four voice screens", lambda: (pg.get_by_role("radio", name="Student").click(), all((go(f"#/{h}"), "Teacher only" in pg.inner_text("main"))[1] for h in ("settings","pronunciations","review")), pg.get_by_role("radio", name="Teacher").click())[1])
+    step("teacher-only guard for student: create, insights and the three voice screens", lambda: (pg.get_by_role("radio", name="Student").click(), all((go(f"#/{h}"), "Teacher only" in pg.inner_text("main"))[1] for h in ("generate","insights","settings","pronunciations","review")), pg.get_by_role("radio", name="Teacher").click())[1])
+    def student_library_has_no_create():
+        go("#/library"); pg.get_by_role("radio", name="Student").click(); pg.wait_for_timeout(400)
+        bad = pg.get_by_role("link", name=re.compile("Create a passage|^Assign")).count()
+        pg.get_by_role("radio", name="Teacher").click()
+        return bad == 0 or f"{bad} teacher-only links visible to a student"
+    step("student library shows no Create or Assign", student_library_has_no_create)
 
     # ---------- phone
     m = b.new_context(viewport={"width": 360, "height": 740}, is_mobile=True, has_touch=True); mp = m.new_page()

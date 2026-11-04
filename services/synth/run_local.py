@@ -9,6 +9,7 @@ vocab (ReadWorks shape). Everything a teacher can change arrives through this fi
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 import sys
 from pathlib import Path
@@ -61,6 +62,14 @@ def publish_cards(passage: dict[str, Any], data_dir: Path, enrich_fn=None) -> bo
         return False
 
 
+def _held_if_translating(passage: dict[str, Any], variant: Variant) -> Variant:
+    """A passage that is about to get a translation stays out of the Library (`held`) until the translation is in place, so the original
+    and its translation appear together. `main` releases it when the translation is done or has failed."""
+    from translate_flow import should_translate
+
+    return dataclasses.replace(variant, timing={**variant.timing, "held": True}) if should_translate(passage) else variant
+
+
 def run(passage: dict[str, Any], data_dir: Path, on_step=_emit_step) -> dict[str, Any]:
     data_dir.mkdir(parents=True, exist_ok=True)
     settings = passage.get("settings") or {}
@@ -74,9 +83,10 @@ def run(passage: dict[str, Any], data_dir: Path, on_step=_emit_step) -> dict[str
 
     on_step("publish")
     kbps = resolve_kbps(settings.get("mp3Kbps"))
-    _write_variant(result.ai, data_dir, kbps)
-    if result.human:
-        _write_variant(result.human, data_dir, kbps)
+    ai, human = _held_if_translating(passage, result.ai), (_held_if_translating(passage, result.human) if result.human else None)
+    _write_variant(ai, data_dir, kbps)
+    if human:
+        _write_variant(human, data_dir, kbps)
     (data_dir / f"{result.ai.id}.soundalong.json").write_text(json.dumps(result.soundalong, ensure_ascii=False))
     publish_cards(passage, data_dir)
     return {
@@ -105,9 +115,16 @@ def translate_after_publish(passage: dict[str, Any], data_dir: Path, summary: di
 def main(passage_path: str, data_dir: str) -> int:
     passage = json.loads(Path(passage_path).read_text())
     summary = run(passage, Path(data_dir))
+    # The job is reported done only after the translation is in place (or has failed), and the passage is released then, never before.
+    from translate_flow import release
+
+    _emit_step("translate")
+    try:
+        translate_after_publish(passage, Path(data_dir), summary)
+    finally:
+        release(Path(data_dir), [summary["id"], *([summary["humanPassageId"]] if summary.get("humanPassageId") else [])])
     sys.stdout.write(json.dumps({"result": summary}) + "\n")
-    sys.stdout.flush()  # the app marks the job done now; the translation below continues in the background
-    translate_after_publish(passage, Path(data_dir), summary)
+    sys.stdout.flush()
     return 0
 
 

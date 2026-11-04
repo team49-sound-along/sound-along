@@ -1,3 +1,4 @@
+import { splitReady } from "./readiness.js";
 import express from "express";
 import path from "node:path";
 import { HttpError, errorHandler, fail, ok, route } from "./http.js";
@@ -49,7 +50,9 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
   app.use("/api/generate", express.json({ limit: "512kb" })); // a long document is sent as one request (up to about 12,000 words)
   app.use(express.json({ limit: "64kb" }));
 
-  const passageIds = async () => new Set((await catalog.list()).map((p) => p.id));
+  // Everything the app shows or lets a person pick goes through here: a document is listed only when all of its parts and its translation are ready.
+  const readyList = async () => splitReady(await catalog.list()).ready;
+  const passageIds = async () => new Set((await readyList()).map((p) => p.id));
   const classIds = async () => new Set((await store.listClasses()).map((c) => c.id));
 
   const api = express.Router();
@@ -58,14 +61,21 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
     res.json(ok({ status: "ok", generation: { enabled: config.generationEnabled } }));
   });
 
-  api.get("/passages", route(async (req, res) => res.json(ok(await catalog.list()))));
+  api.get(
+    "/passages",
+    route(async (req, res) => {
+      const split = splitReady(await catalog.list());
+      // ?pending=1: the passages still being made (the teacher's Library shows them as "Being created", never as something to read).
+      res.json(ok(req.query.pending === "1" ? split.pending : split.ready));
+    }),
+  );
   api.get("/classes", route(async (req, res) => res.json(ok(await store.listClasses()))));
   api.get("/assignments", route(async (req, res) => res.json(ok(await store.listAssignments()))));
 
   api.post(
     "/assignments",
     route(async (req, res) => {
-      const [passages, classes] = await Promise.all([catalog.list(), store.listClasses()]);
+      const [passages, classes] = await Promise.all([readyList(), store.listClasses()]);
       const input = parseAssignmentInput(req.body, {
         passageIds: new Set(passages.map((p) => p.id)),
         classIds: new Set(classes.map((c) => c.id)),
@@ -145,7 +155,7 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
     "/data/index.json",
     route(async (req, res) => {
       res.set("Cache-Control", "no-cache");
-      res.json(await catalog.list());
+      res.json(await readyList());
     }),
   );
 

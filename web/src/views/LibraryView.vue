@@ -1,9 +1,9 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 import Icon from "../components/Icon.vue";
 import StateBlock from "../components/StateBlock.vue";
 import PassageCard from "../components/PassageCard.vue";
-import { passageIndex } from "../api.js";
+import { api, passageIndex } from "../api.js";
 import { useResource } from "../useResource.js";
 import { LANGUAGE_FILTERS, VOICE_FILTERS, filterLibrary } from "../libraryFilters.js";
 import { groupVariants } from "../voices.js";
@@ -19,6 +19,26 @@ const passages = computed(() => groupSeries(groupVariants(data.value ?? [])));
 const shown = computed(() => filterLibrary(passages.value, { query: query.value, voice: isTeacher.value ? voice.value : "any", language: language.value }));
 const filtering = computed(() => Boolean(query.value.trim()) || (isTeacher.value && voice.value !== "any") || language.value !== "all");
 const isTeacher = computed(() => role.value === "teacher");
+
+// A teacher also sees what is still being made (a long document's parts and the translation). It is never offered for reading until it is complete.
+const pending = ref([]);
+async function checkPending() {
+  if (!isTeacher.value) {
+    pending.value = [];
+    return;
+  }
+  try {
+    const next = groupSeries(groupVariants(await api.pendingPassages()));
+    const had = pending.value.length;
+    pending.value = next;
+    if (had && !next.length) reload(); // it just became ready
+  } catch {
+    /* the list of finished passages still works without this */
+  }
+}
+checkPending();
+const pendingTimer = setInterval(checkPending, 5000);
+onBeforeUnmount(() => clearInterval(pendingTimer));
 </script>
 
 <template>
@@ -54,6 +74,13 @@ const isTeacher = computed(() => role.value === "teacher");
       </div>
     </div>
 
+    <section v-if="isTeacher && pending.length" class="card pending" aria-labelledby="pend-h" role="status">
+      <h3 id="pend-h">Being created</h3>
+      <ul>
+        <li v-for="p in pending" :key="p.id"><strong>{{ p.title }}</strong> <span class="muted small">{{ p.isSeries ? `${p.parts.length} of ${p.total} parts so far` : "adding the other language" }}</span></li>
+      </ul>
+      <p class="small muted">A passage appears in the Library when every part and its translation are ready. This list updates by itself.</p>
+    </section>
     <StateBlock
       :loading="loading"
       :error="error"
@@ -75,6 +102,8 @@ const isTeacher = computed(() => role.value === "teacher");
 </template>
 
 <style scoped>
+.pending { display: grid; gap: var(--s1); }
+.pending ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; max-width: 100%; }
 .search { position: relative; display: flex; align-items: center; }
 .search svg { position: absolute; left: 12px; color: var(--muted); pointer-events: none; }

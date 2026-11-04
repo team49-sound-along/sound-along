@@ -5,18 +5,21 @@ import { stepStates, isFinished, elapsedSeconds } from "./jobSteps.js";
 const states = (job) => stepStates(job).map((s) => s.state);
 
 test("queued job has everything pending except first as current", () => {
-  assert.deepEqual(states({ status: "queued", step: "parse" }), ["current", "pending", "pending", "pending"]);
+  assert.deepEqual(states({ status: "queued", step: "parse" }), ["current", "pending", "pending", "pending", "pending"]);
 });
 test("running align marks earlier steps done", () => {
-  assert.deepEqual(states({ status: "running", step: "align" }), ["done", "done", "current", "pending"]);
+  assert.deepEqual(states({ status: "running", step: "align" }), ["done", "done", "current", "pending", "pending"]);
 });
 test("done marks all done", () => {
-  assert.deepEqual(states({ status: "done", step: "done" }), ["done", "done", "done", "done"]);
+  assert.deepEqual(states({ status: "done", step: "done" }), ["done", "done", "done", "done", "done"]);
 });
 test("failed marks the failing step", () => {
-  assert.deepEqual(states({ status: "failed", step: "synthesize" }), ["done", "failed", "pending", "pending"]);
+  assert.deepEqual(states({ status: "failed", step: "synthesize" }), ["done", "failed", "pending", "pending", "pending"]);
 });
-test("no job is all pending", () => assert.deepEqual(states(null), ["pending", "pending", "pending", "pending"]));
+test("no job is all pending", () => assert.deepEqual(states(null), ["pending", "pending", "pending", "pending", "pending"]));
+test("the translation is the last step, so a passage is never shown as ready before it", () => {
+  assert.deepEqual(states({ status: "running", step: "translate" }), ["done", "done", "done", "done", "current"]);
+});
 test("isFinished", () => {
   assert.equal(isFinished({ status: "done" }), true);
   assert.equal(isFinished({ status: "running" }), false);

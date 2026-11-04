@@ -153,3 +153,24 @@ def test_the_operator_can_switch_automatic_translation_off(monkeypatch):
     assert tf.should_translate({"uuid": SRC, "source": "generated", "language": "en"}) is False
     monkeypatch.setenv("TRANSLATE_UPLOADS", "on")
     assert tf.should_translate({"uuid": SRC, "source": "generated", "language": "en"}) is True
+
+
+# ---- the passage stays out of the Library until its translation is in place ---------------------------------------------------------
+def test_release_takes_the_held_marker_off_and_leaves_everything_else_alone(tmp_path):
+    (tmp_path / f"{SRC}.timing.json").write_text(json.dumps({"id": SRC, "held": True, "title": "Park", "words": [1]}))
+    (tmp_path / "other.timing.json").write_text(json.dumps({"id": "other", "title": "Unmarked"}))
+    tf.release(tmp_path, [SRC, "other", "missing-id"])  # a missing file is not an error
+    assert json.loads((tmp_path / f"{SRC}.timing.json").read_text()) == {"id": SRC, "title": "Park", "words": [1]}
+    assert json.loads((tmp_path / "other.timing.json").read_text()) == {"id": "other", "title": "Unmarked"}
+
+
+def test_a_passage_that_will_be_translated_is_written_held_and_one_that_will_not_is_not():
+    import numpy as np
+    from flow import Variant
+    from run_local import _held_if_translating
+
+    variant = Variant(id=SRC, audio=np.zeros(1, dtype="float32"), timing={"id": SRC})
+    assert _held_if_translating({"source": "generated", "language": "en"}, variant).timing["held"] is True
+    assert "held" not in _held_if_translating({"source": "generated", "language": "en", "settings": {"translate": False}}, variant).timing
+    assert "held" not in _held_if_translating({"source": "sample", "language": "en"}, variant).timing
+    assert "held" not in variant.timing  # the input is never changed

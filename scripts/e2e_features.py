@@ -1,6 +1,7 @@
 """Feature-by-feature end-to-end checks (cards, pictures, places, figures, quiz, long documents, keyboard, highlight modes, privacy, recording variant,
 review and regenerate, hostile input, busy generator, deep links, offline errors, student view, audio-off assignment).
 Usage (on SCRATCH copies of data/): python3 scripts/e2e_features.py <server url> <server url that has a long document> <data dir of the first server>"""
+import json, re, sys, time, traceback, urllib.request
 from playwright.sync_api import sync_playwright
 BASE = sys.argv[1].rstrip("/") + "/"; SERIES = sys.argv[2].rstrip("/") + "/"; DATA = sys.argv[3]
 PARK = "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98"; TEA = "5af24980-4d6d-41c1-87fa-4f21cb2d169d"; DAY = "457244d4-8d08-57cb-aa31-ace6ed9dac04"

@@ -6,8 +6,8 @@ import { createLocalRecordings } from "../recordings/localRecordings.js";
 import { textToHtml } from "../validate.js";
 import { buildJobInput } from "./jobInput.js";
 
-const STEPS = new Set(["parse", "synthesize", "align", "publish"]);
-const TIMEOUT_MS = 10 * 60 * 1000;
+const STEPS = new Set(["parse", "synthesize", "align", "publish", "translate"]);
+const TIMEOUT_MS = 20 * 60 * 1000; // narration, then the translation and its narration, for one part
 
 /**
  * Runs the real Python pipeline (services/synth/run_local.py) as a child process and mirrors its progress
