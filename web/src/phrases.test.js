@@ -29,9 +29,27 @@ test("breaks at the sentence boundary even with no punctuation on the word", () 
   assert.deepEqual(lines(words), ["one two", "three"]);
 });
 
-test("caps a run of words with no punctuation", () => {
+test("a long run with no punctuation is split into balanced lines, never ten words and one", () => {
   const words = make(["one two three four five six seven eight nine ten eleven twelve"]);
-  assert.deepEqual(lines(words), ["one two three four five six seven eight nine ten", "eleven twelve"]);
+  assert.deepEqual(lines(words), ["one two three four five six", "seven eight nine ten eleven twelve"]);
+});
+
+test("a long clause is split before a phrase-starting word, not before the last word", () => {
+  const words = make(["Ever since tea was first imported to Great Britain from China, the English love it."]);
+  assert.deepEqual(lines(words), ["Ever since tea was first imported", "to Great Britain from China,", "the English love it."]);
+});
+
+test("no line is left with fewer than three words by a split of a long clause", () => {
+  const words = make(["The little brown fox jumped quickly over the very lazy sleeping dogs."]);
+  for (const line of lines(words)) assert.ok(line.split(" ").length >= 3, line);
+});
+
+test("words glued by a dash are never separated by a split", () => {
+  const w = make(["one two three four five six seven eight nine ten eleven twelve"]);
+  const glued = w.map((x, i) => (i === 6 ? { ...x, join: true } : x));
+  const out = phraseLines(glued).map((line) => line.map((x) => x.text).join(" "));
+  assert.ok(!out.some((l) => l.endsWith("six")) || out.some((l) => l.startsWith("seven")) === false, JSON.stringify(out));
+  assert.equal(out.join(" "), "one two three four five six seven eight nine ten eleven twelve");
 });
 
 test("colons and semicolons break like commas", () => {
@@ -91,14 +109,9 @@ test("sentenceStart is safe for empty input and bad indexes", () => {
   assert.equal(sentenceStart(make(["Go now."]), 99, -1), null);
 });
 
-test("phraseLines uses phraseEnd flags from the data when present, so the browser only draws them", () => {
-  const words = make(["one two three four five six seven"]).map((w, i) => ({ ...w, phraseEnd: i === 2 || i === 6 }));
-  assert.deepEqual(lines(words), ["one two three", "four five six seven"]);
-});
-
-test("phraseEnd false everywhere gives one line per sentence, ignoring commas", () => {
-  const words = make(["one, two, three, four."]).map((w) => ({ ...w, phraseEnd: false }));
-  assert.deepEqual(lines(words), ["one, two, three, four."]);
+test("flags stored in older timing files are ignored: every passage is drawn by the same rule", () => {
+  const words = make(["Ever since tea was first imported to Great Britain from China, the English love it."]).map((w, i) => ({ ...w, phraseEnd: i === 9 })); // the old rule broke "... from | China,"
+  assert.deepEqual(lines(words), ["Ever since tea was first imported", "to Great Britain from China,", "the English love it."]);
 });
 
 test("sentence ends still break even when phraseEnd is missing on that word", () => {

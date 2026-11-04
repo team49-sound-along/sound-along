@@ -60,14 +60,20 @@ def test_breaks_at_the_sentence_boundary_even_with_no_punctuation_on_the_word():
     assert lines(words) == ["one two", "three"]
 
 
-def test_caps_a_run_of_words_with_no_punctuation_at_ten():
+def test_a_long_run_with_no_punctuation_is_split_into_balanced_lines_never_ten_and_one():
     words = make(["one two three four five six seven eight nine ten eleven twelve"])
-    assert lines(words) == ["one two three four five six seven eight nine ten", "eleven twelve"]
+    assert lines(words) == ["one two three four five six", "seven eight nine ten eleven twelve"]
 
 
-def test_the_word_count_restarts_after_every_break():
+def test_a_very_long_run_is_balanced_and_no_line_is_a_one_word_orphan():
     words = make(["a b c d e f g h i j k l m n o p q r s t u"])
-    assert [len(line.split()) for line in lines(words)] == [10, 10, 1]
+    sizes = [len(line.split()) for line in lines(words)]
+    assert sum(sizes) == 21 and max(sizes) <= 10 and min(sizes) >= 3
+
+
+def test_a_long_clause_is_cut_before_a_phrase_starting_word():
+    words = make(["Ever since tea was first imported to Great Britain from China, the English love it."])
+    assert lines(words) == ["Ever since tea was first imported", "to Great Britain from China,", "the English love it."]
 
 
 def test_colons_and_semicolons_break_like_commas():
