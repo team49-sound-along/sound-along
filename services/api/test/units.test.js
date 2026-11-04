@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createRateLimiter } from "../src/rateLimit.js";
-import { textToHtml } from "../src/validate.js";
+import { stripMarkup, textToHtml, unwrapLines } from "../src/validate.js";
 
 test("rate limiter blocks after max inside the window and recovers", () => {
   let now = 0;
@@ -93,4 +93,44 @@ test("the word limit counts dash-joined words the way the tokenizer does", async
 test("the word limit also splits on U+0085, which Python treats as a space", async () => {
   const { parseGenerateInput, LIMITS } = await import("../src/validate.js");
   assert.throws(() => parseGenerateInput({ title: "T", text: "go\u0085".repeat(LIMITS.wordsMax + 1) }), (err) => err.status === 400);
+});
+
+
+test("a hard-wrapped paste (PDF, Word, email) becomes whole paragraphs, not one paragraph per line", () => {
+  const wrapped = "It is a truth universally acknowledged, that a single man in possession of a good\nfortune, must be in want of a wife. However little known the feelings or views\nof such a man may be, this truth is well fixed.\n\nSecond paragraph starts here and also wraps across\ntwo lines.";
+  const html = textToHtml(wrapped);
+  assert.equal((html.match(/<p>/g) || []).length, 2);
+  assert.ok(html.includes("a good fortune, must be"));
+  assert.ok(html.includes("views of such a man"));
+});
+
+test("typed paragraphs, headings and poems keep their line breaks", () => {
+  assert.equal(unwrapLines("Chapter One\nIt was a dark night.\nThe wind blew."), "Chapter One\nIt was a dark night.\nThe wind blew.");
+  assert.equal(unwrapLines("Roses are red\nViolets are blue\nSugar is sweet"), "Roses are red\nViolets are blue\nSugar is sweet");
+  const long = "A paragraph of typed text that ends with a full stop right here at the end.";
+  assert.equal(unwrapLines(`${long}\n${long}`), `${long}\n${long}`);
+});
+
+test("a word split with a hyphen at the end of a line is rejoined, but a real hyphenated word is kept", () => {
+  assert.equal(unwrapLines("We looked at the first page of the book and it was a good exam-\nple that we all liked."), "We looked at the first page of the book and it was a good example that we all liked.");
+  assert.equal(unwrapLines("They went to the well-known park near the old stone bridge by the very-\nPopular cafe."), "They went to the well-known park near the old stone bridge by the very-Popular cafe.");
+});
+
+
+test("emphasis and Markdown markers are not read aloud or shown", () => {
+  assert.equal(stripMarkup("It was not so _very_ much, and *really* **great**."), "It was not so very much, and really great.");
+  assert.equal(stripMarkup("# The Title\n\n> A quote\n- first item\nSee [the site](https://example.com) now."), "The Title\n\nA quote\nfirst item\nSee the site now.");
+  assert.equal(stripMarkup("Use `code` here."), "Use code here.");
+});
+
+test("markup stripping leaves ordinary text alone", () => {
+  for (const s of ["snake_case_name and file_name.txt", "2 * 3 = 6 and 4*5", "A lone * star and a lone _ mark", "Don't touch an apostrophe's or a dash-word."]) assert.equal(stripMarkup(s), s);
+});
+
+
+test("footnote markers, editorial tags and typed double dashes are cleaned up", () => {
+  assert.equal(stripMarkup("duros cual[1] dos escarabajos."), "duros cual dos escarabajos.");
+  assert.equal(stripMarkup("[Illustration: PLATERO Y YO]\nHello."), "\nHello.");
+  assert.equal(stripMarkup("--Espera. ¿Qué es eso?\nHe said -- quietly -- and left."), "\u2014Espera. ¿Qué es eso?\nHe said \u2014 quietly \u2014 and left.");
+  assert.equal(stripMarkup("See [1] and the array a[1] stays."), "See [1] and the array a stays.");
 });

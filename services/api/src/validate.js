@@ -62,9 +62,50 @@ export function parseEvent(body, passageIds) {
 
 const escapeHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+const SENTENCE_END = /[.!?\u2026:;"'\u201D\u2019\u00BB)\]]$/;
+const WRAPPED_LINE_MIN = 40; // lines of a hard-wrapped paste (PDF, Word, email) are long; headings and poem lines are short
+
+/**
+ * Text copied from a PDF, Word file or email has a line break every 60-90 characters, in the middle of sentences. Treating each break as a paragraph
+ * cuts sentences in half (and with them the translation, the pauses of the voice and the highlighting). A single line break is a soft wrap when the
+ * line before it is long and does not end a sentence; a blank line, a short line (heading, poem) or a line that ends with punctuation is a real paragraph break.
+ * "exam-\nple" is rejoined without the hyphen.
+ */
+export function unwrapLines(text) {
+  const out = [];
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    const previous = out.length ? out[out.length - 1] : null;
+    if (previous !== null && previous !== "" && trimmed !== "" && previous.length >= WRAPPED_LINE_MIN && !SENTENCE_END.test(previous)) {
+      const hyphenated = /[A-Za-z\u00C0-\u017F]-$/.test(previous);
+      if (hyphenated && /^[a-z\u00E0-\u017F]/.test(trimmed)) out[out.length - 1] = previous.slice(0, -1) + trimmed; // a word split across two lines
+      else out[out.length - 1] = previous + (hyphenated ? "" : " ") + trimmed;
+    } else {
+      out.push(trimmed);
+    }
+  }
+  return out.join("\n");
+}
+
+/**
+ * Plain-text and Markdown files mark emphasis with characters that must not be read aloud or shown: _italic_ (Project Gutenberg), *italic*, **bold**,
+ * `code`, "# Heading", "> quote", "- item" and [link](url). Only whole-word markers are removed, so snake_case words and a lone * stay as they are.
+ */
+export function stripMarkup(text) {
+  return text
+    .replace(/\[(?:illustration|image|figure|footnote|note)\b[^\]\n]{0,200}\]/gi, "") // editorial tags
+    .replace(/(?<=\w)\[\d{1,3}\]/g, "") // footnote markers: "cual[1]" would be read aloud as "cual uno"
+    .replace(/[ \t]*-{2,3}[ \t]*(?=\S)/g, (m, offset, whole) => (offset === 0 || whole[offset - 1] === "\n" ? "\u2014" : " \u2014 ")) // typed dashes (--Hola, word -- word)
+    .replace(/\[([^\]\n]{1,200})\]\((?:https?:\/\/|mailto:)[^)\s]*\)/g, "$1")
+    .replace(/(^|[^\w*])\*{1,3}(?=\S)([^*\n]*?\S)\*{1,3}(?![\w*])/g, "$1$2")
+    .replace(/(^|[^\w_])_{1,2}(?=[^\s_])([^_\n]*?[^\s_])_{1,2}(?![\w_])/g, "$1$2")
+    .replace(/`([^`\n]+)`/g, "$1")
+    .replace(/^[ \t]{0,3}(?:#{1,6}[ \t]+|>[ \t]?|[-*+][ \t]+)/gm, "");
+}
+
 /** Plain text -> the same <p> structure the parser expects from ReadWorks content. */
 export function textToHtml(text) {
-  return text
+  return unwrapLines(stripMarkup(text))
     .split(/\n{1,}/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean)

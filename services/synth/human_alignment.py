@@ -66,4 +66,6 @@ def _fill_gaps(count: int, times: dict[int, tuple[float, float, bool]]) -> list[
         end = max(end, start)
         out.append(AlignedWord(start, end, exact))
         clock = start
-    return out
+    # A word never ends after the next one starts. Estimated words get a fixed 0.2 s, which overlaps the next word when many are squeezed into
+    # a short stretch (a tongue-twister the recognizer could not align); overlapping words made the highlight jump back and forth.
+    return [AlignedWord(w.start_s, max(w.start_s, min(w.end_s, nxt.start_s)), w.aligned) for w, nxt in zip(out, out[1:])] + out[-1:]

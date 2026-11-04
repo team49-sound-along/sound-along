@@ -57,3 +57,29 @@ def test_em_dash_keeps_vocab_id_on_the_right_part():
 def test_dash_at_word_edges_is_not_split():
     tokens = tokenize_html("<p>—hello there— ok</p>")
     assert [t.text for t in tokens] == ["—hello", "there—", "ok"]
+
+
+def _sentence_texts(html):
+    out = {}
+    for t in tokenize_html(html):
+        out.setdefault(t.sentence, []).append(t.text)
+    return [" ".join(v) for _, v in sorted(out.items())]
+
+
+def test_a_dialogue_tag_stays_with_its_quote():
+    assert _sentence_texts('<p>"Why?" she asked. "Fine!" he said. Then they left.</p>') == ['"Why?" she asked.', '"Fine!" he said.', "Then they left."]
+    assert _sentence_texts("<p>—¿Cómo estás? —preguntó Luis. Muy bien.</p>") == ["—¿Cómo estás? —preguntó Luis.", "Muy bien."]
+
+
+def test_dotted_abbreviations_and_titles_do_not_split_but_a_capital_after_them_does():
+    assert _sentence_texts("<p>We met at 5 p.m. on Monday. Prof. Jones came on Jan. 3. Then we left.</p>") == ["We met at 5 p.m. on Monday.", "Prof. Jones came on Jan. 3.", "Then we left."]
+    assert _sentence_texts("<p>We left at 5 p.m. We ate.</p>") == ["We left at 5 p.m.", "We ate."]
+    assert _sentence_texts("<p>Son las 5 p. m. del jueves. Viven en EE. UU. y Canadá. Fin.</p>") == ["Son las 5 p. m. del jueves.", "Viven en EE. UU. y Canadá.", "Fin."]
+
+
+def test_etc_ends_a_sentence_only_before_a_capital():
+    assert _sentence_texts("<p>We bought apples, pears, etc. and left. We ate, etc. Then slept.</p>") == ["We bought apples, pears, etc. and left.", "We ate, etc.", "Then slept."]
+
+
+def test_all_lowercase_text_still_splits_at_full_stops():
+    assert _sentence_texts("<p>we went home. we ate dinner. it was good.</p>") == ["we went home.", "we ate dinner.", "it was good."]

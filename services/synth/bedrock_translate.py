@@ -15,7 +15,7 @@ import logging
 import re
 from typing import Any, Callable, Optional
 
-from translate import plain_register
+from translate import add_spanish_marks, plain_register
 
 LOG = logging.getLogger(__name__)
 _PLACEHOLDER = re.compile(r"Xq[a-z]+x")
@@ -90,7 +90,7 @@ class BedrockTranslator:
             if self._fallback is None:
                 raise
             return self._fallback(texts)
-        out = [plain_register(t) for t in out] if self._target == "en" else out
+        out = [plain_register(t) for t in out] if self._target == "en" else [add_spanish_marks(t) for t in out]
         self._history = (self._history + list(zip(texts, out)))[-CONTEXT_SENTENCES:]
         return out
 

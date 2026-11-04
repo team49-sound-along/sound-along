@@ -72,14 +72,78 @@ def unmask(text: str, table: dict[str, str]) -> str:
 
 
 # ---- the passage -----------------------------------------------------------------------------------------------------------------
+# Marian models were trained on sentences of ordinary length. A long sentence is cut short without any error (the larger English to Spanish model turned a
+# 112-word sentence into 86 words and lost its ending) or the model loops on it. So long sentences are translated in clause-sized pieces, and any translation
+# whose length is implausible is retried in smaller pieces.
+LONG_WORDS = 40
+PIECE_WORDS = 26
+RETRY_PIECE_WORDS = 14
+MIN_RATIO, MAX_RATIO = 0.55, 2.4  # words out / words in; English <-> Spanish normally gives 0.85 to 1.25
+_CLAUSE_BREAK = re.compile(r"(?<=[,;:—–])\s+|\s+(?=—)")
+
+
+def split_pieces(text: str, size: int) -> list[str]:
+    """Cut a long sentence at commas, semicolons, colons and dashes into pieces of about `size` words; a stretch with no punctuation is cut by words."""
+    clauses = [c for c in _CLAUSE_BREAK.split(text) if c.strip()]
+    pieces: list[str] = []
+    current: list[str] = []
+    for clause in clauses:
+        words = clause.split()
+        if current and len(current) + len(words) > size:
+            pieces.append(" ".join(current))
+            current = []
+        while len(words) > size:  # no punctuation to cut at
+            pieces.append(" ".join(words[:size]))
+            words = words[size:]
+        current += words
+    if current:
+        pieces.append(" ".join(current))
+    return pieces
+
+
+def _fit_piece(source: str, translated: str, first: bool, last: bool) -> str:
+    """A piece translated on its own comes back as a sentence (capital first letter, full stop). Put it back the way it stood inside the sentence."""
+    translated = translated.strip()
+    if not first and source[:1].islower() and translated[:1].isupper() and not translated[1:2].isupper():
+        translated = translated[:1].lower() + translated[1:]
+    if not last and not re.search(r"[.!?…]$", source.rstrip("\"')”’»")) and translated.endswith("."):
+        translated = translated[:-1]
+    return translated
+
+
+def _translate_pieces(text: str, model: TranslateFn, size: int) -> str:
+    pieces = split_pieces(text, size)
+    if len(pieces) < 2:
+        return model([text])[0]
+    got = model(pieces)
+    if len(got) != len(pieces):
+        raise ValueError("the translator returned the wrong number of sentences")
+    return " ".join(_fit_piece(p, g, i == 0, i == len(pieces) - 1) for i, (p, g) in enumerate(zip(pieces, got)))
+
+
+def _plausible(source: str, translated: str) -> bool:
+    n = len(source.split())
+    return n < 8 or MIN_RATIO <= len(translated.split()) / n <= MAX_RATIO
+
+
 def _translate_all(texts: list[str], model: TranslateFn) -> list[str]:
-    out: list[str] = []
-    for start in range(0, len(texts), BATCH):
-        chunk = texts[start:start + BATCH]
-        got = model(chunk)
-        if len(got) != len(chunk):
+    out: list[str] = [""] * len(texts)
+    whole = [i for i, t in enumerate(texts) if len(t.split()) <= LONG_WORDS]
+    for start in range(0, len(whole), BATCH):
+        idx = whole[start:start + BATCH]
+        got = model([texts[i] for i in idx])
+        if len(got) != len(idx):
             raise ValueError("the translator returned the wrong number of sentences")
-        out += got
+        for i, g in zip(idx, got):
+            out[i] = g
+    for i, t in enumerate(texts):
+        if len(t.split()) > LONG_WORDS:
+            out[i] = _translate_pieces(t, model, PIECE_WORDS)
+    for i, t in enumerate(texts):  # a length that cannot be right: try again in smaller pieces
+        if not _plausible(t, out[i]):
+            retry = _translate_pieces(t, model, RETRY_PIECE_WORDS)
+            if _plausible(t, retry) or abs(len(retry.split()) - len(t.split())) < abs(len(out[i].split()) - len(t.split())):
+                out[i] = retry
     return out
 
 
@@ -129,7 +193,10 @@ def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Cal
         else:
             restored = unmask(raw, {p: local.get(n, n) for p, n in table.items()})
         restored = " ".join(restored.split())
-        results.append(restored if _END.search(restored) else restored + ".")
+        # A sentence needs closing punctuation so the sentence numbers stay stable. A source that ends with ; : or , (the last sentence of a paragraph that stops
+        # there) keeps that ending; adding a full stop would give ";."
+        soft_source = bool(re.search(r"[;:,]$", text_of[i].rstrip()))
+        results.append(restored if _END.search(restored) or (soft_source and re.search(r"[;:,]$", restored)) else restored + ".")
 
     title = _translate_all([passage.get("title") or ""], model)[0] if passage.get("title") else ""
     paragraphs: dict[int, list[str]] = {}
@@ -187,6 +254,21 @@ def restore_names(sources: list[str], outputs: list[str]) -> list[str]:
     return result
 
 
+_ENDS_Q = re.compile(r"\?[\"')”’»]*$")
+_ENDS_X = re.compile(r"![\"')”’»]*$")
+_LEAD = re.compile(r"^[\s\"'(“‘«—–-]*")
+
+
+def add_spanish_marks(text: str) -> str:
+    """Spanish opens a question with ¿ and an exclamation with ¡. A model sometimes writes only the closing mark (especially in a long sentence);
+    the opening mark goes at the start of the sentence (after a quote or dash), which is right for a sentence that is wholly a question or exclamation."""
+    for closing, opening, ends in (("?", "¿", _ENDS_Q), ("!", "¡", _ENDS_X)):
+        if ends.search(text) and opening not in text:
+            lead = _LEAD.match(text).end()
+            text = text[:lead] + opening + text[lead:]
+    return text
+
+
 def word_count(content_html: str) -> int:
     """Number of spoken words in a passage, counted exactly as the reader counts them."""
     return len(tokenize_html(content_html or ""))
@@ -237,7 +319,7 @@ def load_model(source: str, target: str, words: Optional[int] = None) -> Transla
             with torch.no_grad():
                 ids = marian.generate(**batch, num_beams=4, max_new_tokens=256)
             out = tokenizer.batch_decode(ids, skip_special_tokens=True)
-            return [fix_possessive(s, plain_register(t)) for s, t in zip(texts, out)] if target == "en" else out
+            return [fix_possessive(s, plain_register(t)) for s, t in zip(texts, out)] if target == "en" else [add_spanish_marks(t) for t in out]
 
         _MODELS[key] = translate
         return translate

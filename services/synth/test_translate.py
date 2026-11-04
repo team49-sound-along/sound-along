@@ -187,3 +187,77 @@ def test_names_are_left_alone_when_there_is_no_evidence_or_the_change_is_ambiguo
     src = ["Ana vio a Pablo con Lucía.", "Hoy Pablo y Lucía comen."]
     out = ["Ana saw Pablo with Lucia.", "Today Pablo and Lucia eat."]
     assert tr.restore_names(src, out)[0] == out[0]  # two names, one vanished and one new word: too ambiguous to fix
+
+
+def test_spanish_questions_and_exclamations_get_their_opening_marks():
+    assert tr.add_spanish_marks("para su gran deleite, ¡encajaba!") == "para su gran deleite, ¡encajaba!"  # already has one
+    assert tr.add_spanish_marks("Cómo estás?") == "¿Cómo estás?"
+    assert tr.add_spanish_marks("Qué bien!") == "¡Qué bien!"
+    assert tr.add_spanish_marks('"Qué bien!" dijo ella.') == '"Qué bien!" dijo ella.'  # the sentence does not end with the mark
+    assert tr.add_spanish_marks("—Cómo estás?") == "—¿Cómo estás?"
+    assert tr.add_spanish_marks("Hola.") == "Hola."
+
+
+class TruncatingModel:
+    """Like the real model on long input: after 40 words it silently stops. Short input is translated word for word."""
+
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, texts):
+        self.calls.append(list(texts))
+        return ["ES " + " ".join(t.split()[:40]) + ("." if t.rstrip().endswith(".") else "") for t in texts]
+
+
+def _long_sentence(n=100):
+    return ", ".join(" ".join(f"w{j}" for j in range(i * 9, i * 9 + 9)) for i in range(n // 9 + 1)) + "."
+
+
+def test_a_long_sentence_is_translated_in_pieces_so_nothing_is_cut_off():
+    model = TruncatingModel()
+    sentence = _long_sentence(100)
+    out = tr.translate_passage({"title": "", "content": f"<p>{sentence}</p>"}, model, names_fn=lambda t: [])
+    text = out.content_html
+    assert "w99" in text and "w0" in text, "the end of the sentence must survive"
+    assert max(len(call) for call in model.calls) >= 2 and all(len(t.split()) <= tr.PIECE_WORDS + 2 for call in model.calls for t in call)
+    assert out.sentence_map == [[0]]
+
+
+def test_pieces_are_cut_at_punctuation_and_a_stretch_without_any_is_cut_by_words():
+    pieces = tr.split_pieces("a b c, d e f; g h i: j k l", 4)
+    assert pieces == ["a b c,", "d e f;", "g h i:", "j k l"]
+    assert all(len(p.split()) <= 14 for p in tr.split_pieces(" ".join(f"x{i}" for i in range(60)), 14))
+    assert " ".join(tr.split_pieces(" ".join(f"x{i}" for i in range(60)), 14)).split() == [f"x{i}" for i in range(60)]
+
+
+def test_a_piece_goes_back_into_the_sentence_with_a_lowercase_start_and_no_full_stop():
+    assert tr._fit_piece("when suddenly a rabbit,", "Cuando de repente un conejo.", first=False, last=False) == "cuando de repente un conejo"
+    assert tr._fit_piece("Alice was tired,", "Alice estaba cansada,", first=True, last=False) == "Alice estaba cansada,"
+    assert tr._fit_piece("and she left.", "Y se fue.", first=False, last=True) == "y se fue."
+
+
+def test_a_translation_of_an_impossible_length_is_retried_in_smaller_pieces():
+    class DropsMost:
+        def __init__(self):
+            self.n = 0
+
+        def __call__(self, texts):
+            self.n += 1
+            return [("short" if len(t.split()) > 30 else "ES " + t) for t in texts]
+
+    model = DropsMost()
+    sentence = " ".join(f"p{i}" for i in range(30)) + " ok."  # 31 words: not long, but the model returns 1 word
+    got = tr._translate_all([sentence], model)[0]
+    assert len(got.split()) >= 0.55 * 31, got
+
+
+def test_short_sentences_still_go_through_in_batches_as_before():
+    model = FakeModel()
+    tr._translate_all(["One two three."] * 20, model)
+    assert [len(c) for c in model.calls] == [16, 4]
+
+
+def test_a_paragraph_that_ends_with_a_semicolon_keeps_it_instead_of_gaining_a_full_stop():
+    out = tr.translate_passage({"title": "", "content": "<p>First part; second part;</p><p>Next paragraph here.</p>"}, FakeModel(), names_fn=lambda t: [])
+    assert ";." not in out.content_html and "second part;</p>" in out.content_html
+    assert out.sentence_map == [[0], [1]]

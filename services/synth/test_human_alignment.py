@@ -90,3 +90,19 @@ def test_a_word_that_merely_contains_digits_is_not_expanded():
 
     heard = _h("3rd", "1700s", "A4")
     assert expand_spoken_numbers(heard, []) == heard
+
+
+def test_estimated_words_squeezed_into_a_short_stretch_never_overlap_the_next_word():
+    display = ["Start"] + ["razón"] * 12 + ["End"]
+    heard = [Heard("start", 0.0, 0.4), Heard("end", 1.2, 1.5)]  # twelve words, 0.8 s of audio between the anchors
+    words = align_words(display, heard)
+    assert [w.aligned for w in words].count(False) == 12
+    for a, b in zip(words, words[1:]):
+        assert a.end_s <= b.start_s + 1e-9 and a.start_s <= a.end_s
+    starts = [w.start_s for w in words]
+    assert starts == sorted(starts)
+
+
+def test_a_normal_aligned_word_keeps_its_own_end_time():
+    words = align_words(["Hello", "world"], [Heard("hello", 0.0, 0.5), Heard("world", 0.6, 1.1)])
+    assert (words[0].start_s, words[0].end_s, words[1].end_s) == (0.0, 0.5, 1.1)

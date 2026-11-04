@@ -16,10 +16,18 @@ from typing import Optional
 BLOCK_TAGS = {"p", "h1", "h2", "h3", "h4", "li", "blockquote"}
 SKIP_TAGS = {"figure", "figcaption", "script", "style"}
 ABBREVIATIONS = {
-    "mr.", "mrs.", "ms.", "dr.", "st.", "jr.", "sr.", "vs.", "etc.", "u.s.", "no.",
+    "mr.", "mrs.", "ms.", "dr.", "st.", "jr.", "sr.", "vs.", "u.s.", "no.",
+    "prof.", "rev.", "gen.", "col.", "sgt.", "capt.", "lt.", "hon.", "mt.", "ave.", "inc.", "co.", "corp.", "ltd.", "dept.", "approx.", "fig.", "vol.", "pp.", "p.", "cf.",
+    "jan.", "feb.", "apr.", "aug.", "sep.", "sept.", "oct.", "nov.", "dec.",  # month abbreviations before a date
     "sra.", "srta.", "dra.", "ud.", "uds.", "av.", "pág.", "núm.",  # Spanish
+    "lic.", "ing.", "arq.", "ee.", "cap.", "ej.", "aprox.", "tel.", "dpto.",
 }
-_SENTENCE_END = re.compile(r"[.!?]+[\"')”’]*$")
+# Words that end with a period but only end the sentence when a capital letter follows ("in the EE. UU. y Canadá", "5 p. m. del jueves", "apples, etc. and pears").
+CONTINUES_BEFORE_LOWERCASE = {"uu.", "m.", "etc."}
+_SENTENCE_END = re.compile(r"[.!?]+[\"')”’»]*$")
+_CLOSERS = "\"')”’»"
+_OPENERS = "\"'(“‘«¿¡—–-"
+_DOTTED = re.compile(r"(?:[a-zñ]{1,2}\.){2,}$", re.I)  # p.m. a.m. e.g. i.e.
 _TOKEN = re.compile(r"\S+")
 
 
@@ -74,12 +82,27 @@ class _ParagraphCollector(HTMLParser):
         self._current.append((data, vocab))
 
 
-def _ends_sentence(word: str) -> bool:
-    if word.lower() in ABBREVIATIONS:
+def _starts_lowercase(word: Optional[str]) -> bool:
+    letters = (word or "").lstrip(_OPENERS)
+    return bool(letters) and letters[0].isalpha() and letters[0].islower()
+
+
+def _ends_sentence(word: str, following: Optional[str] = None) -> bool:
+    """Whether `word` closes a sentence. `following` is the next word of the same paragraph: a lowercase word after a dialogue tag's question or
+    exclamation mark (\"Why?\" she asked) or after a dotted abbreviation (5 p.m. on Monday) continues the sentence."""
+    core = word.lower().rstrip(_CLOSERS)
+    if core in ABBREVIATIONS:
         return False
     if re.fullmatch(r"[A-Z]\.", word):  # initials such as "J."
         return False
-    return bool(_SENTENCE_END.search(word))
+    if not _SENTENCE_END.search(word):
+        return False
+    if _starts_lowercase(following):
+        if re.search(r"[?!]+[" + re.escape(_CLOSERS) + r"]*$", word):
+            return False  # a dialogue tag
+        if _DOTTED.search(core) or core in CONTINUES_BEFORE_LOWERCASE:
+            return False
+    return True
 
 
 _DASHES = "—–"  # em dash, en dash
@@ -115,14 +138,15 @@ def tokenize_html(content_html: str) -> list[Token]:
         for chunk, vocab in runs:
             vocab_by_char.extend([vocab] * len(chunk))
         paragraph_has_tokens = False
-        for match in _TOKEN.finditer(text):
-            for start, end in _split_on_dashes(text, match.start(), match.end()):
-                word = text[start:end]
-                vocab = next((v for v in vocab_by_char[start:end] if v), None)
-                tokens.append(Token(len(tokens), word, sentence, p_index, vocab))
-                paragraph_has_tokens = True
-                if _ends_sentence(word):
-                    sentence += 1
+        spans = [span for match in _TOKEN.finditer(text) for span in _split_on_dashes(text, match.start(), match.end())]
+        for n, (start, end) in enumerate(spans):
+            word = text[start:end]
+            following = text[spans[n + 1][0]:spans[n + 1][1]] if n + 1 < len(spans) else None
+            vocab = next((v for v in vocab_by_char[start:end] if v), None)
+            tokens.append(Token(len(tokens), word, sentence, p_index, vocab))
+            paragraph_has_tokens = True
+            if _ends_sentence(word, following):
+                sentence += 1
         if paragraph_has_tokens and (not tokens or tokens[-1].sentence == sentence):
             sentence += 1  # a paragraph always closes its last sentence
     return tokens
