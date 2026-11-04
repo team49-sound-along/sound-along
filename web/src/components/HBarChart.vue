@@ -11,6 +11,8 @@ const props = defineProps({
   rows: { type: Array, required: true },
   max: { type: Number, default: undefined },
   column: { type: String, default: "Value" },
+  hideTitle: Boolean, // the title stays for screen readers when a heading on the page already asks the question
+  showTable: { type: Boolean, default: true }, // the "Show as a table" alternative; the main teacher view turns it off (numbers are written beside the bars)
 });
 
 const W = 560, ROW = 46, PAD_L = 8, PAD_R = 150, BAR_H = 22;
@@ -23,7 +25,7 @@ const table = computed(() => bars.value.map((b) => [b.label, shown(b)]));
 
 <template>
   <figure class="chart">
-    <figcaption><strong>{{ title }}</strong><span v-if="subtitle" class="small muted">{{ subtitle }}</span></figcaption>
+    <figcaption :class="{ 'sr-only': hideTitle }"><strong>{{ title }}</strong><span v-if="subtitle" class="small muted">{{ subtitle }}</span></figcaption>
     <svg :viewBox="`0 0 ${W} ${rows.length * ROW + 8}`" role="group" :aria-label="summary" preserveAspectRatio="xMinYMin meet">
       <g v-for="b in bars" :key="b.key">
         <text :x="PAD_L" :y="b.y - 7" class="lbl">{{ b.label }}</text>
@@ -32,7 +34,7 @@ const table = computed(() => bars.value.map((b) => [b.label, shown(b)]));
         <text :x="W - PAD_R + 10" :y="b.y + 16" class="val">{{ shown(b) }}</text>
       </g>
     </svg>
-    <ChartTable :caption="title" :columns="['Item', column]" :rows="table" />
+    <ChartTable v-if="showTable" :caption="title" :columns="['Item', column]" :rows="table" />
   </figure>
 </template>
 

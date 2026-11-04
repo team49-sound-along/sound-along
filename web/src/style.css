@@ -18,6 +18,8 @@
   --warn-soft: #F6EFD6;
   --hl: #FBE7A1;
   --on-hl: #1F2A30;
+  /* Reading-aloud heat-map: three yellows, light to deep. Dark text stays readable on every step. */
+  --heat-1: #FFF3BF; --heat-2: #FFE57A; --heat-3: #FFCB2E;
   --s1: 8px; --s2: 16px; --s3: 24px; --s4: 32px; --s5: 48px;
   --r: 12px; --r-sm: 10px;
   --topbar-h: 64px;

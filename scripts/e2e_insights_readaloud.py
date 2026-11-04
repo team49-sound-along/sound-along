@@ -12,6 +12,7 @@ The data folder is copied to a temporary folder first; your copy is never change
 """
 import json
 import os
+import re
 import pathlib
 import shutil
 import socket
@@ -123,8 +124,16 @@ def teacher_insights(ctx, base, query=""):
     page = ctx.new_page()
     page.goto(f"{base}/#/insights{query}")
     page.wait_for_selector("[data-testid=ra-section] h3")
-    page.wait_for_selector("[data-testid=ra-scope], [data-testid=ra-empty]")
+    page.wait_for_selector("[data-testid=ra-headline], [data-testid=ra-empty]")
     return page
+
+
+def open_details(page, testid):
+    """Opens a collapsed section (Show the numbers / Settings and privacy) if it is closed."""
+    box = page.locator(f"[data-testid={testid}]")
+    if box.get_attribute("open") is None:
+        box.locator("summary").first.click()
+    return box
 
 
 def no_sideways_scroll(page):
@@ -163,13 +172,23 @@ try:
         # 1. Before any session
         page = teacher_insights(teacher, BASE)
         check("empty state before any reading", page.locator("[data-testid=ra-empty]").count() == 1)
+        check("settings and privacy start collapsed, at the bottom", page.locator("[data-testid=ra-settings]").get_attribute("open") is None and page.get_by_role("switch").count() == 0)
+        open_details(page, "ra-settings")
+        page.wait_for_selector("[data-testid=ra-disclosure]")
         check("the school disclosure is next to the switches", "Check your school" in page.locator("[data-testid=ra-disclosure]").inner_text() and "Google in Chrome and Edge, Apple in Safari" in page.locator("[data-testid=ra-disclosure]").inner_text())
         check("the reader-code note is plain", "Codes are not names" in page.locator("[data-testid=ra-readers-note]").inner_text())
         axe_clean(page, "insights, empty")
         page.close()
 
         # 2. Three sessions with a skipped word; the payload is counts and positions only
-        counts = [read_with_skip(student, BASE, PID, WORDS, K, sent) for _ in range(3)]
+        counts = [read_with_skip(student, BASE, PID, WORDS, K, sent) for _ in range(2)]
+        page = teacher_insights(teacher, BASE)
+        thin = page.locator("[data-testid=ra-thin]")
+        check("with fewer than 3 readers a friendly explanation says what to do", thin.count() == 1 and "Once 3 students have read this passage aloud you will see which words are hard." in thin.inner_text() and "Read aloud with the mic" in thin.inner_text(), thin.inner_text() if thin.count() else "no ra-thin")
+        check("no word or heat-map is shown yet", page.locator("[data-testid=ra-heat]").count() == 0 and page.locator("[data-testid=ra-top-words]").count() == 0)
+        axe_clean(page, "insights, not enough readers yet")
+        page.close()
+        counts += [read_with_skip(student, BASE, PID, WORDS, K, sent)]
         check("each session sends exactly one result", counts == [1, 1, 1], str(counts))
         body = json.loads(sent[0])
         check("the result has counts and word positions only", set(body) <= {"passageId", "classId", "language", "wordsTotal", "wordsRead", "finished", "retried", "words"} and {"i": K, "kind": "skipped"} in body["words"] and body["classId"] == CLASS_ID, sent[0])
@@ -180,24 +199,55 @@ try:
         page = teacher_insights(teacher, BASE)
         section = page.locator("[data-testid=ra-section]")
         check("the section is called Reading aloud", section.locator("h3").inner_text() == "Reading aloud")
-        check("the skipped word is listed with its count", f"{SKIPPED}" in section.inner_text().lower() and "3 of 3 sessions" in section.inner_text())
-        check("the suggested next step names the word", f'Add "{SKIPPED}" to this class\'s word practice.'.lower() in section.inner_text().lower())
-        check("the minimum-group notice is shown", "at least 3 sessions" in page.locator("[data-testid=ra-min-note]").inner_text())
-        check("charts have a text alternative and focusable points", section.locator("details summary", has_text="Show as a table").count() >= 3 and section.locator("svg [tabindex='0']").count() >= 1)
-        axe_clean(page, "insights, organisation view")
-        page.select_option("#ra-passage", PID)
-        page.wait_for_selector("[data-testid=ra-scope]:has-text('" + TITLE.replace("'", "\\'") + "')")
+        page.wait_for_selector("[data-testid=ra-heat]")  # the page opens on the passage with the most reads
+        headline = page.locator("[data-testid=ra-headline]").inner_text()
+        check("a plain headline names the passage, finishing and hard words", TITLE in headline and "finished" in headline and "1 word tripped up many readers." in headline, headline)
+        check("no jargon in the headline", not any(w in headline.lower() for w in ("session", "retry", "distinct")))
+        status = page.locator("[data-testid=ra-status]")
+        check("for all classes the finishing graph is one plain bar per class with the class name on it", CLASS_NAME in status.inner_text() and "stopped part-way" in status.inner_text() and status.locator("svg rect.bar, svg rect.track").count() >= 2, status.inner_text())
+        check("the passage text itself is the heat-map", len(page.locator("[data-testid=ra-heat]").inner_text()) > 100 and "Darker = more students stumbled here" in section.inner_text())
+        shaded = page.get_by_role("button", name=re.compile(r"Missed by 3 of 3 readers"))
+        check("the skipped word is shaded and keyboard focusable", shaded.count() >= 1 and shaded.first.evaluate("e => e.tabIndex") >= 0 and SKIPPED in shaded.first.inner_text().lower())
+        shaded.first.click()
+        check("tapping a word shows how many readers missed it", "Missed by 3 of 3 readers" in page.locator("[data-testid=ra-heat-detail]").inner_text())
+        shaded.first.focus()
+        check("focusing a word shows the same", SKIPPED in page.locator("[data-testid=ra-heat-detail]").inner_text().lower())
+        top = page.locator("[data-testid=ra-top-words]")
+        check("a bar chart ranks the hardest words, with the count written beside each bar", "Which 5 words were missed most?" in top.inner_text() and SKIPPED in top.inner_text().lower() and "3 of 3 readers" in top.inner_text(), top.inner_text())
+        titles = page.locator("[data-testid=ra-section] h4").all_inner_texts()
+        check("three graphs, each titled with a plain question", titles[:3] == ["Did they finish?", "Which words are hard?", "Which 5 words were missed most?"] and page.locator("[data-testid=ra-section] section[aria-labelledby^=q] svg").count() >= 2, str(titles))
+        check("at most three graphs on the main view", page.locator("[data-testid=ra-section] section[aria-labelledby=q1] svg, [data-testid=ra-section] section[aria-labelledby=q3] svg").count() + (1 if page.locator("[data-testid=ra-heat]").count() else 0) <= 3)
+        check("no table or number grid on the main view", page.locator("[data-testid=ra-section] table:visible, [data-testid=ra-section] summary:visible:has-text('Show as a table')").count() == 0)
+        check("the top word has more than colour: bold and underlined", shaded.first.evaluate("e => getComputedStyle(e).textDecorationLine === 'underline' && Number(getComputedStyle(e).fontWeight) >= 700"))
+        steps = page.locator("[data-testid=ra-steps]").inner_text()
+        check("what to do next names the word", "Practice this word together" in steps and SKIPPED in steps.lower(), steps)
+        check("the privacy note is short and friendly", "groups of 3 or more readers" in page.locator("[data-testid=ra-min-note]").inner_text())
+        numbers = page.locator("[data-testid=ra-numbers]")
+        check("the numbers are collapsed until asked for", numbers.get_attribute("open") is None and not numbers.locator("dl").is_visible())
+        open_details(page, "ra-numbers")
+        check("the improving line waits for two weeks of reads and says so", "once students have read in two different weeks" in numbers.inner_text())
+        check("Show the numbers opens the raw numbers and text tables", numbers.locator("dl").is_visible() and "Reads" in numbers.inner_text() and numbers.locator("details summary", has_text="Show as a table").count() >= 3 and numbers.locator("svg [tabindex='0']").count() >= 1)
+        axe_clean(page, "insights, organisation view with the numbers open")
+        numbers.locator("summary").first.click()
+        check("Show the numbers closes again", numbers.get_attribute("open") is None)
         page.select_option("#ra-class", CLASS_ID)
-        page.wait_for_selector(f"[data-testid=ra-scope]:has-text('{CLASS_NAME}')")
-        check("the class view still shows the word", SKIPPED in section.inner_text().lower() and "Finish rate by class" not in section.inner_text())
+        page.wait_for_selector(f"[data-testid=ra-headline]:has-text('{CLASS_NAME}')")
+        page.wait_for_selector("[data-testid=ra-heat]")
+        ring = page.locator("[data-testid=ra-status] svg[role=img]")
+        check("the class view shows the word and one big percentage ring", SKIPPED in section.inner_text().lower() and ring.count() == 1 and "finished" in ring.get_attribute("aria-label"))
+        check("the class name leads the headline", CLASS_NAME in page.locator("[data-testid=ra-headline]").inner_text())
         axe_clean(page, "insights, class view")
         page.set_viewport_size({"width": 375, "height": 800})
         check("phone width has no sideways scroll", no_sideways_scroll(page), str(wide_elements(page)))
+        open_details(page, "ra-numbers")
+        open_details(page, "ra-settings")
+        check("phone width with everything open has no sideways scroll", no_sideways_scroll(page), str(wide_elements(page)))
         page.set_viewport_size({"width": 1100, "height": 900})
         page.close()
 
         # 4. Sharing off: nothing is sent
         page = teacher_insights(teacher, BASE)
+        open_details(page, "ra-settings")
         page.get_by_role("switch", name=f"{CLASS_NAME}: Share anonymous word counts with the teacher").click()
         share_switch = page.get_by_role("switch", name=f"{CLASS_NAME}: Share anonymous word counts with the teacher")
         check("the sharing switch turned off", wait_until(lambda: share_switch.get_attribute("aria-checked") == "false"))
@@ -247,17 +297,17 @@ try:
         check("a reader code is sent only when the class switch is on", sum('"readerCode"' in b for b in sent) == 4 and all('"readerCode"' not in b for b in sent[:3]), str(sum('"readerCode"' in b for b in sent)))
         page = teacher_insights(teacher, BASE)
         page.select_option("#ra-class", CLASS_ID)
-        page.wait_for_selector("[data-testid=ra-readers]")
-        page.wait_for_selector("#rr-code")
-        options = page.locator("#rr-code option").all_inner_texts()
-        check("three readers are listed by code, alphabetically", len(options) == 4 and options[1:] == sorted(options[1:]), str(options))
-        busiest = [o for o in options[1:] if "2 sessions" in o]
-        page.select_option("#rr-code", label=busiest[0])
-        page.wait_for_selector("[data-testid=ra-reader-summary]")
+        page.wait_for_selector("[data-testid=ra-reader-bars] svg")
+        bars = [t.text_content() for t in page.locator("[data-testid=ra-reader-bars] svg text.lbl").all()]
+        vals = [t.text_content() for t in page.locator("[data-testid=ra-reader-bars] svg text.val").all()]
+        check("three readers are plain bars in letter order", len(bars) == 3 and bars == sorted(bars), str(bars))
+        words = ("New", "Improving", "Steady", "Support")
+        check("each bar has a percentage and one word", all(any(v.endswith(w) for w in words) for v in vals) and sum(v.endswith("New") for v in vals) == 2, str(vals))
+        check("no dots, lines or tables in the reader list", page.locator("[data-testid=ra-readers] polyline, [data-testid=ra-readers] table:visible, [data-testid=ra-readers] summary:visible").count() == 0)
         text = page.locator("[data-testid=ra-readers]").inner_text()
-        check("the reader view has a plain summary and both charts", "Reader" in page.locator("[data-testid=ra-reader-summary]").inner_text() and "Share of the passage read, by session" in text and "Skipped and different words, by session" in text)
         check("no name, grade or ranking appears", not any(w in text.lower() for w in ("grade:", "rank", "best", "worst", "score")))
-        axe_clean(page, "insights, reader view")
+        check("no select to pick one child out", page.locator("#rr-code").count() == 0)
+        axe_clean(page, "insights, reader cards")
         page.set_viewport_size({"width": 375, "height": 800})
         check("reader view at phone width has no sideways scroll", no_sideways_scroll(page), str(wide_elements(page)))
         page.close()

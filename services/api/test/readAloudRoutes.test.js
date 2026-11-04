@@ -39,12 +39,19 @@ describe("read-aloud results and the teacher view", () => {
     assert.equal((await insights()).json.data.totals.sessions, 0);
   });
 
+  test("the passage text is returned with per-word counts only once the group passes the minimum", async () => {
+    const before = (await insights(`?passageId=${PID}`)).json.data;
+    assert.equal(before.passage, null);
+    assert.equal((await insights()).json.data.passage, null); // no passage chosen: no passage text
+  });
+
   test("under the minimum no word and no number is shown, then three sessions show the word from the server's own text", async () => {
     await post(result());
     await post(result());
     const small = (await insights(`?passageId=${PID}`)).json;
     assert.equal(small.data.words.state, "small");
     assert.equal(small.data.hiddenSessions, 2);
+    assert.equal(small.data.passage, null);
     assert.equal(JSON.stringify(small).includes("because"), false);
     await post(result({ wordsRead: 10, finished: true, words: [] }));
     const { data } = (await insights(`?passageId=${PID}`)).json;
@@ -52,6 +59,8 @@ describe("read-aloud results and the teacher view", () => {
     assert.deepEqual(data.words.items.map((w) => [w.word, w.missed, w.sessions]), [["because", 2, 3], ["island", 2, 3]]);
     assert.equal(data.totals.finishRate, 1 / 3);
     assert.ok(data.steps.some((s) => s.includes('"because"')));
+    assert.equal(data.passage.sessions, 3);
+    assert.deepEqual(data.passage.tokens.map((t) => [t.text, t.missed]), WORDS.map((w, i) => [i === 3 ? `${w}.` : w, i === 1 || i === 4 ? 2 : 0]));
     assert.equal(data.weeks.length, 8);
     assert.equal(data.weeks.at(-1).sessions, 3);
     assert.equal(data.classes.find((c) => c.id === CLASS).enough, true);
@@ -95,7 +104,7 @@ describe("read-aloud results and the teacher view", () => {
     await post(result({ readerCode: CODE })); // switch off: the code is not kept
     const off = await readersOf(`?classId=${CLASS}`);
     assert.equal(off.status, 200);
-    assert.deepEqual(off.json.data, { classId: CLASS, enabled: false, enough: false, readers: [], selected: null });
+    assert.deepEqual(off.json.data, { classId: CLASS, enabled: false, enough: false, readers: [], progress: [], selected: null });
     await app.call("PUT", "/api/read-aloud/settings", { classId: CLASS, readers: true });
     const none = (await readersOf(`?classId=${CLASS}`)).json.data;
     assert.deepEqual([none.enabled, none.enough, none.readers.length], [true, false, 0]);
@@ -108,6 +117,7 @@ describe("read-aloud results and the teacher view", () => {
     await post(result({ readerCode: "MMMM3333" }));
     const list = (await readersOf(`?classId=${CLASS}`)).json.data;
     assert.deepEqual(list.readers.map((r) => [r.code, r.sessions]), [["K7Q29XMA", 3], ["MMMM3333", 1], ["ZZZZ2222", 1]]); // alphabetical, not by result
+    assert.deepEqual(list.progress, [{ code: "K7Q29XMA", pcts: [50, 80, 90] }, { code: "MMMM3333", pcts: [60] }, { code: "ZZZZ2222", pcts: [60] }]);
     const one = (await readersOf(`?classId=${CLASS}&code=${CODE}`)).json.data.selected;
     assert.deepEqual(one.sessions.map((s) => s.pct), [50, 80, 90]);
     assert.deepEqual(one.words.map((w) => w.word), ["because", "island"]);

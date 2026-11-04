@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { MIN_SESSIONS, buildReadAloudInsights, rankWords, totalsOf } from "../src/readAloud/aggregate.js";
+import { MIN_SESSIONS, buildReadAloudInsights, passageHeat, rankWords, totalsOf } from "../src/readAloud/aggregate.js";
 import { suggestSteps } from "../src/readAloud/suggest.js";
 
 const TEXT = ["the", "island", "because", "Because,", "dog"];
@@ -86,6 +86,23 @@ describe("distinct sources", () => {
   test("without codes (distinct is null) sessions are what can be counted", () => {
     const g = { ...group("a", 3, 0, 0, { 2: { s: 3, d: 0 } }), distinct: null };
     assert.equal(buildReadAloudInsights({ ...base, summaries: [g], wordGroups: [g], filters: { passageId: "p1", classId: null } }).words.state, "ok");
+  });
+});
+
+describe("passageHeat (per-word counts for the passage text)", () => {
+  const timing = { words: [{ i: 0, text: "The", paragraph: 0 }, { i: 1, text: "island", paragraph: 0 }, { i: 2, text: "was", paragraph: 1 }, { i: 3, text: "quiet.", paragraph: 1 }] };
+  test("every word comes back in order with its paragraph; counts below the per-word minimum are zero", () => {
+    const heat = passageHeat([group("a", 5, 0, 0, { 1: { s: 3, d: 1 }, 3: { s: 1, d: 0 } })], timing);
+    assert.equal(heat.sessions, 5);
+    assert.deepEqual(heat.tokens.map((t) => [t.i, t.text, t.paragraph, t.missed]), [[0, "The", 0, 0], [1, "island", 0, 4], [2, "was", 1, 0], [3, "quiet.", 1, 0]]);
+  });
+  test("groups are added together and a count never exceeds the sessions", () => {
+    const heat = passageHeat([group("a", 3, 0, 0, { 1: { s: 3, d: 3 } }), group("b", 3, 0, 0, { 1: { s: 1, d: 0 } })], timing);
+    assert.equal(heat.sessions, 6);
+    assert.equal(heat.tokens[1].missed, 6);
+  });
+  test("without a timing document there is nothing to show", () => {
+    assert.equal(passageHeat([group("a", 5, 0, 0, {})], null), null);
   });
 });
 
