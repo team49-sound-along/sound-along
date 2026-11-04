@@ -27,7 +27,12 @@ PAIRS: dict[tuple[str, str], tuple[str, str]] = {
 # A larger model reads better (the small one said "mucho" for "a great deal"; this one says "un gran negocio") but is about three times slower, so it is used
 # for passages up to BIG_MAX_WORDS only. Measured in the image with 2 CPUs and 4 GB: 0.20 s/word (small: 0.08). With narration at about 0.48 s/word, 900 words
 # is about 180 s + 430 s, inside the 900 s Lambda limit with a third to spare. Not yet measured on Lambda itself.
-BIG: dict[tuple[str, str], tuple[str, str]] = {("en", "es"): ("Helsinki-NLP/opus-mt-tc-big-en-es", "8f4d4924189681076e9c642b2fd85278d793fd4d")}  # CC-BY-4.0
+BIG: dict[tuple[str, str], tuple[str, str]] = {
+    ("en", "es"): ("Helsinki-NLP/opus-mt-tc-big-en-es", "8f4d4924189681076e9c642b2fd85278d793fd4d"),  # CC-BY-4.0
+    # Romance languages to English (Spanish included), Apache-2.0. On literary Spanish it fixes many errors of the small model ("zabacha mirrors" -> "jet mirrors",
+    # "cotton sugar" -> "cotton candy", "Pedro" kept) at about twice the time.
+    ("es", "en"): ("Helsinki-NLP/opus-mt-tc-bible-big-roa-en", "4d4757865ab116b39daa3b4ca3cfe1e7daf43cbe"),
+}
 BIG_MAX_WORDS = 900
 BATCH = 16
 _END = re.compile(r"[.!?…][\"')”’»]*$")
@@ -269,6 +274,15 @@ def add_spanish_marks(text: str) -> str:
     return text
 
 
+def balance_quotes(text: str) -> str:
+    """The larger Spanish to English model sometimes drops the closing quotation mark at the end of a sentence; add it back."""
+    if text.count("\u201C") > text.count("\u201D"):
+        text += "\u201D"
+    elif text.count('"') % 2 == 1:
+        text += '"'
+    return text
+
+
 def word_count(content_html: str) -> int:
     """Number of spoken words in a passage, counted exactly as the reader counts them."""
     return len(tokenize_html(content_html or ""))
@@ -319,7 +333,7 @@ def load_model(source: str, target: str, words: Optional[int] = None) -> Transla
             with torch.no_grad():
                 ids = marian.generate(**batch, num_beams=4, max_new_tokens=256)
             out = tokenizer.batch_decode(ids, skip_special_tokens=True)
-            return [fix_possessive(s, plain_register(t)) for s, t in zip(texts, out)] if target == "en" else [add_spanish_marks(t) for t in out]
+            return [balance_quotes(fix_possessive(s, plain_register(t))) for s, t in zip(texts, out)] if target == "en" else [add_spanish_marks(t) for t in out]
 
         _MODELS[key] = translate
         return translate

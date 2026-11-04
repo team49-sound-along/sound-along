@@ -153,7 +153,7 @@ def test_the_larger_model_is_used_only_for_short_english_to_spanish_passages(mon
     monkeypatch.delenv("TRANSLATE_BIG", raising=False)
     assert tr.use_big("en", "es", 300) and tr.use_big("en", "es", tr.BIG_MAX_WORDS)
     assert not tr.use_big("en", "es", tr.BIG_MAX_WORDS + 1)  # long: the small model keeps Lambda inside its time limit
-    assert not tr.use_big("es", "en", 100)  # no larger Spanish to English model exists
+    assert tr.use_big("es", "en", 100) and not tr.use_big("es", "en", tr.BIG_MAX_WORDS + 1)  # Spanish to English has a larger model too
     assert not tr.use_big("en", "es", None) and not tr.use_big("en", "es", 0)
     monkeypatch.setenv("TRANSLATE_BIG", "off")
     assert not tr.use_big("en", "es", 300)
@@ -261,3 +261,16 @@ def test_a_paragraph_that_ends_with_a_semicolon_keeps_it_instead_of_gaining_a_fu
     out = tr.translate_passage({"title": "", "content": "<p>First part; second part;</p><p>Next paragraph here.</p>"}, FakeModel(), names_fn=lambda t: [])
     assert ";." not in out.content_html and "second part;</p>" in out.content_html
     assert out.sentence_map == [[0], [1]]
+
+
+def test_a_dropped_closing_quote_is_put_back():
+    assert tr.balance_quotes("\u201CDo you want to help?\u201D Marta asked. \u201CI have to water the plants.") == "\u201CDo you want to help?\u201D Marta asked. \u201CI have to water the plants.\u201D"
+    assert tr.balance_quotes('He said "wait.') == 'He said "wait."'
+    assert tr.balance_quotes("\u201CHi,\u201D he said.") == "\u201CHi,\u201D he said."
+    assert tr.balance_quotes("No quotes here.") == "No quotes here."
+
+
+def test_both_larger_models_are_pinned_by_full_commit_hash():
+    for pair in (("en", "es"), ("es", "en")):
+        repo, revision = tr.BIG[pair]
+        assert repo.startswith("Helsinki-NLP/opus-mt-tc-") and len(revision) == 40

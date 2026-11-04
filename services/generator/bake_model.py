@@ -57,7 +57,8 @@ TRANSLATE_DIR = Path("/opt/translate")
 TRANSLATE = (
     ("Helsinki-NLP/opus-mt-en-es", "5bc4493d463cf000c1f0b50f8d56886a392ed4ab", "en-es"),
     ("Helsinki-NLP/opus-mt-es-en", "c96e2c5399ebfae4fc43d9669556b9afa74bb69d", "es-en"),
-    ("Helsinki-NLP/opus-mt-tc-big-en-es", "8f4d4924189681076e9c642b2fd85278d793fd4d", "en-es-big"),  # CC-BY-4.0: short English passages (see translate.BIG)
+    ("Helsinki-NLP/opus-mt-tc-big-en-es", "8f4d4924189681076e9c642b2fd85278d793fd4d", "en-es-big"),  # CC-BY-4.0: English passages up to 900 words (see translate.BIG)
+    ("Helsinki-NLP/opus-mt-tc-bible-big-roa-en", "4d4757865ab116b39daa3b4ca3cfe1e7daf43cbe", "es-en-big"),  # Apache-2.0: Spanish passages up to 900 words
 )
 TRANSLATE_FILES = ["config.json", "generation_config.json", "pytorch_model.bin", "source.spm", "special_tokens_map.json", "target.spm", "tokenizer_config.json", "vocab.json"]
 

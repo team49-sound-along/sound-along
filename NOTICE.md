@@ -7,7 +7,8 @@ license for the version you install.
 |---|---|---|
 | Kokoro-82M model and `kokoro` library | Text-to-speech | Apache-2.0 |
 | Word photos (`services/synth/word_photos/`, built by `scripts/build_word_photos.py`; also the place pictures in `samples/cards/images/`) | Real photographs on word and place cards, from Wikipedia / Wikimedia Commons. Only CC0, public domain, CC BY and CC BY-SA are used; author and licence are in `services/synth/word_photos.json` and are shown on each card. These files are NOT under the repository MIT licence | CC0, public domain, CC BY, CC BY-SA (per photo) |
-| Opus-MT `opus-mt-tc-big-en-es` (Helsinki-NLP, revision pinned in `services/synth/translate.py`) | Better English to Spanish translation of passages up to 600 words | CC-BY-4.0 (credit: Helsinki-NLP / OPUS-MT, University of Helsinki) |
+| Opus-MT `opus-mt-tc-big-en-es` (Helsinki-NLP, revision pinned in `services/synth/translate.py`) | Better English to Spanish translation of passages up to 900 words | CC-BY-4.0 (credit: Helsinki-NLP / OPUS-MT, University of Helsinki) |
+| Opus-MT `opus-mt-tc-bible-big-roa-en` (Helsinki-NLP, revision pinned in `services/synth/translate.py`) | Better Spanish to English translation of passages up to 900 words | Apache-2.0 |
 | Phonon `phonon-31m-en` model, `gradium/phonon-voices` and the `ptts` runtime | Text-to-speech (voices Hadley and Everly) | Apache-2.0 (runtime: MIT or Apache-2.0) |
 | faster-whisper / Whisper models | Word timing for existing human audio; quality checks | MIT |
 | UTMOS22 via `tarepan/SpeechMOS` | Predicted naturalness in the quality lab | Check upstream |
