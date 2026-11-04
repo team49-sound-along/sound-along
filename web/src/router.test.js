@@ -21,7 +21,9 @@ test("teacher screens parse and are guarded", () => {
   }
   assert.equal(parseHash("#/pronunciations?word=gaieties").query.word, "gaieties");
   assert.equal(isTeacherOnly("library"), false);
-  assert.equal(isTeacherOnly("generate"), false);
+  assert.equal(isTeacherOnly("generate"), true);
+  assert.equal(isTeacherOnly("insights"), true);
+  assert.equal(isTeacherOnly("library"), false);
 });
 
 test("listening test route exists and is open to both roles", () => {

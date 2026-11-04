@@ -29,7 +29,7 @@ const isTeacher = computed(() => role.value === "teacher");
         <p>Every passage has narrated audio with word-level timing. Tap any word while reading to hear it again from there.</p>
       </div>
       <div class="tools">
-        <a class="btn primary" href="#/generate">Create a passage</a>
+        <a v-if="isTeacher" class="btn primary" href="#/generate">Create a passage</a>
         <div class="search">
           <Icon name="search" :size="18" />
           <label class="sr-only" for="q">Search passages by title</label>
@@ -60,7 +60,7 @@ const isTeacher = computed(() => role.value === "teacher");
       :empty="!passages.length"
       loading-label="Loading passages"
       empty-title="No passages yet"
-      empty-text="Create your first passage from any text."
+      :empty-text="isTeacher ? 'Create your first passage from any text.' : 'Passages appear here once your teacher adds them.'"
       @retry="reload"
     >
       <p v-if="!shown.length" class="card muted" role="status"><template v-if="query.trim()">No passages match &ldquo;{{ query.trim() }}&rdquo; with these filters.</template><template v-else-if="filtering">No passages match these filters.</template><template v-else>No passages to show.</template></p>

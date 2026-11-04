@@ -5,7 +5,7 @@ const PAGES = ["library", "assignments", "generate", "insights", "settings", "pr
 /** Teacher "Voice" section: four related screens shown under one nav item with shared tabs. */
 export const VOICE_SECTION = ["settings", "pronunciations", "review", "listening"];
 /** Screens only a teacher may open (the API has no real auth; this is the demo role guard). */
-export const TEACHER_ONLY = ["settings", "pronunciations", "review"];
+export const TEACHER_ONLY = ["generate", "insights", "settings", "pronunciations", "review"];
 export const isTeacherOnly = (name) => TEACHER_ONLY.includes(name);
 
 export function parseHash(hash) {

@@ -307,7 +307,7 @@ function onKey(event) {
           <button type="button" class="btn" :lang="currentLang" :aria-pressed="true" disabled>{{ LANGUAGE_NAMES[currentLang] || currentLang }}</button>
           <button type="button" class="btn" :lang="langSwitch.lang" :aria-pressed="false" @click="switchLanguage">{{ LANGUAGE_NAMES[langSwitch.lang] || langSwitch.lang }}</button>
         </div>
-        <a class="btn" :href="`#/practice/${encodeURIComponent(practiceId)}`">Practice</a>
+        <a class="btn" :href="`#/practice/${encodeURIComponent(practiceId)}`">Practice words</a>
         <button ref="settingsButton" type="button" class="btn" :aria-expanded="showSettings" :aria-controls="showSettings ? 'reading-settings' : undefined" @click="showSettings = !showSettings">
           <Icon name="settings" /> Reading settings
         </button>
