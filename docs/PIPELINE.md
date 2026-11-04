@@ -51,8 +51,9 @@ CDK creates the GitHub connection in `PENDING` state. AWS requires a human to co
 be scripted. Until you do this, the pipeline's Source stage fails.
 
 1. Open the AWS console in `us-west-2`: **Developer Tools > Settings > Connections** (or CodePipeline > Settings >
-   Connections). The connection is named `sound-along-<githubOwner>` (default `sound-along-awshack2026ny`). A connection
-   belongs to one GitHub account or org, so changing the owner creates a new connection that must be authorized again.
+   Connections). The connection is named `sound-along-<githubOwner>-r<N>` (currently `sound-along-awshack2026ny-r2`). A
+   connection belongs to one GitHub App installation, so changing the owner, or bumping `_CONNECTION_REVISION` in
+   `pipeline_stack.py`, creates a new connection that must be authorized again.
 2. Select it, click **Update pending connection**.
 3. Install/authorize the AWS Connector for GitHub app on the `awshack2026ny` org and grant it the `sound-along`
    repository. This must be done by an org owner.
