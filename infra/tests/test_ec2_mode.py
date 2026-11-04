@@ -89,7 +89,9 @@ def test_instance_role_matches_lambda_grants_without_wildcards(template: Templat
     assert wildcard_actions(actions) == []
     for needed in ("states:StartExecution", "s3:PutObject", "s3:GetObject", "dynamodb:PutItem", "dynamodb:Query"):
         assert needed in actions, needed
-    assert not any(a.startswith(("s3:Delete", "ec2:", "iam:")) for a in actions)
+    assert not any(a.startswith(("ec2:", "iam:")) for a in actions)
+    # The only delete is a passage's own data/ files (a teacher deletes a passage), see test_iam_s3.py.
+    assert [a for a in actions if a.startswith("s3:Delete")] == ["s3:DeleteObject"]
     assert [a for a in actions if a.startswith("s3:List")] == ["s3:ListBucket"]  # prefix-limited, see test_iam_s3.py
     roles = template.find_resources("AWS::IAM::Role")
     ssm = [r for k, r in roles.items() if k.startswith("CmsVmInstanceRole")]

@@ -1,8 +1,11 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { summarizePassage } from "./passageSummary.js";
 
 const TIMING = /^([0-9a-f-]{36})\.timing\.json$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** The files the generator writes for one passage (pictures are content-hashed and may be shared, so they are kept). Same list as aws/s3PassageRemoval.js. */
+export const PASSAGE_FILE_SUFFIXES = Object.freeze(["timing.json", "mp3", "soundalong.json", "cards.json", "questions.json", "pcm.npy"]);
 
 /**
  * Passage catalog over a data directory of generated artifacts (<id>.timing.json + <id>.mp3).
@@ -78,6 +81,15 @@ export function createFileCatalog(dataDir) {
       } catch (err) {
         if (err.code === "ENOENT") return null;
         throw err;
+      }
+    },
+    /** Delete the passages' files and their stored job input. The timing file goes first, so a passage leaves the list even if a later file cannot be removed. */
+    async remove(ids) {
+      if (!ids.every((id) => UUID.test(id))) throw new Error("Invalid passage id.");
+      for (const id of ids) {
+        for (const suffix of PASSAGE_FILE_SUFFIXES) await rm(path.join(dataDir, `${id}.${suffix}`), { force: true });
+        await rm(path.join(dataDir, "raw", `${id}.json`), { force: true });
+        cache.delete(`${id}.timing.json`);
       }
     },
   };

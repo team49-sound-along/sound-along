@@ -15,6 +15,11 @@ API_QUESTIONS_KEY = "data/*.questions.json"
 #  data/*.timing.json     the passages' word lists (read only). The anonymous read-aloud results name a word by its position; the API looks the
 #                         word up here, so word text is never taken from a browser. Audio, cards and every other data file stay unreadable.
 API_TIMING_KEY = "data/*.timing.json"
+#  data/<id>.<suffix>     a teacher deletes a passage from the Library (delete only): exactly the files the generator writes per passage. The index and
+#                         the shared, content-hashed pictures do not match these names. Same list as PASSAGE_FILE_SUFFIXES in services/api/src/catalog.js.
+API_PASSAGE_FILE_KEYS = tuple(f"data/*.{suffix}" for suffix in ("timing.json", "mp3", "soundalong.json", "cards.json", "questions.json", "pcm.npy"))
+#  data/index.json        the Library list (write only), published again after a delete, from the PASSAGE items that are left (as the generator does).
+API_INDEX_KEY = "data/index.json"
 
 
 def list_bucket(bucket: s3.IBucket, prefixes: list[str]) -> iam.PolicyStatement:
@@ -34,6 +39,8 @@ def api_s3_policies(bucket: s3.IBucket) -> list[iam.PolicyStatement]:
         object_access(bucket, ["s3:GetObject"], API_MANIFEST_KEY),
         object_access(bucket, ["s3:PutObject"], API_QUESTIONS_KEY),
         object_access(bucket, ["s3:GetObject"], API_TIMING_KEY),
+        iam.PolicyStatement(actions=["s3:DeleteObject"], resources=[bucket.arn_for_objects(key) for key in API_PASSAGE_FILE_KEYS]),
+        object_access(bucket, ["s3:PutObject"], API_INDEX_KEY),
         list_bucket(bucket, [API_RAW_PREFIX, API_MANIFEST_KEY, API_TIMING_KEY]),
     ]
 

@@ -50,6 +50,8 @@ export const api = {
   passages: () => request("GET", "/api/passages"),
   /** Passages still being made (the audio or its translation is not finished). A teacher sees them as "Being created"; they are never offered for reading. */
   pendingPassages: () => request("GET", "/api/passages?pending=1"),
+  /** Teacher: remove a passage from the Library, with its voice pair, its translations and their assignments. Returns { ids, assignmentsRemoved }. */
+  deletePassage: (id) => request("DELETE", `/api/passages/${encodeURIComponent(id)}`),
   classes: () => request("GET", "/api/classes"),
   assignments: () => request("GET", "/api/assignments"),
   createAssignment: (body) => request("POST", "/api/assignments", body),

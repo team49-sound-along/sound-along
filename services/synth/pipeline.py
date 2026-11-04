@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "parse"))
 
 from engine import SAMPLE_RATE, Engine, SentenceAudio, concat, silence  # noqa: E402
 from mastering import fade_edges, level_match, peak_normalize  # noqa: E402
+from mixed import spans_for  # noqa: E402
 from tokenizer import Token, tokenize_html  # noqa: E402
 from word_mapper import map_words  # noqa: E402
 
@@ -33,6 +34,7 @@ class Generated:
     seconds_to_generate: float
     characters: int
     unaligned_words: int
+    foreign_spans: int = 0  # foreign-language spans spoken in their own language
 
 
 def _group_by_sentence(tokens: list[Token]) -> list[list[Token]]:
@@ -56,7 +58,16 @@ def check_pace(words: int, seconds: float) -> None:
         raise ValueError(f"The narration came out too short for {words} words ({seconds:.0f} s); part of the text was not spoken.")
 
 
-def generate(content_html: str, engine: Engine, on_step: StepCallback = _noop) -> Generated:
+def _synthesize(engine: Engine, sentence: str, language: str, mixed_language: bool) -> SentenceAudio:
+    """Foreign spans are detected on the plain sentence that is actually spoken; only engines that can speak them (accepts_spans) are asked to."""
+    if mixed_language and getattr(engine, "accepts_spans", False):
+        spans = spans_for(sentence, language)
+        if spans:
+            return engine.synthesize(sentence, spans=spans)  # type: ignore[call-arg]
+    return engine.synthesize(sentence)
+
+
+def generate(content_html: str, engine: Engine, on_step: StepCallback = _noop, language: str = "en", mixed_language: bool = True) -> Generated:
     started = time.perf_counter()
 
     on_step("parse")
@@ -66,7 +77,7 @@ def generate(content_html: str, engine: Engine, on_step: StepCallback = _noop) -
         raise ValueError("The passage has no readable text.")
 
     on_step("synthesize")
-    spoken_by_group: list[SentenceAudio] = [engine.synthesize(" ".join(t.text for t in g)) for g in groups]
+    spoken_by_group: list[SentenceAudio] = [_synthesize(engine, " ".join(t.text for t in g), language, mixed_language) for g in groups]
 
     on_step("align")
     # Mastering changes gain and the first/last few ms only, so the timings below stay exact.
@@ -112,4 +123,5 @@ def generate(content_html: str, engine: Engine, on_step: StepCallback = _noop) -
         seconds_to_generate=time.perf_counter() - started,
         characters=characters,
         unaligned_words=sum(1 for w in words if not w["aligned"]),
+        foreign_spans=sum(s.spans_applied for s in spoken_by_group),
     )

@@ -56,7 +56,8 @@ def test_api_lambda_s3_access_is_limited_to_raw_inputs_the_manifest_and_a_prefix
     api = actions_for_roles_starting_with(template, "ApiFunctionServiceRole")
     assert "s3:PutObject" in api and "s3:GetObject" in api and "states:StartExecution" in api
     s3_actions = {a for a in api if a.startswith("s3:")}
-    assert s3_actions == {"s3:PutObject", "s3:GetObject", "s3:ListBucket"}, s3_actions
+    # DeleteObject is limited to a passage's own data/ files (a teacher deletes a passage), see test_iam_s3.py.
+    assert s3_actions == {"s3:PutObject", "s3:GetObject", "s3:ListBucket", "s3:DeleteObject"}, s3_actions
 
 
 def test_missing_bundle_gives_actionable_error(tmp_path) -> None:

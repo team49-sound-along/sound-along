@@ -16,6 +16,10 @@ export function createDynamoCatalog({ client, tableName, now = Date.now, cacheMs
   }
 
   return {
+    /** Drop the cached items, so the next read sees a change made just now (a passage deleted from the Library). */
+    invalidate() {
+      cached = null;
+    },
     async list() {
       return (await items())
         .map((item) => stripKeys({ id: item.sk, ...item, language: item.language === "es" ? "es" : "en" }, ["metrics", "review"]))

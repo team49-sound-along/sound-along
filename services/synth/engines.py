@@ -48,6 +48,7 @@ def create_engine(
             speed=float(options.get("speed") or 0.95),
             respellings=respellings,
             language=language,
+            foreign_voice=options.get("voiceEs" if language == "en" else "voice") or None,
         )
     if chosen == "polly":
         import boto3
