@@ -282,10 +282,11 @@ describe("seed script", () => {
     const ddb = fakeClient();
     const ids = await seed({ s3, ddb, bucket: "B", tableName: "T", dataDir: dir, logger: quiet });
     assert.deepEqual(ids, [id]);
-    assert.deepEqual(s3.calls.map((c) => [c.input.Key, c.input.ContentType]), [
+    assert.equal(s3.calls.filter((c) => c.name === "GetObjectCommand").length, 1, "it reads the existing Library list first, so it can keep what is already in it");
+    assert.deepEqual(s3.calls.filter((c) => c.name === "PutObjectCommand").map((c) => [c.input.Key, c.input.ContentType]), [
       [`data/${id}.mp3`, "audio/mpeg"], [`data/${id}.timing.json`, "application/json"], ["data/index.json", "application/json"],
     ]);
-    const index = s3.calls.find((c) => c.input.Key === "data/index.json").input;
+    const index = s3.calls.find((c) => c.name === "PutObjectCommand" && c.input.Key === "data/index.json").input;
     assert.equal(index.ContentEncoding, "gzip"); // stored zipped, like the timing documents
     assert.equal(JSON.parse(gunzipSync(index.Body))[0].id, id);
     const { Item } = ddb.calls[0].input;

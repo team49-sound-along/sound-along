@@ -1,9 +1,9 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { access, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { gzipSync } from "node:zlib";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { reviewOf, summarizePassage } from "../src/passageSummary.js";
 
@@ -18,9 +18,26 @@ const REVALIDATE = "public, max-age=0, must-revalidate";
 /** The `source` field of raw/<id>.json, or "sample" when the file is missing or unreadable. */
 const readSource = (file) => readFile(file, "utf8").then((t) => JSON.parse(t).source, () => "sample");
 
-/** Publish data/index.json (newest first, same fields as GET /api/passages): the Library reads this document directly. */
+/** The Library list already in S3 (data/index.json), or [] when there is none. */
+export async function readIndex({ s3, bucket }) {
+  try {
+    const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: "data/index.json" }));
+    const body = Buffer.from(await res.Body.transformToByteArray());
+    const list = JSON.parse((body[0] === 0x1f && body[1] === 0x8b ? gunzipSync(body) : body).toString("utf8"));
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Publish data/index.json (newest first, same fields as GET /api/passages): the Library reads this document directly.
+ * Passages that are already in the list and are NOT being seeded (a teacher's own uploads) stay in it: seeding adds and refreshes, it never hides.
+ */
 async function publishIndex({ s3, bucket, summaries }) {
-  const sorted = [...summaries].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const seeded = new Set(summaries.map((p) => p.id));
+  const kept = (await readIndex({ s3, bucket })).filter((p) => p?.id && !seeded.has(p.id));
+  const sorted = [...kept, ...summaries].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   await s3.send(new PutObjectCommand({ Bucket: bucket, Key: "data/index.json", Body: gzipSync(JSON.stringify(sorted)), ContentType: "application/json", ContentEncoding: "gzip", CacheControl: REVALIDATE }));
 }
 
