@@ -62,12 +62,23 @@ def publish_cards(passage: dict[str, Any], data_dir: Path, enrich_fn=None) -> bo
         return False
 
 
-def _held_if_translating(passage: dict[str, Any], variant: Variant) -> Variant:
-    """A passage that is about to get a translation stays out of the Library (`held`) until the translation is in place, so the original
-    and its translation appear together. `main` releases it when the translation is done or has failed."""
+def _already_published(variant: Variant, data_dir: Path) -> bool:
+    """True when this passage is already in the Library (a regeneration): it must stay listed while it is rebuilt."""
+    try:
+        return not json.loads((data_dir / f"{variant.id}.timing.json").read_text()).get("held")
+    except (OSError, ValueError):
+        return False
+
+
+def _held_if_translating(passage: dict[str, Any], variant: Variant, data_dir: Path | None = None) -> Variant:
+    """A NEW passage that is about to get a translation stays out of the Library (`held`) until the translation is in place, so the original
+    and its translation appear together. `main` releases it when the translation is done or has failed. A passage that is already
+    published (regenerate) is never held: it must not disappear while it is rebuilt."""
     from translate_flow import should_translate
 
-    return dataclasses.replace(variant, timing={**variant.timing, "held": True}) if should_translate(passage) else variant
+    if not should_translate(passage) or (data_dir is not None and _already_published(variant, data_dir)):
+        return variant
+    return dataclasses.replace(variant, timing={**variant.timing, "held": True})
 
 
 def run(passage: dict[str, Any], data_dir: Path, on_step=_emit_step) -> dict[str, Any]:
@@ -83,7 +94,7 @@ def run(passage: dict[str, Any], data_dir: Path, on_step=_emit_step) -> dict[str
 
     on_step("publish")
     kbps = resolve_kbps(settings.get("mp3Kbps"))
-    ai, human = _held_if_translating(passage, result.ai), (_held_if_translating(passage, result.human) if result.human else None)
+    ai, human = _held_if_translating(passage, result.ai, data_dir), (_held_if_translating(passage, result.human, data_dir) if result.human else None)
     _write_variant(ai, data_dir, kbps)
     if human:
         _write_variant(human, data_dir, kbps)
