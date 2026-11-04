@@ -228,6 +228,27 @@ test("hostile text cannot stall the cleaning (many unclosed script tags, one eno
   }
 });
 
+test("long runs of spaces, tabs and dashes cannot stall the cleaning (linear time, not quadratic)", () => {
+  const spaces = " ".repeat(300000);
+  const cases = ["a" + spaces + "b", " \t".repeat(150000) + "x", "a" + spaces + "--" + spaces, "a --" + spaces, "a -- ".repeat(80000), "-".repeat(300000), " -".repeat(150000),
+    ("   ".repeat(1000) + "\n").repeat(300), "a" + "\n ".repeat(150000) + "b", ("  ".repeat(500) + "-- ").repeat(300), "<br" + spaces, "</p" + spaces];
+  for (const text of cases) {
+    const t0 = performance.now();
+    stripMarkup(text);
+    assert.ok(performance.now() - t0 < 500, `took ${Math.round(performance.now() - t0)} ms for ${JSON.stringify(text.slice(0, 12))}`);
+  }
+});
+
+test("typed dashes and spaces around line breaks are cleaned as before", () => {
+  assert.equal(stripMarkup("word -- word"), "word \u2014 word");
+  assert.equal(stripMarkup("--Hola"), "\u2014Hola");
+  assert.equal(stripMarkup("a\n  --Hola"), "a\n\u2014Hola");
+  assert.equal(stripMarkup("good---and"), "good \u2014 and");
+  assert.equal(stripMarkup("one -- two -- three"), "one \u2014 two \u2014 three");
+  assert.equal(stripMarkup("a<br>  b  <br>  c"), "a\nb\nc");
+  assert.equal(stripMarkup("<p>a  </p>\n  <p>  b</p>"), "a\nb");
+});
+
 import { parseGenerateInput } from "../src/validate.js";
 test("a title with HTML in it is stored as plain text", () => {
   const r = parseGenerateInput({ title: "<img src=x onerror=alert(1)>Safe  <b>title</b>", text: "The robot waved to the children and they waved back all afternoon long." });

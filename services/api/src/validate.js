@@ -163,7 +163,7 @@ export function stripHtml(text) {
       }
       return ENTITIES[name.toLowerCase()] ?? whole;
     })
-    .replace(/[ \t]*\n[ \t]*/g, "\n")
+    .replace(/(?<![ \t])[ \t]+(?=\n)|\n[ \t]+/g, (m) => (m[0] === "\n" ? "\n" : "")) // spaces around a line break; a lookbehind keeps it linear on a long run of spaces
     .replace(/\n{2,}/g, "\n")
     .trim();
 }
@@ -173,7 +173,8 @@ export function stripMarkup(text) {
     .replace(/(?<=\p{Ll}{2}[.!?]["\u201D\u2019')]?)(?=\p{Lu}\p{Ll})/gu, " ") // "happy.The next day": a missing space after a full stop (lookarounds only: linear)
     .replace(/\[(?:illustration|image|figure|footnote|note)\b[^\]\n]{0,200}\]/gi, "") // editorial tags
     .replace(/(?<=[\p{L}\p{N}.,;:!?"\u201D)])\[\d{1,3}\]/gu, "") // footnote markers (after a letter, digit or punctuation, accents included): "cual[1]" would be read aloud as "cual uno"
-    .replace(/[ \t]*-{2,3}[ \t]*(?=\S)/g, (m, offset, whole) => (offset === 0 || whole[offset - 1] === "\n" ? "\u2014" : " \u2014 ")) // typed dashes (--Hola, word -- word)
+    .replace(/(?<![ \t-])[ \t]+(?=-{2,3}[ \t]*\S)/g, "") // typed dashes, step 1: spaces before them go (a lookbehind starts it only at the start of a run of spaces, so it stays linear)
+    .replace(/-{2,3}[ \t]*(?=\S)/g, (m, offset, whole) => (offset === 0 || whole[offset - 1] === "\n" ? "\u2014" : " \u2014 ")) // step 2: --Hola, word -- word
     .replace(/\[([^\]\n]{1,200})\]\((?:https?:\/\/|mailto:)[^)\s]*\)/g, "$1")
     .replace(/(^|[^\w*])\*{1,3}(?=\S)([^*\n]*?\S)\*{1,3}(?![\w*])/g, "$1$2")
     .replace(/(^|[^\w_])_{1,2}(?=[^\s_])([^_\n]*?[^\s_])_{1,2}(?![\w_])/g, "$1$2")

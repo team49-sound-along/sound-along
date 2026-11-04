@@ -91,3 +91,23 @@ def test_a_word_split_at_a_dash_remembers_that_no_space_followed_the_dash():
     assert by_text["and"].joined is True and by_text["1991"].joined is True
     assert by_text["good—"].joined is False and by_text["what?"].joined is False
     assert by_text["and"].to_dict()["join"] is True and "join" not in by_text["good—"].to_dict()
+
+
+# ---- hostile text must not stall the tokenizer (linear time, not quadratic) ------------------------------------------------------------
+import time as _time
+
+
+def test_long_runs_of_punctuation_dots_and_closers_do_not_stall_the_tokenizer():
+    cases = ["." * 200000 + "x", "?" * 200000 + "x", "a." * 100000 + " b", "a." + '"' * 200000, "a -- " * 60000, "x. " * 60000, "a" * 200000, " " * 300000 + "b."]
+    for text in cases:
+        started = _time.perf_counter()
+        tokenize_html("<p>" + text + "</p>")
+        assert _time.perf_counter() - started < 2.0, f"slow on {text[:12]!r}"
+
+
+def test_sentence_ends_are_unchanged_by_the_linear_rewrite():
+    tokens = tokenize_html('<p>Dr. Smith left at 5 p.m. on Monday. "Why?" she asked. It was fine.) Then U.S.A. won! Fin.</p>')
+    sentence_of = {t.text: t.sentence for t in tokens}
+    assert sentence_of["Smith"] == sentence_of["Dr."] and sentence_of["on"] == sentence_of["p.m."]  # abbreviations do not end a sentence
+    assert sentence_of["she"] == sentence_of['"Why?"']  # a dialogue tag continues it
+    assert sentence_of["Then"] != sentence_of["fine.)"] and sentence_of["Fin."] != sentence_of["won!"]

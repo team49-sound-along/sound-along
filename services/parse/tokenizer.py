@@ -24,10 +24,9 @@ ABBREVIATIONS = {
 }
 # Words that end with a period but only end the sentence when a capital letter follows ("in the EE. UU. y Canadá", "5 p. m. del jueves", "apples, etc. and pears").
 CONTINUES_BEFORE_LOWERCASE = {"uu.", "m.", "etc."}
-_SENTENCE_END = re.compile(r"[.!?]+[\"')”’»]*$")
 _CLOSERS = "\"')”’»"
 _OPENERS = "\"'(“‘«¿¡—–-"
-_DOTTED = re.compile(r"(?:[a-zñ]{1,2}\.){2,}$", re.I)  # p.m. a.m. e.g. i.e.
+_DOTTED_REVERSED = re.compile(r"(?:\.[a-zñ]{1,2}){2,}", re.I)  # p.m. a.m. e.g. i.e., matched on the reversed word so a long run of dots stays linear
 _TOKEN = re.compile(r"\S+")
 
 
@@ -98,12 +97,13 @@ def _ends_sentence(word: str, following: Optional[str] = None) -> bool:
         return False
     if re.fullmatch(r"[A-Z]\.", word):  # initials such as "J."
         return False
-    if not _SENTENCE_END.search(word):
+    stripped = word.rstrip(_CLOSERS)
+    if not stripped or stripped[-1] not in ".!?":  # a sentence mark, then only closing quotes or brackets (no regex: a long run of marks stays linear)
         return False
     if _starts_lowercase(following):
-        if re.search(r"[?!]+[" + re.escape(_CLOSERS) + r"]*$", word):
+        if stripped[-1] in "?!":
             return False  # a dialogue tag
-        if _DOTTED.search(core) or core in CONTINUES_BEFORE_LOWERCASE:
+        if _DOTTED_REVERSED.match(core[::-1]) or core in CONTINUES_BEFORE_LOWERCASE:
             return False
     return True
 
