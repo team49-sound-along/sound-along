@@ -4,7 +4,7 @@ import { computed } from "vue";
 import { route } from "../router.js";
 
 const TABS = [
-  { name: "settings", href: "#/settings", label: "Reading settings" },
+  { name: "settings", href: "#/settings", label: "Voice settings" },
   { name: "pronunciations", href: "#/pronunciations", label: "Pronunciations" },
   { name: "review", href: "#/review", label: "Words to check" },
   { name: "listening", href: "#/listening", label: "Listening test" },

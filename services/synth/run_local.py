@@ -52,9 +52,9 @@ def publish_cards(passage: dict[str, Any], data_dir: Path, enrich_fn=None) -> bo
     that is already published is never lost to a slow or blocked network."""
     try:
         from enrich_places import enrich_places, ner_places, write_enriched
-        from word_pictures import word_picture_cards
+        from word_cards import word_cards
 
-        enriched = enrich_fn(passage) if enrich_fn else enrich_places({**passage, "source": passage.get("source") or "generated"}, ner=ner_places, words=word_picture_cards)
+        enriched = enrich_fn(passage) if enrich_fn else enrich_places({**passage, "source": passage.get("source") or "generated"}, ner=ner_places, words=word_cards)
         return bool(enriched and write_enriched(data_dir, passage["uuid"], enriched))
     except Exception as err:  # noqa: BLE001
         sys.stderr.write(f"place cards skipped: {err}\n")

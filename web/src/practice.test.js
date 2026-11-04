@@ -88,3 +88,8 @@ test("only questions a person has approved are ever offered", () => {
     assert.deepEqual(approvedQuestions(bad), []);
   }
 });
+
+test("any word can be starred, with or without a card", () => {
+  const s = toggleStar({ words: {} }, "zebra", 1000);
+  assert.deepEqual(s.words.zebra, { box: 0, due: 1000 });
+});

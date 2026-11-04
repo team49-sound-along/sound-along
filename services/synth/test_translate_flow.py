@@ -146,3 +146,10 @@ def test_a_translated_part_stays_part_n_of_the_same_document():
     series = {"id": "5af24980-4d6d-41c1-87fa-4f21cb2d169d", "index": 2, "total": 3, "title": "T", "partIds": [f"2b781dab-4521-40d2-a9b6-ad5f2bb0ba9{i}" for i in range(3)]}
     assert tf.build_translated_passage({**PASSAGE, "series": series}, "es", TRANSLATED)["series"] == series
     assert "series" not in tf.build_translated_passage(PASSAGE, "es", TRANSLATED)
+
+
+def test_the_operator_can_switch_automatic_translation_off(monkeypatch):
+    monkeypatch.setenv("TRANSLATE_UPLOADS", "off")
+    assert tf.should_translate({"uuid": SRC, "source": "generated", "language": "en"}) is False
+    monkeypatch.setenv("TRANSLATE_UPLOADS", "on")
+    assert tf.should_translate({"uuid": SRC, "source": "generated", "language": "en"}) is True

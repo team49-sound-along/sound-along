@@ -9,6 +9,7 @@ Best effort: with safe=True a failure returns None and leaves no dangling link.
 from __future__ import annotations
 
 import json
+import os
 import logging
 import uuid
 from pathlib import Path
@@ -33,6 +34,8 @@ def other_language(lang: Optional[str]) -> str:
 
 def should_translate(passage: dict[str, Any]) -> bool:
     """Teacher-generated English or Spanish passages get a translation automatically, unless switched off (settings.translate = false) or already a translation."""
+    if os.environ.get("TRANSLATE_UPLOADS", "").strip().lower() in ("off", "0", "false", "no"):  # operator switch: no automatic translations at all
+        return False
     return (passage.get("source") == "generated" and (passage.get("language") or "en") in ("en", "es") and not passage.get("noTranslate")
             and (passage.get("settings") or {}).get("translate") is not False)
 

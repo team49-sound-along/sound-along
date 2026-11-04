@@ -1,6 +1,6 @@
 <script setup>
 // Main navigation in the top bar: every destination is visible, nothing is hidden under a menu.
-// Teacher: Library, Assignments, Create, Insights, Voice (reading settings, pronunciations, words to check, listening test).
+// Teacher: Library, Assignments, Create, Insights, Voice (voice settings, pronunciations, words to check, listening test).
 // Student: Library, My assignments, Create, My words. On a phone the list opens as one panel from the menu button in App.vue.
 import { computed } from "vue";
 import { VOICE_SECTION, route } from "../router.js";

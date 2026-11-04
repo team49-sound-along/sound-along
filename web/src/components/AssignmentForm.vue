@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import SwitchControl from "./SwitchControl.vue";
+import { gradeLabel } from "../assignmentMeta.js";
 
 const props = defineProps({
   passages: { type: Array, required: true },
@@ -43,7 +44,7 @@ function submit() {
         <label for="a-class">Class</label>
         <select id="a-class" v-model="classId" class="input" :aria-invalid="touched && !classId" required>
           <option value="" disabled>Select a class</option>
-          <option v-for="c in classes" :key="c.id" :value="c.id">{{ c.name }} (Grade {{ c.grade }}, {{ c.students }} students)</option>
+          <option v-for="c in classes" :key="c.id" :value="c.id">{{ c.name }} ({{ gradeLabel(c.grade) }}, {{ c.students }} students)</option>
         </select>
         <span v-if="touched && !classId" class="error-text">Choose a class.</span>
       </div>

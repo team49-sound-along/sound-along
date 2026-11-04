@@ -88,13 +88,15 @@ const practiceState = ref(loadState(practiceId.value));
 const selectedKey = computed(() => wordKey(selectedWord.value?.text));
 const isStarred = computed(() => Boolean(selectedKey.value && practiceState.value.words[selectedKey.value]));
 function toggleSaved() {
-  if (!selectedKey.value || !card.value) return;
+  if (!selectedKey.value) return;  // any word can be saved; a word with no card is practised by its sound
   practiceState.value = toggleStar(practiceState.value, selectedKey.value, Date.now());
   saveState(practiceId.value, practiceState.value);
 }
 // Words that have a picture or sit inside a place card get a visible cue (a mark, not only a colour).
 const pictureKeys = computed(() => new Set(Object.entries(cards.value?.words ?? {}).filter(([, c]) => c?.imageUrl).map(([k]) => k)));
 const placeWords = computed(() => new Set(words.value.filter((w) => placeAt(words.value, w.i, cards.value?.places)).map((w) => w.i)));
+// Words with a definition card get the same dotted underline as the passage's own vocabulary.
+const definedKeys = computed(() => new Set(Object.entries(cards.value?.words ?? {}).filter(([, c]) => c?.definition).map(([k]) => k)));
 const hasVisual = (w) => wordHelp.value && (pictureKeys.value.has(wordKey(w.text)) || placeWords.value.has(w.i));
 // Language switch: the text's translation (or its source) is a separate passage linked in the timing document. The sentence map keeps the place.
 const langSwitch = computed(() => languageSwitch(props.timing));
@@ -339,7 +341,7 @@ function onKey(event) {
               <template v-for="(w, k) in line" :key="w.i">
                 <span
                   :id="`w-${w.i}`" class="w"
-                  :class="{ active: highlightOn && prefs.highlight === 'words' && w.i === activeIndex, band: isBand(w), vocab: wordHelp && w.vocabId, tappable: soundAlong, haspic: hasVisual(w) }"
+                  :class="{ active: highlightOn && prefs.highlight === 'words' && w.i === activeIndex, band: isBand(w), vocab: wordHelp && (w.vocabId || definedKeys.has(wordKey(w.text))), tappable: soundAlong, haspic: hasVisual(w) }"
                   :tabindex="soundAlong && w.i === focusIndex ? 0 : -1"
                   :role="soundAlong ? 'button' : undefined"
                   @click="playFrom(w.i)"

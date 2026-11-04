@@ -60,7 +60,7 @@ const isTeacher = computed(() => role.value === "teacher");
       :empty="!passages.length"
       loading-label="Loading passages"
       empty-title="No passages yet"
-      empty-text="Generate your first passage from any text."
+      empty-text="Create your first passage from any text."
       @retry="reload"
     >
       <p v-if="!shown.length" class="card muted" role="status"><template v-if="query.trim()">No passages match &ldquo;{{ query.trim() }}&rdquo; with these filters.</template><template v-else-if="filtering">No passages match these filters.</template><template v-else>No passages to show.</template></p>

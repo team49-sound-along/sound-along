@@ -26,3 +26,11 @@ test("soundAlongLabel", () => {
   assert.equal(soundAlongLabel(true), "Sound Along on");
   assert.equal(soundAlongLabel(false), "Sound Along off");
 });
+
+import { gradeLabel } from "./assignmentMeta.js";
+test("a grade is never shown as 'Grade Grade 3'", () => {
+  assert.equal(gradeLabel("Grade 3"), "Grade 3");
+  assert.equal(gradeLabel(3), "Grade 3");
+  assert.equal(gradeLabel(""), "");
+  assert.equal(assignmentMeta({ classId: "c" }, [{ id: "c", name: "P", grade: "Grade 3", students: 24 }]), "P · Grade 3 · 24 students");
+});

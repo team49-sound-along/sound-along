@@ -37,7 +37,7 @@ async function save() {
   <div class="page narrow">
     <div class="page-head">
       <div>
-        <h2>Settings</h2>
+        <h2>Voice settings</h2>
         <p>Choose how new narration sounds. Changes apply to passages generated or regenerated from now on. Passages already made keep the settings they were made with.</p>
       </div>
     </div>

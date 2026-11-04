@@ -44,7 +44,7 @@ async function dismiss(word) {
     </div>
 
     <p v-if="actionError" class="notice error" role="alert">{{ actionError }}</p>
-    <StateBlock :loading="loading" :error="error" :empty="!loading && !error && !items.length" empty-title="Nothing to review" empty-text="No suspect words right now. Generate a passage and any candidates will appear here." loading-label="Loading review" @retry="reload">
+    <StateBlock :loading="loading" :error="error" :empty="!loading && !error && !items.length" empty-title="Nothing to review" empty-text="No suspect words right now. Create a passage and any candidates will appear here." loading-label="Loading review" @retry="reload">
       <p class="small muted" role="status">{{ suspectCount(items) }} candidate{{ suspectCount(items) === 1 ? "" : "s" }} in {{ items.length }} passage{{ items.length === 1 ? "" : "s" }}.</p>
       <ReviewPassage v-for="it in items" :key="it.passageId" :item="it" @dismiss="dismiss" />
     </StateBlock>

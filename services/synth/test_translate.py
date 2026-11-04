@@ -294,3 +294,51 @@ def test_translating_a_passage_keeps_a_name_even_when_the_model_changes_it():
 
     out = tr.translate_passage({"title": "", "content": "<p>Visitamos el parque con Ana. Después vimos a Lucía.</p>"}, Respeller(), names_fn=lambda t: [])
     assert "Ana" in out.content_html and "Anna" not in out.content_html and "Lucía" in out.content_html and "Lucy" not in out.content_html
+
+
+# ---- quoted speech with a tag ("..." asked Mia.) ------------------------------------------------------------------------------------
+def test_split_speech_finds_the_quote_and_its_short_tag():
+    assert tr.split_speech('"Where are you going?" asked Mia.') == ('"Where are you going?"', "asked Mia.")
+    assert tr.split_speech("“To the lake,” said Tom.") == ("“To the lake,”", "said Tom.")
+    assert tr.split_speech('"It was Mr. Brown\'s fault, not mine," Tom replied.') == ('"It was Mr. Brown\'s fault, not mine,"', "Tom replied.")
+    assert tr.split_speech('"Hello." ') is None  # no tag
+    assert tr.split_speech('He shouted "Look out!" and I jumped.') is None  # the quote is not first
+    assert tr.split_speech('"Stop," he said, "or I will go."') is None  # a second quote
+
+
+def test_speech_and_tag_are_translated_apart_so_the_dash_dialogue_of_the_model_never_glues_them():
+    seen = []
+
+    table = {"Where are you going?": "¿Adónde vas?", "asked Mia.": "Preguntó Mia."}
+
+    def fake(texts):
+        seen.extend(texts)
+        return [table[x] for x in texts]
+
+    out = tr._translate_all(['"Where are you going?" asked Mia.'], fake)
+    assert out == ["\"¿Adónde vas?\" preguntó Mia."] and seen == ["Where are you going?", "asked Mia."]
+
+
+def test_speech_keeps_its_capital_its_comma_and_a_named_speaker():
+    table = {"To the lake,": "al lago,", "Tom replied.": "Tom respondió.", "said Tom.": "Dijo Tom."}
+    out = tr._translate_all(['"To the lake," said Tom.', '"To the lake," Tom replied.'], lambda xs: [table[x] if x in table else {"To the lake": "al lago,"}[x] for x in xs])
+    assert out == ['"Al lago," dijo Tom.', '"Al lago," Tom respondió.']
+
+
+def test_tidy_spanish_fixes_what_the_model_gets_wrong_about_country_names_money_and_units():
+    assert tr.tidy_spanish("el Estados Unidos pierde el 40%") == "Estados Unidos pierde el 40%"
+    assert tr.tidy_spanish("viven en el Estados Unidos") == "viven en Estados Unidos"
+    assert tr.tidy_spanish("del Estados Unidos") == "de Estados Unidos"
+    assert tr.tidy_spanish("Cuesta menos de $ 5, y") == "Cuesta menos de $5, y"
+    assert tr.tidy_spanish("60 libras. de miel") == "60 libras de miel"
+    assert tr.tidy_spanish("Pesa 60 libras. Es mucho.") == "Pesa 60 libras. Es mucho."
+
+
+def test_a_translated_passage_is_tidied_after_names_are_put_back():
+    class M:
+        def __call__(self, texts):
+            return ["El Piedmont Park pierde 60 libras. de miel." if "Piedmont" in t else "x." for t in texts]
+
+    out = tr.translate_passage({"title": "", "content": "<p>Piedmont Park loses 60 lbs. of honey.</p>"}, M(),
+                               names_fn=lambda text: ["Piedmont Park"], localize=lambda ns: {"Piedmont Park": "Estados Unidos"})
+    assert "el Estados" not in out.content_html.lower() and "60 libras de miel" in out.content_html

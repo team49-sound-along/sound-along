@@ -109,7 +109,7 @@ function reset() {
   <div class="page">
     <div class="page-head">
       <div>
-        <h2>Generate</h2>
+        <h2>Create a passage</h2>
         <p>Paste a passage or add a text file. Sound Along creates the narration and the word-by-word timing automatically. You can also add your own recording of the passage.</p>
       </div>
     </div>

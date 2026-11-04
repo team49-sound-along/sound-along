@@ -53,8 +53,9 @@ const emit = defineEmits(["hear", "star"]);
         <p class="def">{{ place.summary }}</p>
         <p v-if="place.attribution" class="extra">{{ place.attribution }}</p>
       </article>
-      <p v-if="card" class="save"><button type="button" class="btn" :aria-pressed="starred" @click="emit('star')">{{ starred ? "&#9733; Saved to My words" : "&#9734; Save word" }}</button></p>
-      <p v-if="!card && !place" class="muted">Tap a word to hear it from there. Underlined words have a short definition.</p>
+      <p v-if="card || word" class="save"><button type="button" class="btn" :aria-pressed="starred" @click="emit('star')">{{ starred ? "&#9733; Saved to My words" : "&#9734; Save word" }}</button></p>
+      <p v-if="!card && !place && !word" class="muted">Tap a word to hear it from there. Underlined words have a short definition.</p>
+      <p v-else-if="!card && !place" class="muted">No definition for this word yet. You can still hear it and save it to practise.</p>
     </div>
     <div class="hear">
       <button

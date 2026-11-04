@@ -360,8 +360,8 @@ def enrich_places(
     clock: Callable[[], float] = time.monotonic, ner: Optional[Callable[[str], list[str]]] = None,
     words: Optional[Callable[..., tuple[dict[str, Any], dict[str, bytes]]]] = None,
 ) -> Optional[Enriched]:
-    """Cards for an English, teacher-generated passage: place cards with pictures (needs the network) and word pictures for everyday nouns
-    (offline, `words` = word_pictures.word_picture_cards). None when there is nothing to show. Never raises."""
+    """Cards for an English, teacher-generated passage: place cards with pictures (needs the network) and word cards (pictures for everyday nouns, definitions for harder words)
+    (offline, `words` = word_cards.word_cards: pictures and definitions). None when there is nothing to show. Never raises."""
     if passage.get("source") != "generated" or (passage.get("language") or "en") != "en":
         return None
     try:

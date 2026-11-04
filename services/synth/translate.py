@@ -131,9 +131,43 @@ def _plausible(source: str, translated: str) -> bool:
     return n < 8 or MIN_RATIO <= len(translated.split()) / n <= MAX_RATIO
 
 
+_SPEECH = re.compile(r"""^(?P<open>["“])(?P<said>[^"“”]+?[,.?!…])(?P<close>["”])\s+(?P<tag>[^"“”]{2,60})$""")
+
+
+def split_speech(sentence: str) -> Optional[tuple[str, str]]:
+    """'"Where are you going?" asked Mia.' -> ('"Where are you going?"', 'asked Mia.'); None when the sentence is not a quote followed by a short tag."""
+    m = _SPEECH.match(sentence.strip())
+    if not m or len(m.group("tag").split()) > 8:
+        return None
+    return m.group("open") + m.group("said") + m.group("close"), m.group("tag")
+
+
+def _translate_speech(sentences: list[tuple[str, str]], model: TranslateFn) -> list[str]:
+    """The Spanish models write dialogue with dashes and drop the spaces around them ("¿Adónde vas?preguntó Mia."), so the words spoken and the tag
+    ("asked Mia.") are translated apart and joined again inside the passage's own quotation marks."""
+    said = model([q[1:-1] for q, _ in sentences])
+    tags = model([t for _, t in sentences])
+    out = []
+    for (quote, tag), spoken, told in zip(sentences, said, tags):
+        spoken, told = spoken.strip(), told.strip()
+        inner = quote[1:-1]
+        if inner[:1].isupper() and spoken[:1].islower():  # a fragment comes back without its capital
+            spoken = spoken[:1].upper() + spoken[1:]
+        if inner.endswith(",") and spoken[-1:] in ".!?…":  # "To the lake," keeps the comma that joins it to the tag
+            spoken = spoken[:-1] + ","
+        if tag[:1].islower() and told[:1].isupper() and not told[1:2].isupper():  # "asked Mia." continues the sentence
+            told = told[:1].lower() + told[1:]
+        out.append(f"{quote[0]}{spoken}{quote[-1]} {told}")
+    return out
+
+
 def _translate_all(texts: list[str], model: TranslateFn) -> list[str]:
     out: list[str] = [""] * len(texts)
-    whole = [i for i, t in enumerate(texts) if len(t.split()) <= LONG_WORDS]
+    speech = {i: sp for i, t in enumerate(texts) if (sp := split_speech(t))}
+    if speech:
+        for i, got in zip(speech, _translate_speech(list(speech.values()), model)):
+            out[i] = got
+    whole = [i for i, t in enumerate(texts) if len(t.split()) <= LONG_WORDS and i not in speech]
     for start in range(0, len(whole), BATCH):
         idx = whole[start:start + BATCH]
         got = model([texts[i] for i in idx])
@@ -142,7 +176,7 @@ def _translate_all(texts: list[str], model: TranslateFn) -> list[str]:
         for i, g in zip(idx, got):
             out[i] = g
     for i, t in enumerate(texts):
-        if len(t.split()) > LONG_WORDS:
+        if len(t.split()) > LONG_WORDS and i not in speech:
             out[i] = _translate_pieces(t, model, PIECE_WORDS)
     for i, t in enumerate(texts):  # a length that cannot be right: try again in smaller pieces
         if not _plausible(t, out[i]):
@@ -198,6 +232,8 @@ def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Cal
         else:
             restored = unmask(raw, {p: local.get(n, n) for p, n in table.items()})
         restored = " ".join(restored.split())
+        if passage.get("language") != "es":  # the target is Spanish; names restored above can bring back an article ("el Estados Unidos")
+            restored = tidy_spanish(restored)
         # A sentence needs closing punctuation so the sentence numbers stay stable. A source that ends with ; : or , (the last sentence of a paragraph that stops
         # there) keeps that ending; adding a full stop would give ";."
         soft_source = bool(re.search(r"[;:,]$", text_of[i].rstrip()))
@@ -350,6 +386,21 @@ def plain_register(text: str) -> str:
     return _SLANG_RE.sub(fix, text)
 
 
+_US_ARTICLE = re.compile(r"\b([Ee]l|[Dd]el|[Aa]l)\s+(?=Estados Unidos\b)")
+_US_FORM = {"el": "", "del": "de ", "al": "a "}
+
+
+def tidy_spanish(text: str) -> str:
+    """Small mistakes the English to Spanish models repeat: "el Estados Unidos", "$ 5", and the full stop of an abbreviation ("lbs.") left in the middle of a sentence."""
+    def article(m: "re.Match[str]") -> str:
+        out = _US_FORM[m.group(1).lower()]
+        return out[:1].upper() + out[1:] if m.group(1)[0].isupper() and out else out
+
+    text = _US_ARTICLE.sub(article, text)
+    text = re.sub(r"([$£€])\s+(?=\d)", r"\1", text)
+    return re.sub(r"\b(libras|onzas|pulgadas|millas|pies)\.(?= [a-zñáéíóúü])", r"\1", text)
+
+
 def use_big(source: str, target: str, words: Optional[int]) -> bool:
     """The larger model, for a known passage length up to BIG_MAX_WORDS, where one exists. TRANSLATE_BIG=off turns it off."""
     return (words is not None and 0 < words <= BIG_MAX_WORDS and (source, target) in BIG
@@ -384,7 +435,7 @@ def load_model(source: str, target: str, words: Optional[int] = None) -> Transla
             with torch.no_grad():
                 ids = marian.generate(**batch, num_beams=4, max_new_tokens=256)
             out = tokenizer.batch_decode(ids, skip_special_tokens=True)
-            return [balance_quotes(fix_possessive(s, plain_register(t))) for s, t in zip(texts, out)] if target == "en" else [add_spanish_marks(t) for t in out]
+            return [balance_quotes(fix_possessive(s, plain_register(t))) for s, t in zip(texts, out)] if target == "en" else [tidy_spanish(add_spanish_marks(t)) for t in out]
 
         _MODELS[key] = translate
         return translate

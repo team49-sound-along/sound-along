@@ -20,7 +20,7 @@ import { route, isTeacherOnly, VOICE_SECTION } from "./router.js";
 import { role, USERS } from "./session.js";
 
 const VIEWS = { library: LibraryView, read: ReaderView, assignments: AssignmentsView, generate: GenerateView, insights: InsightsView, settings: SettingsView, pronunciations: PronunciationsView, review: ReviewView, listening: ListeningView, practice: PracticeView, words: MyWordsView };
-const TITLES = { library: "Library", read: "Reader", assignments: "Assignments", generate: "Create a passage", insights: "Insights", settings: "Settings", pronunciations: "Pronunciations", review: "Pronunciation review", listening: "Listening test", practice: "Practice", words: "My words" };
+const TITLES = { library: "Library", read: "Reader", assignments: "Assignments", generate: "Create a passage", insights: "Insights", settings: "Voice settings", pronunciations: "Pronunciations", review: "Pronunciation review", listening: "Listening test", practice: "Practice", words: "My words" };
 const view = computed(() => (isTeacherOnly(route.value.name) && role.value !== "teacher" ? TeacherOnly : VIEWS[route.value.name]));
 const showVoiceTabs = computed(() => role.value === "teacher" && VOICE_SECTION.includes(route.value.name));
 const user = computed(() => USERS[role.value]);

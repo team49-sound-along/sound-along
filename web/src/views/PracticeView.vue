@@ -43,7 +43,7 @@ const revealed = ref(false);
 const queue = computed(() => dueWords(state.value, now(), anyway.value));
 const starredCount = computed(() => Object.keys(state.value.words).length);
 const currentKey = computed(() => queue.value[0] ?? null);
-const current = computed(() => (currentKey.value && data.value ? findWordCard(data.value.cards, data.value.timing.vocab, currentKey.value) : null));
+const current = computed(() => (currentKey.value && data.value ? (findWordCard(data.value.cards, data.value.timing.vocab, currentKey.value) ?? { word: currentKey.value }) : null));
 const audioIndex = computed(() => (currentKey.value && data.value ? firstAlignedIndex(data.value.timing.words, currentKey.value) : null));
 const announce = ref("");
 
@@ -107,7 +107,7 @@ function nextQ() {
             <p class="small muted">{{ starredCount }} saved &middot; {{ queue.length }} to practise now</p>
             <div v-if="current" class="flash" aria-live="polite">
               <figure v-if="current.imageUrl" class="fpic"><img :src="current.imageUrl" alt="" :width="current.imageWidth || undefined" :height="current.imageHeight || undefined" /></figure>
-              <p v-if="!revealed" class="prompt">{{ current.imageUrl ? "What is this? Say the word." : current.definition ? current.definition : "Say what this word means." }}</p>
+              <p v-if="!revealed" class="prompt">{{ current.imageUrl ? "What is this? Say the word." : current.definition ? current.definition : audioIndex !== null ? "Listen, then say the word and what it means." : "Say what this word means." }}</p>
               <template v-else>
                 <p class="answer"><strong :lang="lang">{{ current.word }}</strong></p>
                 <p v-if="current.definition" class="def">{{ current.definition }}</p>
