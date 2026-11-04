@@ -27,7 +27,7 @@ const sentenceFor = (q) => sentenceText(data.value?.timing?.words, q.evidenceSen
 
 function update(next) {
   review.value = next;
-  saveReview(props.passageId, next);
+  saveReview(props.passageId, next, undefined, data.value.view);
 }
 
 const publishing = ref(false);

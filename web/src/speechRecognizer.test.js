@@ -10,12 +10,14 @@ class FakeRecognition {
     FakeRecognition.instances.push(this);
   }
   start() { this.started = true; this.onstart?.(); }
-  stop() { this.stopped = true; this.onend?.(); }
+  stop() { this.stopped = true; setTimeout(() => this.onend?.(), 0); } // like the browser: the session ends a moment later
   say(items, resultIndex = 0) {
     const results = items.map(([transcript, isFinal]) => Object.assign([{ transcript }], { isFinal }));
     this.onresult?.({ resultIndex, results });
   }
 }
+
+const tick = () => new Promise((r) => setTimeout(r, 5));
 
 function setup(language = "en") {
   FakeRecognition.instances = [];
@@ -79,10 +81,11 @@ test("a session that ends mid-sentence flushes its interim words as final, then 
   assert.equal(last().started, true);
 });
 
-test("stop ends listening and does not restart", () => {
+test("stop ends listening and does not restart", async () => {
   const { rec, last, runTimers, statuses } = setup();
   rec.start();
   rec.stop();
+  await tick();
   runTimers();
   assert.equal(FakeRecognition.instances.length, 1);
   assert.equal(statuses.at(-1), "idle");
@@ -151,4 +154,68 @@ test("a constructor or start() that throws is reported", () => {
   rec.start();
   assert.equal(errors.length, 1);
   assert.equal(rec.isRunning(), false);
+});
+
+test("stop then immediate start: late results and a late end from the old session are ignored", async () => {
+  const { rec, results, statuses, last, runTimers } = setup();
+  rec.start();
+  const old = last();
+  const lateResult = old.onresult;
+  const lateEnd = old.onend;
+  old.say([["the dog", false]]);
+  rec.stop();
+  rec.start();
+  const fresh = last();
+  assert.notEqual(fresh, old);
+  results.length = 0;
+  lateResult({ resultIndex: 0, results: [Object.assign([{ transcript: "stale" }], { isFinal: true })] });
+  lateEnd();
+  await tick();
+  runTimers();
+  assert.equal(FakeRecognition.instances.length, 2, "no extra recognizer was started");
+  fresh.say([["hello", false]]);
+  fresh.say([["hello there", true]]);
+  assert.deepEqual(results.map((r) => [r.id, r.transcript, r.isFinal]), [[20000, "hello", false], [20000, "hello there", true]]);
+  assert.equal(rec.isRunning(), true);
+  assert.notEqual(statuses.at(-1), "idle");
+});
+
+test("an old end never schedules a second restart or clears the new session", async () => {
+  const { rec, last, runTimers } = setup();
+  rec.start();
+  const old = last();
+  const lateEnd = old.onend;
+  rec.stop();
+  rec.start();
+  lateEnd();
+  await tick();
+  runTimers();
+  assert.equal(FakeRecognition.instances.length, 2);
+  last().onend(); // the new session ends by itself: exactly one restart
+  runTimers();
+  assert.equal(FakeRecognition.instances.length, 3);
+});
+
+test("the final stop() really stops the new recognizer", async () => {
+  const { rec, last, runTimers, statuses } = setup();
+  rec.start();
+  rec.stop();
+  rec.start();
+  const fresh = last();
+  await tick();
+  rec.stop();
+  await tick();
+  runTimers();
+  assert.equal(fresh.stopped, true);
+  assert.equal(FakeRecognition.instances.length, 2);
+  assert.equal(statuses.at(-1), "idle");
+  assert.equal(rec.isRunning(), false);
+});
+
+test("stopping mid-sentence keeps the words heard so far", () => {
+  const { rec, results, last } = setup();
+  rec.start();
+  last().say([["the dog ran", false]]);
+  rec.stop();
+  assert.deepEqual(results.at(-1), { id: 10000, transcript: "the dog ran", isFinal: true });
 });

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  approvedPayload, canPublish, counts, describeChecks, emptyReview, loadReview, reviewKey, saveReview, sentenceText, setEdit, setStatus, validateEdit,
+  approvedPayload, canPublish, counts, describeChecks, emptyReview, fingerprintQuestion, loadReview, reviewKey, saveReview, sentenceText, setEdit, setStatus, validateEdit,
 } from "./questionReview.js";
 
 const mem = () => {
@@ -85,18 +85,52 @@ test("a teacher's choices are kept on this device per passage and survive a relo
   const s = mem();
   const r = setEdit(setStatus(setStatus(emptyReview(), "q1", "approved"), "q2", "rejected"), "q1", { question: "New?", choices: ["a", "b", "c"] });
   assert.equal(reviewKey("p"), "soundalong.questionReview.v1.p");
-  assert.equal(saveReview("p", r, s), true);
+  assert.equal(saveReview("p", r, s, view), true);
   assert.deepEqual(loadReview("p", s, view), r);
   assert.deepEqual(loadReview("other", s, view), emptyReview());
 });
 
 test("saved choices for questions that no longer exist or have a bad shape are dropped; broken storage never throws", () => {
   const s = mem();
-  s.setItem(reviewKey("p"), JSON.stringify({ status: { q1: "approved", gone: "approved", q2: "weird" }, edits: { q1: { question: 5, choices: [] }, q3: { question: "ok?", choices: ["a", "b", "c"] } } }));
+  const fingerprints = Object.fromEntries(view.questions.map((x) => [x.id, fingerprintQuestion(x)]));
+  s.setItem(reviewKey("p"), JSON.stringify({ fingerprints, status: { q1: "approved", gone: "approved", q2: "weird" }, edits: { q1: { question: 5, choices: [] }, q3: { question: "ok?", choices: ["a", "b", "c"] } } }));
   assert.deepEqual(loadReview("p", s, view), { status: { q1: "approved" }, edits: { q3: { question: "ok?", choices: ["a", "b", "c"] } } });
   s.setItem(reviewKey("p"), "{nope");
   assert.deepEqual(loadReview("p", s, view), emptyReview());
   assert.deepEqual(loadReview("p", broken, view), emptyReview());
-  assert.equal(saveReview("p", emptyReview(), broken), false);
-  assert.equal(saveReview("p", emptyReview(), null), false);
+  assert.equal(saveReview("p", emptyReview(), broken, view), false);
+  assert.equal(saveReview("p", emptyReview(), null, view), false);
+});
+
+test("the fingerprint changes when the question text, a choice or the answer changes, and not otherwise", () => {
+  const base = fingerprintQuestion(q(1));
+  assert.equal(fingerprintQuestion({ ...q(1), checks: { x: 1 }, status: "approved" }), base);
+  assert.notEqual(fingerprintQuestion({ ...q(1), question: "Other?" }), base);
+  assert.notEqual(fingerprintQuestion({ ...q(1), choices: ["A", "B", "D"] }), base);
+  assert.notEqual(fingerprintQuestion({ ...q(1), answerIndex: 2 }), base);
+  assert.notEqual(fingerprintQuestion({ ...q(1), choices: ["AB", "C"] }), fingerprintQuestion({ ...q(1), choices: ["A", "BC"] }));
+});
+
+test("a regenerated draft: a changed question loses its approval and edit, unchanged ones keep theirs", () => {
+  const s = mem();
+  let r = setStatus(setStatus(setStatus(emptyReview(), "q1", "approved"), "q2", "approved"), "q3", "rejected");
+  r = setEdit(r, "q2", { question: "Mine?", choices: ["a", "b", "c"] });
+  saveReview("p", r, s, view);
+  const regenerated = { ...view, questions: [q(1), { ...q(2), question: "Brand new wording?" }, q(3)] };
+  const back = loadReview("p", s, regenerated);
+  assert.deepEqual(back, { status: { q1: "approved", q3: "rejected" }, edits: {} });
+  assert.deepEqual(counts(regenerated, back), { approved: 1, rejected: 1, pending: 1 });
+});
+
+test("a regenerated draft that reuses ids with different answers starts fully pending", () => {
+  const s = mem();
+  saveReview("p", setStatus(setStatus(emptyReview(), "q1", "approved"), "q2", "approved"), s, view);
+  const changed = { ...view, questions: view.questions.map((x) => ({ ...x, answerIndex: 0 })) };
+  assert.deepEqual(loadReview("p", s, changed), emptyReview());
+});
+
+test("choices saved before fingerprints existed cannot be trusted and are discarded", () => {
+  const s = mem();
+  s.setItem(reviewKey("p"), JSON.stringify({ status: { q1: "approved" }, edits: {} }));
+  assert.deepEqual(loadReview("p", s, view), emptyReview());
 });

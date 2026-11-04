@@ -37,7 +37,10 @@ export function step(state, event) {
   }
 }
 
-export const listensNow = (state) => state?.phase === "listening";
+/** The "missed" countdown begins when the microphone is really on (after any permission prompt), never before, and only once per try. */
+export const shouldArmMissTimer = (recognizerStatus, alreadyArmed) => recognizerStatus === "listening" && !alreadyArmed;
+
+export const listensNow =(state) => state?.phase === "listening";
 export const finished = (state) => ["success", "moveOn", "unavailable"].includes(state?.phase);
 
 /**

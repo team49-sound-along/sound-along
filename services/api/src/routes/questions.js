@@ -15,7 +15,9 @@ const NO_DRAFT = "There is no question draft for that passage.";
  * on AWS, the same CloudFront-signed origin. There is NO sign-in or teacher check on the API in this build; the teacher screen is guarded
  * in the app only. Real authentication (for example Cognito and a verified token) is required before production, for all teacher routes.
  */
-export function questionRoutes(api, { questions, readyList, writeLimiter, now = () => new Date() }) {
+export const MAX_DRAFTS_PER_LIST = 200;
+
+export function questionRoutes(api, { questions, readyList, writeLimiter, now = () => new Date(), logger = console }) {
   const store = () => {
     if (!questions) throw new HttpError(503, UNAVAILABLE);
     return questions;
@@ -35,12 +37,24 @@ export function questionRoutes(api, { questions, readyList, writeLimiter, now = 
     route(async (req, res) => {
       const [ids, passages] = await Promise.all([store().listDraftIds(), readyList()]);
       const ready = new Map(passages.map((p) => [p.id, p]));
-      const views = await Promise.all(ids.filter((id) => ready.has(id)).map(async (id) => cleanDraft(await questions.readDraft(id), id)));
+      const candidates = ids.filter((id) => ready.has(id)).sort();
+      const batch = candidates.slice(0, MAX_DRAFTS_PER_LIST);
+      // one unreadable draft must not take the whole list down: skip it and log the passage id (never the contents)
+      const views = await Promise.all(
+        batch.map(async (id) => {
+          try {
+            return cleanDraft(await questions.readDraft(id), id);
+          } catch (err) {
+            logger.error("question draft unreadable, skipped", { passageId: id, message: err?.message });
+            return null;
+          }
+        }),
+      );
       const list = views
         .filter((view) => view && view.questions.length > 0)
         .map((view) => ({ ...summarizeDraft(view), language: ready.get(view.passageId).language ?? "en" }))
         .sort((a, b) => a.title.localeCompare(b.title));
-      res.json(ok(list));
+      res.json(ok(list, { more: candidates.length > batch.length, limit: MAX_DRAFTS_PER_LIST, total: candidates.length }));
     }),
   );
 

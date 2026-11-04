@@ -201,6 +201,7 @@ export function feed(state, result) {
  * there on count as unread until they are read again. `retry: false` is for carrying on after a pause, which is not a retry.
  */
 export function restartFrom(state, wordIndex, { retry = true } = {}) {
+  if (state.targets.length === 0) return { ...state, cursor: 0, read: {}, pending: null, halted: null }; // nothing to read from: stay put
   const at = state.targets.findIndex((t) => t.index >= wordIndex);
   const cursor = at >= 0 ? at : Math.max(0, state.targets.length - 1);
   const read = Object.fromEntries(Object.entries(state.read).filter(([index]) => Number(index) < state.targets[cursor].index));

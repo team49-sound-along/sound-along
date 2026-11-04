@@ -1,6 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MAX_TRIES, initial, step, judge, listensNow, finished } from "./sayItRetry.js";
+import { MAX_TRIES, initial, step, judge, listensNow, finished, shouldArmMissTimer } from "./sayItRetry.js";
+
+test("the missed-try timer starts only once the recognizer is actually listening, and only once", () => {
+  for (const status of ["starting", "restarting", "idle", "", undefined]) assert.equal(shouldArmMissTimer(status, false), false, String(status));
+  assert.equal(shouldArmMissTimer("listening", false), true);
+  assert.equal(shouldArmMissTimer("listening", true), false);
+});
+
+test("a failed start never counts as a missed try", () => {
+  let state = step(initial(), { type: "start", canSlow: false });
+  state = step(state, { type: "failed", message: "blocked" });
+  assert.equal(state.phase, "unavailable");
+  assert.equal(state.tries, 0);
+  assert.deepEqual(step(state, { type: "missed" }), state);
+});
 
 const run = (events, from = initial()) => events.reduce((s, e) => step(s, e), from);
 
