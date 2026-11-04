@@ -194,3 +194,8 @@ def parse_polly_engine(value: object) -> str | None:
     if not isinstance(value, str) or value.lower() not in POLLY_ENGINES:
         raise ValueError(f'Invalid CDK context "pollyEngine": {value!r}. Use one of {", ".join(POLLY_ENGINES)}.')
     return value.lower()
+
+
+# CDK context keys the CI/CD pipeline passes on to its own `cdk deploy` (ttsEngine, cmsHost and alertEmail are passed separately). A key read in
+# app.py but missing here would silently fall back to its default whenever the pipeline deploys.
+PIPELINE_CONTEXT_KEYS = ("pollyVoice", "pollyVoiceEs", "pollyEngine", "translateModel", "siteDomain", "questionsModel", "questionsEnabled", "readerInsights")

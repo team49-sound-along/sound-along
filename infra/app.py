@@ -12,6 +12,7 @@ import aws_cdk as cdk
 
 from sound_along.certificate_stack import SiteCertificateStack
 from sound_along.config import (
+    PIPELINE_CONTEXT_KEYS,
     DEFAULT_POLLY_VOICE,
     DEFAULT_POLLY_VOICE_ES,
     REGION,
@@ -99,7 +100,7 @@ def main() -> None:
             tts_engine=tts.engine,
             cms_host=cms_host,
             alert_email=alert_email,
-            extra_context=tuple((key, str(app.node.try_get_context(key))) for key in ("pollyVoice", "pollyVoiceEs", "pollyEngine", "translateModel", "siteDomain") if app.node.try_get_context(key) is not None),
+            extra_context=tuple((key, str(app.node.try_get_context(key))) for key in PIPELINE_CONTEXT_KEYS if app.node.try_get_context(key) is not None),
         ),
         env=env,
     )

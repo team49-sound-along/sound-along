@@ -18,7 +18,7 @@ HERE = Path(__file__).resolve().parent
 ICONS = HERE / "icons"
 SVG_OUT = HERE / "sound-along-architecture.svg"
 PNG_OUT = HERE / "sound-along-architecture.png"
-WIDTH, HEIGHT = 1820, 1565
+WIDTH, HEIGHT = 1820, 1590
 DY = 150                      # everything inside the Region (and below) is drawn this far down, under the global / us-east-1 strip
 DATA_Y, DATA_H = 905, 190     # Data and Operations row (coordinates before the DY shift)
 CICD_Y = DATA_Y + DATA_H + 18
@@ -495,14 +495,29 @@ def render_png() -> None:
     # On macOS, headless Chrome/Edge lays the page out in a viewport shorter than the window and leaves the bottom
     # of the image white. Render a taller window there, then crop back to the diagram height with sips.
     pad = 120 if sys.platform == "darwin" and shutil.which("sips") else 0
-    subprocess.run(
-        [browser, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=2",
-         f"--window-size={WIDTH},{HEIGHT + pad}", f"--screenshot={PNG_OUT}", SVG_OUT.as_uri()],
-        check=True, timeout=120, capture_output=True,
-    )
+    target = SVG_OUT
+    wrapper = None
     if pad:
-        subprocess.run(["sips", "--cropToHeightWidth", str(HEIGHT * 2), str(WIDTH * 2), "--cropOffset", "0", "0", str(PNG_OUT)],
-                       check=True, timeout=60, capture_output=True)
+        # sips crops from the CENTRE, so the picture is placed pad/2 CSS pixels down: the centre crop then removes the empty strips only.
+        wrapper = SVG_OUT.with_name("_render.html")
+        wrapper.write_text(
+            f'<!doctype html><meta charset="utf-8"><body style="margin:0;padding-top:{pad // 2}px;background:#fff">'
+            f'<img src="{SVG_OUT.name}" width="{WIDTH}" height="{HEIGHT}" style="display:block"></body>',
+            encoding="utf-8",
+        )
+        target = wrapper
+    try:
+        subprocess.run(
+            [browser, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=2",
+             f"--window-size={WIDTH},{HEIGHT + pad}", f"--screenshot={PNG_OUT}", target.as_uri()],
+            check=True, timeout=120, capture_output=True,
+        )
+        if pad:
+            subprocess.run(["sips", "--cropToHeightWidth", str(HEIGHT * 2), str(WIDTH * 2), str(PNG_OUT)],
+                           check=True, timeout=60, capture_output=True)
+    finally:
+        if wrapper is not None:
+            wrapper.unlink(missing_ok=True)
     print(f"wrote {PNG_OUT}")
 
 
