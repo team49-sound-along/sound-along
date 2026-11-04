@@ -20,13 +20,14 @@ const items = computed(() =>
         { name: "library", href: "#/library", label: "Library" },
         { name: "assignments", href: "#/assignments", label: "Assignments" },
         { name: "generate", href: "#/generate", label: "Create" },
+        { name: "questions", href: "#/questions", label: "Questions" },
         { name: "insights", href: "#/insights", label: "Insights" },
         { name: "voice", href: "#/settings", label: "Voice" },
       ],
 );
 const activeName = computed(() => {
   const n = route.value.name;
-  if (n === "read") return "library";
+  if (n === "read" || n === "quiz") return "library";
   if (n === "practice") return role.value === "student" ? "words" : "library";
   if (VOICE_SECTION.includes(n) && role.value === "teacher") return "voice";
   return n;

@@ -4,6 +4,7 @@ import Icon from "./Icon.vue";
 import AudioBar from "./AudioBar.vue";
 import WordHelp from "./WordHelp.vue";
 import PartNav from "./PartNav.vue";
+import QuizButton from "./QuizButton.vue";
 import ReadingSettings from "./ReadingSettings.vue";
 import { api, audioUrl, fetchCards } from "../api.js";
 import { findWordCard, placeAt, wordKey } from "../cards.js";
@@ -308,6 +309,7 @@ function onKey(event) {
           <button type="button" class="btn" :lang="langSwitch.lang" :aria-pressed="false" @click="switchLanguage">{{ LANGUAGE_NAMES[langSwitch.lang] || langSwitch.lang }}</button>
         </div>
         <a class="btn" :href="`#/practice/${encodeURIComponent(practiceId)}`">Practice words</a>
+        <QuizButton :passage-id="passageId" :timing="timing" />
         <button ref="settingsButton" type="button" class="btn" :aria-expanded="showSettings" :aria-controls="showSettings ? 'reading-settings' : undefined" @click="showSettings = !showSettings">
           <Icon name="settings" /> Reading settings
         </button>
