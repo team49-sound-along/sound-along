@@ -170,9 +170,13 @@ function tick() {
 }
 
 const BLOCKED = "Your browser paused the audio. Press Play to start.";
+const FAILED = "The audio could not be loaded. You can keep reading the text. Check your connection, then press Play to try again.";
 function startAudio(el) {
   playNote.value = "";
-  el.play().catch(() => (playNote.value = BLOCKED));
+  el.play().catch((e) => (playNote.value = e?.name === "NotAllowedError" ? BLOCKED : FAILED));
+}
+function onAudioError() {
+  playNote.value = FAILED;
 }
 
 function onPlay() {
@@ -314,7 +318,7 @@ function onKey(event) {
     <p v-if="timing.machineTranslated" class="small muted" role="note">Machine translation, not reviewed by a person.</p>
     <ReadingSettings v-if="showSettings" :prefs="prefs" @change="prefs = $event" @close="closeSettings" />
 
-    <audio v-if="soundAlong" ref="audio" :src="audioUrl(passageId)" preload="auto" @play="onPlay" @pause="onPause" @ended="onEnded" @seeked="tick"></audio>
+    <audio v-if="soundAlong" ref="audio" :src="audioUrl(passageId)" preload="auto" @play="onPlay" @pause="onPause" @ended="onEnded" @seeked="tick" @error="onAudioError"></audio>
     <p v-if="soundAlong && playNote" role="status" class="notice warn">{{ playNote }}</p>
     <div v-if="!soundAlong" class="notice warn" role="note">
       <Icon name="alert" />

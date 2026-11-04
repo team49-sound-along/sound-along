@@ -218,3 +218,12 @@ test("a missing space after a full stop is added between two sentences, but abbr
   assert.equal(stripMarkup("They went home happy.The next day was sunny!Then it rained."), "They went home happy. The next day was sunny! Then it rained.");
   assert.equal(stripMarkup("The U.S.A team met Dr.Smith and Mr.Brown at example.com today."), "The U.S.A team met Dr.Smith and Mr.Brown at example.com today.");
 });
+
+test("hostile text cannot stall the cleaning (many unclosed script tags, one enormous word, many tag-like openings)", () => {
+  const cases = ["<!--".repeat(30000), "<script ".repeat(12000), "a".repeat(100000), "<a ".repeat(30000), ("<style>" + "x").repeat(10000), "x. ".repeat(30000), "ab.".repeat(30000)];
+  for (const text of cases) {
+    const t0 = performance.now();
+    stripMarkup(text);
+    assert.ok(performance.now() - t0 < 500, `took ${Math.round(performance.now() - t0)} ms for ${text.slice(0, 12)}`);
+  }
+});

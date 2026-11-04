@@ -118,11 +118,42 @@ const HTML_TAG = /<\/?[a-z][a-z0-9]*(?:\s[^<>]*)?\/?>/i;
 const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", rsquo: "\u2019", lsquo: "\u2018", rdquo: "\u201D", ldquo: "\u201C", ndash: "\u2013", mdash: "\u2014", hellip: "\u2026" };
 
 /** Pasted web pages: tags are removed (a script or style block with its content), block ends become line breaks, entities are decoded. Plain text is returned unchanged. */
+function dropBlocks(text, name) {
+  // Removes <name ...> ... </name> blocks with indexOf so that many unclosed openings cannot make the scan quadratic; an unclosed block drops the rest.
+  const lower = text.toLowerCase();
+  let out = "";
+  let from = 0;
+  for (;;) {
+    const open = lower.indexOf(`<${name}`, from);
+    if (open === -1 || !/[\s>/]/.test(lower[open + name.length + 1] ?? ">")) {
+      if (open !== -1) { out += text.slice(from, open + 1); from = open + 1; continue; }
+      return out + text.slice(from);
+    }
+    out += text.slice(from, open);
+    const close = lower.indexOf(`</${name}`, open);
+    if (close === -1) return out;
+    const end = lower.indexOf(">", close);
+    if (end === -1) return out;
+    from = end + 1;
+  }
+}
+
+function dropComments(text) {
+  let out = "";
+  let from = 0;
+  for (;;) {
+    const open = text.indexOf("<!--", from);
+    if (open === -1) return out + text.slice(from);
+    out += text.slice(from, open);
+    const close = text.indexOf("-->", open + 4);
+    if (close === -1) return out;
+    from = close + 3;
+  }
+}
+
 export function stripHtml(text) {
   if (!HTML_TAG.test(text)) return text;
-  return text
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "")
+  return dropComments(dropBlocks(dropBlocks(text, "script"), "style"))
     .replace(/<br\s*\/?>|<\/(?:p|div|h[1-6]|li|tr|blockquote|section|article)\s*>/gi, "\n")
     .replace(/<\/?[a-z][a-z0-9]*(?:\s[^<>]*)?\/?>/gi, "")
     .replace(/&(#x?[0-9a-f]{1,6}|[a-z]{2,8});/gi, (whole, name) => {
@@ -139,7 +170,7 @@ export function stripHtml(text) {
 
 export function stripMarkup(text) {
   return stripHtml(text)
-    .replace(/(\p{Ll}{2,}[.!?]["\u201D\u2019')]?)(\p{Lu}\p{Ll})/gu, "$1 $2") // "happy.The next day": a missing space after a full stop
+    .replace(/(?<=\p{Ll}{2}[.!?]["\u201D\u2019')]?)(?=\p{Lu}\p{Ll})/gu, " ") // "happy.The next day": a missing space after a full stop (lookarounds only: linear)
     .replace(/\[(?:illustration|image|figure|footnote|note)\b[^\]\n]{0,200}\]/gi, "") // editorial tags
     .replace(/(?<=[\p{L}\p{N}.,;:!?"\u201D)])\[\d{1,3}\]/gu, "") // footnote markers (after a letter, digit or punctuation, accents included): "cual[1]" would be read aloud as "cual uno"
     .replace(/[ \t]*-{2,3}[ \t]*(?=\S)/g, (m, offset, whole) => (offset === 0 || whole[offset - 1] === "\n" ? "\u2014" : " \u2014 ")) // typed dashes (--Hola, word -- word)
