@@ -43,7 +43,7 @@ def test_with_a_translate_model_the_generator_may_invoke_exactly_that_model() ->
     assert statement["Action"] == "bedrock:InvokeModel" and statement["Resource"] == ARN and statement["Effect"] == "Allow"
 
 
-@pytest.mark.parametrize("value", [None, "bedrock:anthropic.model-v1:0"])
+@pytest.mark.parametrize("value", [None, "bedrock:vendor.model-v1:0"])
 def test_valid_values_parse(value) -> None:
     assert parse_translate_model(value) == value
 
