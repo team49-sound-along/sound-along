@@ -20,5 +20,6 @@ defineProps({ caption: { type: String, required: true }, columns: { type: Array,
 
 <style scoped>
 .ct { font-size: 14px; }
+.table-wrap { position: relative; }
 .ct summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; color: var(--muted); font-weight: 600; }
 </style>

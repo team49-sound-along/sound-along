@@ -105,7 +105,7 @@ const readerClass = computed(() => settings.value?.classes.find((c) => c.id === 
 </template>
 
 <style scoped>
-.stack { display: grid; gap: var(--s2); }
+.stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s2); }
 .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: var(--s2); }
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--s2); }
 .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: var(--s4); }

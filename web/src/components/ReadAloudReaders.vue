@@ -53,7 +53,7 @@ const selected = computed(() => data.value?.selected ?? null);
 </template>
 
 <style scoped>
-.stack { display: grid; gap: var(--s2); border-top: 1px solid var(--border); padding-top: var(--s2); }
+.stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s2); border-top: 1px solid var(--border); padding-top: var(--s2); }
 h4 { font-size: 16px; margin: 0; }
 ul { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 4px; }
 </style>

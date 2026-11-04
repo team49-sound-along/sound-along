@@ -77,7 +77,8 @@ const isBusy = (classId, field) => busy.value === `${classId ?? "all"}:${field}`
 </template>
 
 <style scoped>
-.stack { display: grid; gap: var(--s2); }
+.stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s2); }
 ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
 td { vertical-align: middle; }
+.table-wrap { position: relative; } /* a positioned wrapper also clips the hidden "On/Off" labels, which would otherwise widen the page */
 </style>
