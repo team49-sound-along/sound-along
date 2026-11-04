@@ -31,8 +31,8 @@ const hasData = computed(() => Boolean(props.summary) && props.summary.ratings >
       </div>
 
       <div v-if="comparisons.length">
-        <h4>Which reading was preferred</h4>
-        <div class="table-wrap">
+        <h4 id="br-pref">Which reading was preferred</h4>
+        <div class="table-wrap" tabindex="0" role="region" aria-labelledby="br-pref">
           <table class="data stacked">
             <thead>
               <tr><th scope="col">Comparison</th><th scope="col" class="num">Ratings (n)</th><th scope="col" class="num">Preferred AI voice</th><th scope="col" class="num">Preferred other</th><th scope="col" class="num">No difference</th></tr>
@@ -51,8 +51,8 @@ const hasData = computed(() => Boolean(props.summary) && props.summary.ratings >
       </div>
 
       <div>
-        <h4>Mean rating by narrator (1 robotic to 5 like a person)</h4>
-        <div class="table-wrap">
+        <h4 id="br-mean">Mean rating by narrator (1 robotic to 5 like a person)</h4>
+        <div class="table-wrap" tabindex="0" role="region" aria-labelledby="br-mean">
           <table class="data stacked">
             <thead><tr><th scope="col">Narrator</th><th scope="col" class="num">Mean rating</th></tr></thead>
             <tbody>

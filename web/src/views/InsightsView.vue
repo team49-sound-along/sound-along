@@ -66,7 +66,7 @@ const naturalness = computed(() => {
             <h3 id="nat-h">Predicted narration naturalness</h3>
             <p class="small muted">{{ data.quality.naturalness.method }}</p>
           </div>
-          <div class="table-wrap">
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Naturalness scores table">
             <table class="data">
               <thead><tr><th scope="col">Audio</th><th scope="col" class="num">Predicted MOS</th></tr></thead>
               <tbody>

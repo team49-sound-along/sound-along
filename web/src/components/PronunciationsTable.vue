@@ -24,7 +24,7 @@ function save(p) {
 </script>
 
 <template>
-  <div class="table-wrap">
+  <div class="table-wrap" tabindex="0" role="region" aria-label="Pronunciation fixes">
     <table class="data">
       <caption class="sr-only">Pronunciation fixes</caption>
       <thead>
