@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from aws_cdk import Duration, RemovalPolicy
+from aws_cdk import Aws, Duration, RemovalPolicy
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_ecr_assets as ecr_assets
@@ -15,6 +15,29 @@ from constructs import Construct
 from .config import API_ENV_DEFAULTS
 from .config import REGION
 from .iam_util import api_s3_policies, list_bucket, object_access
+
+
+US_PROFILE_REGIONS = ("us-east-1", "us-east-2", "us-west-2")  # where a "us." cross-region inference profile may route a request
+
+
+def bedrock_invoke_statements(model_value: str) -> list[iam.PolicyStatement]:
+    """InvokeModel permission for exactly one model, least privilege.
+
+    A plain model id (amazon.nova-lite-v1:0) needs only that foundation model in this region. A cross-region profile id ("us.amazon.nova-lite-v1:0") needs the
+    inference profile itself, and the foundation model in each region it may route to, but only when the call comes through THAT profile."""
+    model_id = model_value.removeprefix("bedrock:")
+    if model_id.startswith("us."):
+        profile_arn = f"arn:aws:bedrock:{REGION}:{Aws.ACCOUNT_ID}:inference-profile/{model_id}"
+        base = model_id.removeprefix("us.")
+        return [
+            iam.PolicyStatement(actions=["bedrock:InvokeModel"], resources=[profile_arn]),
+            iam.PolicyStatement(
+                actions=["bedrock:InvokeModel"],
+                resources=[f"arn:aws:bedrock:{region}::foundation-model/{base}" for region in US_PROFILE_REGIONS],
+                conditions={"StringLike": {"bedrock:InferenceProfileArn": profile_arn}},
+            ),
+        ]
+    return [iam.PolicyStatement(actions=["bedrock:InvokeModel"], resources=[f"arn:aws:bedrock:{REGION}::foundation-model/{model_id}"])]
 
 
 def _log_group(scope: Construct, construct_id: str) -> logs.LogGroup:
@@ -67,6 +90,7 @@ class GeneratorFunctionProps:
     bucket: s3.IBucket
     table: dynamodb.ITable
     translate_model: str | None = None  # "bedrock:<modelId>": a context-aware LLM translator in front of Opus-MT; None = no Bedrock permission at all
+    bedrock_min_interval: float = 1.1  # seconds between this function's Bedrock requests (the account allows about one per second in total)
 
 
 def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -> lambda_.DockerImageFunction:
@@ -79,10 +103,10 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
         architecture=lambda_.Architecture.ARM_64,
         memory_size=4096,
         timeout=Duration.seconds(900),  # the Lambda maximum: translating and narrating the longest text can take minutes on 2 CPUs
-        reserved_concurrent_executions=2,
+        reserved_concurrent_executions=1 if props.translate_model else 2,  # one caller at a time keeps Bedrock under the rate limit
         log_group=_log_group(scope, "GeneratorLogs"),
         environment={"BUCKET": props.bucket.bucket_name, "TABLE_NAME": props.table.table_name,
-                     **({"TRANSLATE_MODEL": props.translate_model, "TRANSLATE_REGION": REGION} if props.translate_model else {})},
+                     **({"TRANSLATE_MODEL": props.translate_model, "TRANSLATE_REGION": REGION, "TRANSLATE_MIN_INTERVAL": str(props.bedrock_min_interval)} if props.translate_model else {})},
     )
     props.table.grant_read_write_data(fn)
     fn.add_to_role_policy(object_access(props.bucket, ["s3:GetObject"], "raw/*"))
@@ -92,8 +116,8 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
     fn.add_to_role_policy(list_bucket(props.bucket, ["data/*"]))
     fn.add_to_role_policy(object_access(props.bucket, ["s3:PutObject"], "data/*"))
     if props.translate_model:  # one model only, and only when the operator chose it
-        model_id = props.translate_model.removeprefix("bedrock:")
-        fn.add_to_role_policy(iam.PolicyStatement(actions=["bedrock:InvokeModel"], resources=[f"arn:aws:bedrock:{REGION}::foundation-model/{model_id}"]))
+        for statement in bedrock_invoke_statements(props.translate_model):
+            fn.add_to_role_policy(statement)
     return fn
 
 
@@ -103,6 +127,7 @@ class QuestionsFunctionProps:
     bucket: s3.IBucket
     model: str | None = None  # "bedrock:<modelId>"; None means no model, no Bedrock permission, and the function stays off
     enabled: bool = False
+    bedrock_min_interval: float = 1.1  # seconds between this function's Bedrock requests (the account allows about one per second in total)
 
 
 def create_questions_function(scope: Construct, props: QuestionsFunctionProps) -> lambda_.Function:
@@ -112,6 +137,7 @@ def create_questions_function(scope: Construct, props: QuestionsFunctionProps) -
     environment = {"BUCKET": props.bucket.bucket_name, "QUESTIONS_ENABLED": "true" if on else "false", "QUESTIONS_REGION": REGION, "QUESTIONS_COUNT": "4"}
     if props.model:
         environment["QUESTIONS_MODEL"] = props.model
+        environment["QUESTIONS_MIN_INTERVAL"] = str(props.bedrock_min_interval)
     fn = lambda_.Function(
         scope,
         "QuestionsFunction",
@@ -121,7 +147,7 @@ def create_questions_function(scope: Construct, props: QuestionsFunctionProps) -
         code=lambda_.Code.from_asset(str(props.code_dir), exclude=["test_*.py", "conftest.py", "__pycache__", "*.pyc", ".pytest_cache"]),
         memory_size=256,
         timeout=Duration.seconds(120),
-        reserved_concurrent_executions=2,
+        reserved_concurrent_executions=1 if props.model else 2,  # one caller at a time keeps Bedrock under the rate limit
         log_group=_log_group(scope, "QuestionsLogs"),
         environment=environment,
     )
@@ -129,6 +155,6 @@ def create_questions_function(scope: Construct, props: QuestionsFunctionProps) -
     fn.add_to_role_policy(list_bucket(props.bucket, ["data/*"]))
     fn.add_to_role_policy(object_access(props.bucket, ["s3:PutObject"], "raw/questions/*"))
     if props.model:
-        model_id = props.model.removeprefix("bedrock:")
-        fn.add_to_role_policy(iam.PolicyStatement(actions=["bedrock:InvokeModel"], resources=[f"arn:aws:bedrock:{REGION}::foundation-model/{model_id}"]))
+        for statement in bedrock_invoke_statements(props.model):
+            fn.add_to_role_policy(statement)
     return fn

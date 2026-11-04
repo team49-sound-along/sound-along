@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from typing import Any, Callable, Optional
 
 from translate import add_spanish_marks, plain_register
@@ -22,6 +23,9 @@ _PLACEHOLDER = re.compile(r"Xq[a-z]+x")
 _NAMES = {"en": "English", "es": "Spanish"}
 CONTEXT_SENTENCES = 4
 MAX_TOKENS = 4000
+DEFAULT_MIN_INTERVAL = 1.1  # seconds between requests: the account may make fewer than one Bedrock request per second
+THROTTLE_RETRIES = 2  # a throttled request is retried after a pause before the batch falls back to the built-in translator
+_THROTTLE = re.compile(r"throttl|too ?many ?requests|rate exceeded", re.I)
 
 SYSTEM = (
     "You translate reading passages for school children from {source} to {target}. Rules:\n"
@@ -66,23 +70,44 @@ def parse_answer(raw: str, texts: list[str]) -> list[str]:
 class BedrockTranslator:
     """Callable like the Opus-MT model. Keeps the last few translated sentences as context for the next batch of the same passage."""
 
-    def __init__(self, client: Any, model_id: str, source: str, target: str, fallback: Optional[Callable[[list[str]], list[str]]] = None) -> None:
+    def __init__(self, client: Any, model_id: str, source: str, target: str, fallback: Optional[Callable[[list[str]], list[str]]] = None,
+                 min_interval: float = DEFAULT_MIN_INTERVAL, clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], None] = time.sleep) -> None:
         if source not in _NAMES or target not in _NAMES or source == target:
             raise ValueError("Translation is available for en to es or es to en.")
         self._client, self._model_id, self._target, self._fallback = client, model_id, target, fallback
         self._system = SYSTEM.format(source=_NAMES[source], target=_NAMES[target])
+        self._min_interval, self._clock, self._sleep, self._last_call = max(0.0, float(min_interval)), clock, sleep, None
         self._history: list[tuple[str, str]] = []
         self.fallbacks = 0  # batches that fell back (shown in the logs; a high number means the prompt or the model needs attention)
+
+    def _pace(self) -> None:
+        """Never make two requests closer together than min_interval (the hackathon account allows about one Bedrock request per second)."""
+        now = self._clock()
+        if self._last_call is not None and now - self._last_call < self._min_interval:
+            self._sleep(self._min_interval - (now - self._last_call))
+        self._last_call = self._clock()
+
+    def _request(self, texts: list[str]) -> dict[str, Any]:
+        for attempt in range(THROTTLE_RETRIES + 1):
+            self._pace()
+            try:
+                return self._client.converse(
+                    modelId=self._model_id, system=[{"text": self._system}],
+                    messages=[{"role": "user", "content": [{"text": _prompt(texts, self._history)}]}],
+                    inferenceConfig={"maxTokens": MAX_TOKENS, "temperature": 0},
+                )
+            except Exception as err:  # noqa: BLE001
+                if attempt < THROTTLE_RETRIES and _THROTTLE.search(f"{type(err).__name__} {err}"):
+                    self._sleep(2.0 * (attempt + 1))  # 2 s, then 4 s
+                    continue
+                raise
+        raise RuntimeError("unreachable")
 
     def __call__(self, texts: list[str]) -> list[str]:
         if not texts:
             return []
         try:
-            response = self._client.converse(
-                modelId=self._model_id, system=[{"text": self._system}],
-                messages=[{"role": "user", "content": [{"text": _prompt(texts, self._history)}]}],
-                inferenceConfig={"maxTokens": MAX_TOKENS, "temperature": 0},
-            )
+            response = self._request(texts)
             out = parse_answer(_text_of(response), texts)
         except Exception as err:  # noqa: BLE001 (throttling, access denied, bad JSON, a lost placeholder: all fall back)
             self.fallbacks += 1
@@ -93,6 +118,15 @@ class BedrockTranslator:
         out = [plain_register(t) for t in out] if self._target == "en" else [add_spanish_marks(t) for t in out]
         self._history = (self._history + list(zip(texts, out)))[-CONTEXT_SENTENCES:]
         return out
+
+
+def _interval(value: Optional[str]) -> float:
+    """TRANSLATE_MIN_INTERVAL in seconds; anything unusable means the default."""
+    try:
+        v = float(value) if value not in (None, "") else DEFAULT_MIN_INTERVAL
+        return v if 0 <= v <= 60 else DEFAULT_MIN_INTERVAL
+    except ValueError:
+        return DEFAULT_MIN_INTERVAL
 
 
 def from_environment(source: str, target: str, fallback: Callable[[list[str]], list[str]], env: Optional[dict[str, str]] = None,
@@ -110,7 +144,7 @@ def from_environment(source: str, target: str, fallback: Callable[[list[str]], l
         client_factory = lambda region: boto3.client("bedrock-runtime", region_name=region)  # noqa: E731
     try:
         client = client_factory(env.get("TRANSLATE_REGION") or env.get("AWS_REGION") or "us-west-2")
-        return BedrockTranslator(client, value.removeprefix("bedrock:"), source, target, fallback)
+        return BedrockTranslator(client, value.removeprefix("bedrock:"), source, target, fallback, min_interval=_interval(env.get("TRANSLATE_MIN_INTERVAL")))
     except Exception as err:  # noqa: BLE001 (no SDK, no region): keep the built-in translator
         LOG.warning("Bedrock translator not available, using the built-in translator: %s", err)
         return fallback

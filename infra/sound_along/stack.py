@@ -73,11 +73,15 @@ class SoundAlongStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
+        # The account may make about one Bedrock request per second in total. Each Bedrock caller has one slot and paces itself; when both callers are on,
+        # each waits 2.2 s between requests, so together they stay under 0.9 requests per second.
+        both_on = bool(props.translate_model) and bool(props.questions_model) and props.questions_enabled
+        interval = 2.2 if both_on else 1.1
         generator = create_generator_function(
-            self, GeneratorFunctionProps(generator_dir=sources.generator_dir, bucket=bucket, table=table, translate_model=props.translate_model)
+            self, GeneratorFunctionProps(generator_dir=sources.generator_dir, bucket=bucket, table=table, translate_model=props.translate_model, bedrock_min_interval=interval)
         )
         questions = create_questions_function(
-            self, QuestionsFunctionProps(code_dir=sources.questions_dir, bucket=bucket, model=props.questions_model, enabled=props.questions_enabled)
+            self, QuestionsFunctionProps(code_dir=sources.questions_dir, bucket=bucket, model=props.questions_model, enabled=props.questions_enabled, bedrock_min_interval=interval)
         )
         state_machine = create_state_machine(self, generator, questions, table)
 

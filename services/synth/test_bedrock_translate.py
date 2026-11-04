@@ -23,9 +23,24 @@ def fallback(texts):
     return ["FALLBACK " + t for t in texts]
 
 
-def make(replies, source="es", target="en"):
+class Clock:
+    def __init__(self):
+        self.t, self.sleeps = 100.0, []
+
+    def now(self):
+        return self.t
+
+    def sleep(self, s):
+        self.sleeps.append(round(s, 3))
+        self.t += s
+
+
+def make(replies, source="es", target="en", **kw):
     client = FakeClient(replies)
-    return client, bt.BedrockTranslator(client, "example.model-v1:0", source, target, fallback)
+    clock = Clock()
+    model = bt.BedrockTranslator(client, "example.model-v1:0", source, target, fallback, clock=clock.now, sleep=clock.sleep, **kw)
+    model.clock = clock
+    return client, model
 
 
 def test_a_good_answer_is_returned_and_the_request_asks_for_one_string_per_sentence_with_temperature_zero():
@@ -114,3 +129,41 @@ def test_it_works_inside_translate_passage_so_the_sentence_map_is_unchanged():
     _, model = make([json.dumps(["Ana and her brother go to the park.", "Their bus broke down."])])
     out = tr.translate_passage({"title": "", "content": "<p>Ana y su hermano van al parque. Su autobús se rompió.</p>"}, model, names_fn=lambda t: [])
     assert out.sentence_map == [[0], [1]] and "her brother" in out.content_html
+
+
+def test_requests_are_never_closer_together_than_the_minimum_interval():
+    _, model = make([json.dumps(["A."]), json.dumps(["B."]), json.dumps(["C."])], min_interval=1.1)
+    model(["a."]); model(["b."]); model(["c."])
+    assert model.clock.sleeps == [1.1, 1.1], "the first call is immediate, each later one waits out the interval"
+
+
+def test_a_pause_that_already_passed_is_not_waited_twice():
+    _, model = make([json.dumps(["A."]), json.dumps(["B."])], min_interval=1.1)
+    model(["a."])
+    model.clock.t += 5
+    model(["b."])
+    assert model.clock.sleeps == []
+
+
+def test_a_throttled_request_is_retried_after_a_pause_and_then_succeeds():
+    _, model = make([RuntimeError("ThrottlingException: Too many requests"), json.dumps(["Hi."])], min_interval=1.1)
+    assert model(["Hola."]) == ["Hi."]
+    assert 2.0 in model.clock.sleeps and model.fallbacks == 0
+
+
+def test_a_request_that_stays_throttled_falls_back_after_the_retries():
+    errors = [RuntimeError("ThrottlingException")] * (bt.THROTTLE_RETRIES + 1)
+    client, model = make(errors, min_interval=0)
+    assert model(["Hola."]) == ["FALLBACK Hola."] and len(client.calls) == bt.THROTTLE_RETRIES + 1
+
+
+def test_other_errors_are_not_retried():
+    client, model = make([RuntimeError("AccessDeniedException")], min_interval=0)
+    assert model(["Hola."]) == ["FALLBACK Hola."] and len(client.calls) == 1
+
+
+def test_the_interval_comes_from_the_environment_and_a_bad_value_means_the_default():
+    for value, expected in (("2.2", 2.2), ("0", 0.0), ("", bt.DEFAULT_MIN_INTERVAL), ("abc", bt.DEFAULT_MIN_INTERVAL), ("-1", bt.DEFAULT_MIN_INTERVAL), ("999", bt.DEFAULT_MIN_INTERVAL)):
+        assert bt._interval(value) == expected
+    model = bt.from_environment("es", "en", fallback, env={"TRANSLATE_MODEL": "bedrock:m", "TRANSLATE_MIN_INTERVAL": "2.2"}, client_factory=lambda region: FakeClient([]))
+    assert model._min_interval == 2.2
