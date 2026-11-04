@@ -61,6 +61,9 @@ def test_the_generator_can_read_data_so_translation_linking_and_the_unchanged_ch
     assert any("/raw/*" in json.dumps(s["Resource"]) for s in reads), "and still read its job inputs under raw/*"
     lists = [s for s in grants if "s3:ListBucket" in _actions(s)]
     assert lists and "data/*" in json.dumps(lists[0]["Condition"]["StringLike"]["s3:prefix"])
-    assert not [a for s in grants for a in _actions(s) if a in ("s3:*", "s3:Get*", "s3:Put*", "s3:List*", "s3:DeleteObject")]
+    assert not [a for s in grants for a in _actions(s) if a in ("s3:*", "s3:Get*", "s3:Put*", "s3:List*")]
     puts = [s for s in grants if "s3:PutObject" in _actions(s)]
-    assert puts and all("raw" not in json.dumps(s["Resource"]) for s in puts), "writes stay on data/* only"
+    assert puts and all(("/data/*" in json.dumps(s["Resource"]) or "/raw/work/*" in json.dumps(s["Resource"])) and "/raw/*" not in json.dumps(s["Resource"]) for s in puts), "writes stay on data/* and the private work folder only"
+    deletes = [s for s in grants if "s3:DeleteObject" in _actions(s)]
+    assert deletes and all("/raw/work/*" in json.dumps(s["Resource"]) and "/data/" not in json.dumps(s["Resource"]) for s in deletes), "it can only delete from the work folder it cleans up"
+    assert "raw/work/*" in json.dumps(lists[0]["Condition"]["StringLike"]["s3:prefix"]), "and list that folder to clean it"

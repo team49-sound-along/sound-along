@@ -87,7 +87,81 @@ def create_state_machine(scope: Construct, generator: lambda_.IFunction, questio
     # One execution per submitted document. The input is {"parts": [{jobId, passageId, title, rawKey, humanPassageId}, ...]} (one entry for an ordinary
     # passage). The parts run ONE AT A TIME: the generator has only 2 reserved slots and a part is 5 to 10 minutes of work, so queueing on Lambda throttles
     # would burn the execution's time. Only keys travel between states (the 256 KB state limit); the text is in S3.
-    definition = sfn.Map(scope, "EachPart", items_path="$.parts", max_concurrency=1, result_path=sfn.JsonPath.DISCARD).item_processor(one_part)
+    single = sfn.Map(scope, "EachPart", items_path="$.parts", max_concurrency=1, result_path=sfn.JsonPath.DISCARD).item_processor(one_part)
+
+    # A long document is ONE passage for the person: its chunks are narrated and translated one after another in a private work folder, the progress
+    # is counted on the person's job, then ONE invocation joins them into a single passage per language (generator `stitch` mode) and questions are
+    # drafted once, for the whole passage. Input: {"document": {jobId, passageId, title, rawKey, chunkIds, chunks: [{jobId, passageId, rawKey, title, workFor}]}}.
+    jp = sfn.JsonPath
+    chunk_fields = {"jobId": jp.string_at("$.jobId"), "passageId": jp.string_at("$.passageId"), "rawKey": jp.string_at("$.rawKey"),
+                    "title": jp.string_at("$.title"), "workFor": jp.string_at("$.workFor")}
+    chunk_progress: sfn.IChainable
+    if table is not None:
+        attr = tasks.DynamoAttributeValue
+        chunk_progress = tasks.DynamoUpdateItem(
+            scope, "ChunkDone", table=table,
+            key={"pk": attr.from_string("JOB"), "sk": attr.from_string(jp.string_at("$.jobId"))},
+            condition_expression="attribute_exists(pk)",
+            update_expression="SET #s = :running, #p = :step ADD chunksDone :one",
+            expression_attribute_names={"#s": "status", "#p": "step"},
+            expression_attribute_values={":running": attr.from_string("running"), ":step": attr.from_string("synthesize"), ":one": attr.from_number(1)},
+            result_path=sfn.JsonPath.DISCARD,
+        )
+        chunk_progress.add_catch(sfn.Pass(scope, "ChunkProgressUnrecorded"), errors=["States.ALL"], result_path="$.recordError")  # type: ignore[attr-defined]
+    else:
+        chunk_progress = sfn.Pass(scope, "ChunkDone")
+    chunk_generate = tasks.LambdaInvoke(scope, "InvokeChunk", lambda_function=generator, payload=sfn.TaskInput.from_object(chunk_fields),
+                                        result_path=sfn.JsonPath.DISCARD, retry_on_service_exceptions=False)
+    chunk_generate.add_retry(errors=list(LAMBDA_RETRY_ERRORS), max_attempts=1, interval=Duration.seconds(5))
+    chunk_translate = tasks.LambdaInvoke(scope, "InvokeChunkTranslation", lambda_function=generator, payload=sfn.TaskInput.from_object({"mode": "translate", **chunk_fields}),
+                                         result_path=sfn.JsonPath.DISCARD, retry_on_service_exceptions=False)
+    chunk_translate.add_retry(errors=["Lambda.TooManyRequestsException"], max_attempts=2, interval=Duration.seconds(30))
+    # A chunk that crashes or whose translation fails must not stop the next one; the join checks that everything it needs exists and fails the job if not.
+    chunk_skipped, translation_skipped = sfn.Pass(scope, "ChunkSkipped"), sfn.Pass(scope, "ChunkTranslationSkipped")
+    chunk_skipped.next(chunk_progress)  # type: ignore[arg-type]
+    translation_skipped.next(chunk_progress)  # type: ignore[arg-type]
+    chunk_generate.add_catch(chunk_skipped, errors=["States.ALL"], result_path="$.chunkError")
+    chunk_translate.add_catch(translation_skipped, errors=["States.ALL"], result_path="$.translationError")
+    chunk_generate.next(chunk_translate)
+    chunk_translate.next(chunk_progress)  # type: ignore[arg-type]
+    each_chunk = sfn.Map(scope, "EachChunk", items_path="$.document.chunks", max_concurrency=1, result_path=sfn.JsonPath.DISCARD).item_processor(chunk_generate)
+
+    stitch = tasks.LambdaInvoke(
+        scope, "InvokeStitch", lambda_function=generator,
+        payload=sfn.TaskInput.from_object({"mode": "stitch", "jobId": jp.string_at("$.document.jobId"), "passageId": jp.string_at("$.document.passageId"),
+                                           "rawKey": jp.string_at("$.document.rawKey"), "title": jp.string_at("$.document.title"), "chunkIds": jp.list_at("$.document.chunkIds")}),
+        result_path="$.stitched", retry_on_service_exceptions=False,
+    )
+    stitch.add_retry(errors=list(LAMBDA_RETRY_ERRORS), max_attempts=1, interval=Duration.seconds(5))
+    document_failed: sfn.IChainable
+    if table is not None:
+        document_failed = tasks.DynamoUpdateItem(
+            scope, "DocumentFailed", table=table,
+            key={"pk": attr.from_string("JOB"), "sk": attr.from_string(jp.string_at("$.document.jobId"))},
+            condition_expression="attribute_exists(pk)",
+            update_expression="SET #s = :failed, #e = :msg, finishedAt = :now",
+            expression_attribute_names={"#s": "status", "#e": "error"},
+            expression_attribute_values={":failed": attr.from_string("failed"),
+                                         ":msg": attr.from_string("We could not finish creating the audio for this text. Please try again in a moment."),
+                                         ":now": attr.from_string(jp.string_at("$$.State.EnteredTime"))},
+            result_path=sfn.JsonPath.DISCARD,
+        )
+        document_failed.add_catch(sfn.Pass(scope, "DocumentFailedUnrecorded"), errors=["States.ALL"], result_path="$.recordError")  # type: ignore[attr-defined]
+    else:
+        document_failed = sfn.Pass(scope, "DocumentFailed")
+    stitch.add_catch(document_failed, errors=["States.ALL"], result_path="$.stitchError")
+    after_stitch: sfn.IChainable = sfn.Succeed(scope, "DocumentDone")
+    if questions is not None:
+        draft_document = tasks.LambdaInvoke(scope, "InvokeDocumentQuestions", lambda_function=questions,
+                                            payload=sfn.TaskInput.from_object({"passageId": jp.string_at("$.document.passageId")}),
+                                            result_path="$.questions", retry_on_service_exceptions=False)
+        draft_document.add_catch(sfn.Pass(scope, "DocumentQuestionsSkipped"), errors=["States.ALL"], result_path="$.questionsError")
+        after_stitch = (sfn.Choice(scope, "DocumentIsEnglish")
+                        .when(sfn.Condition.and_(sfn.Condition.string_equals("$.stitched.Payload.status", "done"), sfn.Condition.string_equals("$.stitched.Payload.language", "en")), draft_document)
+                        .otherwise(sfn.Succeed(scope, "DocumentNoQuestions")))
+    each_chunk.next(stitch)
+    stitch.next(after_stitch)
+    definition = sfn.Choice(scope, "IsDocument").when(sfn.Condition.is_present("$.document"), each_chunk).otherwise(single)
 
     return sfn.StateMachine(
         scope,

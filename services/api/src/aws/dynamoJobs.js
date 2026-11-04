@@ -14,7 +14,7 @@ export function createDynamoJobs({ client, tableName, now = Date.now }) {
   const view = (item) => stripKeys(item, ["ttl"]);
 
   return {
-    async create(title, { humanPassageId = null } = {}) {
+    async create(title, { humanPassageId = null, chunks = 0 } = {}) {
       const job = {
         id: randomUUID(),
         title,
@@ -22,6 +22,8 @@ export function createDynamoJobs({ client, tableName, now = Date.now }) {
         step: "parse",
         passageId: null,
         humanPassageId,
+        chunksDone: 0,
+        chunksTotal: chunks, // a long document is narrated in this many internal chunks (0 = one run); the page shows progress and time left from these
         error: null,
         metrics: null,
         startedAt: new Date(now()).toISOString(),

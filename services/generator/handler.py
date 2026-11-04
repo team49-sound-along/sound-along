@@ -4,6 +4,7 @@ from __future__ import annotations
 import _bootstrap  # noqa: F401  (must come before synth imports)
 
 import gzip
+import io
 import json
 import re
 import logging
@@ -20,13 +21,15 @@ from dynamo import JobTracker, list_passage_items, now_iso, put_passage_summary
 from engine import SAMPLE_RATE
 from engines import create_engine
 from fingerprint import fingerprint
-from flow import Variant, run_flow
+from flow import Variant, run_flow, soundalong_block
 from mp3 import encode_mp3, resolve_kbps
 from tokenizer import tokenize_html
 from summary import index_entry, passage_summary, ready_entries
 from translate import translate_passage, word_count
 from translate_cards import translate_cards
-from translate_flow import build_translated_passage, link, other_language, should_translate
+from stitch import Chunk, link_translation, retarget_ids, stitch
+from translate_flow import build_translated_passage, link, other_language, should_translate, translated_id
+from workspace import NullTable, PrefixedS3, work_prefix
 
 LOG = logging.getLogger()
 LOG.setLevel(logging.INFO)
@@ -55,6 +58,7 @@ class Dependencies:
     names_for: Callable[[str], Callable[[str], list[str]]] = lambda language: (lambda text: [])  # place names to protect, by source language
     localize_fn: Optional[Callable[[list[str], str, str], dict[str, str]]] = None
     pronoun_scorer: Optional[Callable[[str, str], dict[str, float]]] = None  # Spanish su/sus: his, her or their from context (possessives.py)
+    keep_pcm: bool = False  # a chunk of a long document keeps its exact samples next to the audio, so the chunks can be joined without re-encoding (stitch.py)
 
 
 def _read_raw(clients: Clients, raw_key: str) -> dict[str, Any]:
@@ -125,9 +129,17 @@ def _publish(deps: Dependencies, variant: Variant, kbps: int, source: str, workd
     timing_path.write_text(json.dumps(variant.timing, ensure_ascii=False), encoding="utf-8")
     _put(deps.clients, f"data/{variant.id}.mp3", mp3_path.read_bytes(), "audio/mpeg")
     _put(deps.clients, f"data/{variant.id}.timing.json", timing_path.read_bytes(), "application/json", gzipped=True)
+    if deps.keep_pcm:
+        _put(deps.clients, f"data/{variant.id}.pcm.npy", _pcm_bytes(variant.audio), "application/octet-stream")
     summary = passage_summary(variant.timing, now_iso(), source)
     put_passage_summary(deps.clients.table, summary)
     return summary
+
+
+def _pcm_bytes(audio: np.ndarray) -> bytes:
+    buffer = io.BytesIO()
+    np.save(buffer, (np.clip(audio, -1.0, 1.0) * 32767).astype(np.int16))
+    return buffer.getvalue()
 
 
 def _held(variant: Variant) -> Variant:
@@ -366,14 +378,115 @@ def _localize(names: list[str], source: str, target: str) -> dict[str, str]:
     return localize_with_wikipedia(names, source, target)
 
 
+def _work_bytes(clients: Clients, document_id: str, name: str) -> Optional[bytes]:
+    try:
+        return clients.s3.get_object(Bucket=clients.bucket, Key=work_prefix(document_id) + name)["Body"].read()
+    except Exception:  # noqa: BLE001  (a missing object)
+        return None
+
+
+def _load_chunk(clients: Clients, document_id: str, passage_id: str) -> Optional[Chunk]:
+    """One chunk's timing, exact samples and cards from the work folder, or None when its run did not finish."""
+    timing, pcm = _work_bytes(clients, document_id, f"{passage_id}.timing.json"), _work_bytes(clients, document_id, f"{passage_id}.pcm.npy")
+    if timing is None or pcm is None:
+        return None
+    doc = json.loads(gzip.decompress(timing) if timing[:2] == b"\x1f\x8b" else timing)
+    doc.pop("held", None)
+    cards = _work_bytes(clients, document_id, f"{passage_id}.cards.json")
+    return Chunk(doc, np.load(io.BytesIO(pcm)).astype(np.float32) / 32768.0, json.loads(cards) if cards else None)
+
+
+def _publish_cards_and_pictures(deps: Dependencies, document_id: str, final_id: str, chunk_ids: list[str], cards: Optional[dict[str, Any]]) -> None:
+    """The joined cards, with every picture copied from the work folder to its public name (`<final id>.word-...`)."""
+    if not cards:
+        return
+    moved = retarget_ids(cards, chunk_ids, final_id)
+    for url in sorted({u for u in re.findall(r"/data/([^\"]+\.(?:png|jpe?g))", json.dumps(moved))}):
+        for old in chunk_ids:
+            source = url.replace(f"{final_id}.", f"{old}.", 1)
+            data = _work_bytes(deps.clients, document_id, source)
+            if data is not None:
+                _put(deps.clients, f"data/{url}", data, "image/png" if url.endswith(".png") else "image/jpeg", cache_control=IMMUTABLE)
+                break
+    _put(deps.clients, f"data/{final_id}.cards.json", json.dumps(moved, ensure_ascii=False).encode("utf-8"), "application/json")
+
+
+def _delete_work(clients: Clients, document_id: str) -> None:
+    """Remove the work folder. Never raises: whatever is left expires with the rest of `raw/` after 7 days."""
+    try:
+        token = None
+        while True:
+            page = clients.s3.list_objects_v2(Bucket=clients.bucket, Prefix=work_prefix(document_id), **({"ContinuationToken": token} if token else {}))
+            keys = [{"Key": o["Key"]} for o in page.get("Contents", [])]
+            if keys:
+                clients.s3.delete_objects(Bucket=clients.bucket, Delete={"Objects": keys})
+            token = page.get("NextContinuationToken")
+            if not token:
+                return
+    except Exception:  # noqa: BLE001
+        LOG.exception("could not clean the work folder of %s (it expires by itself)", document_id)
+
+
+def process_stitch(event: dict[str, Any], deps: Dependencies) -> dict[str, Any]:
+    """The last step of a long document: join its chunks into ONE passage (and ONE translation), publish both together, and finish the job.
+
+    Never raises. If any chunk did not finish, nothing is published and the job fails with the usual friendly message."""
+    job_id, final_id = event.get("jobId", ""), event["passageId"]
+    chunk_ids: list[str] = list(event.get("chunkIds") or [])
+    tracker = JobTracker(deps.clients.table, job_id, event.get("title", ""))
+    try:
+        tracker.step("publish")
+        raw = _read_raw(deps.clients, event["rawKey"])
+        passage = {**raw, "uuid": final_id, "title": raw.get("title") or event.get("title")}
+        language, source = passage.get("language") or "en", passage.get("source") or "generated"
+        kbps = resolve_kbps((passage.get("settings") or {}).get("mp3Kbps"))
+        chunks = [_load_chunk(deps.clients, final_id, cid) for cid in chunk_ids]
+        if not chunks or any(c is None for c in chunks):
+            raise ValueError("a chunk of the document did not finish")
+        en = stitch(chunks, final_id, passage["title"], fingerprint=fingerprint({**passage, "chunks": None}))  # type: ignore[arg-type]
+        lang = other_language(language)
+        target_ids = [translated_id(cid, lang) for cid in chunk_ids]
+        es_chunks = [_load_chunk(deps.clients, final_id, tid) for tid in target_ids] if should_translate(passage) else []
+        translated = bool(es_chunks) and all(c is not None for c in es_chunks)
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            workdir = Path(tmp)
+            tid = translated_id(final_id, lang)
+            if translated:
+                es = stitch(es_chunks, tid, es_chunks[0].timing.get("title") or passage["title"])  # type: ignore[arg-type,union-attr]
+                en_timing, es_timing = link_translation(en, es, chunks, es_chunks, lang, language, final_id, tid)  # type: ignore[arg-type]
+                documents = [(es, {**es_timing, "held": True}, target_ids), (en, {**en_timing, "held": True}, chunk_ids)]  # held: both appear together
+            else:
+                documents = [(en, en.timing, chunk_ids)]
+            for stitched, timing, ids in documents:
+                _publish(deps, Variant(timing["id"], stitched.audio, timing), kbps, source, workdir)
+                _put(deps.clients, f"data/{timing['id']}.soundalong.json", json.dumps(soundalong_block(timing), ensure_ascii=False).encode("utf-8"), "application/json")
+                _publish_cards_and_pictures(deps, final_id, timing["id"], ids, stitched.cards)
+        for pid in ([tid] if translated else []) + [final_id]:
+            _release_held(deps, pid)
+        _write_index(deps.clients)
+        tracker.done(final_id, en.timing["metrics"])
+        _delete_work(deps.clients, final_id)
+        return {"status": "done", "jobId": job_id, "passageId": final_id, "language": language}
+    except Exception:
+        LOG.exception("joining the document %s failed", final_id)
+        _mark_failed(tracker, job_id)
+        return {"status": "failed", "jobId": job_id}
+
+
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     try:
         clients = create_clients()
     except Exception:
         LOG.exception("generator configuration error")
         return {"status": "failed", "jobId": event.get("jobId", "")}
+    if event.get("mode") == "stitch":
+        return process_stitch(event, Dependencies(clients=clients))
+    keep_pcm = False
+    if event.get("workFor"):  # a chunk of a long document: the ordinary code, writing into the work folder only
+        clients = Clients(s3=PrefixedS3(clients.s3, event["workFor"]), table=NullTable(), bucket=clients.bucket)
+        keep_pcm = True
     if event.get("mode") == "translate":
         from possessives import load_scorer
 
-        return process_translation(event, Dependencies(clients=clients, translate_model=_load_translator, names_for=_names_for, localize_fn=_localize, pronoun_scorer=load_scorer()))
-    return process(event, Dependencies(clients=clients, enrich_fn=live_enrichment))
+        return process_translation(event, Dependencies(clients=clients, keep_pcm=keep_pcm, translate_model=_load_translator, names_for=_names_for, localize_fn=_localize, pronoun_scorer=load_scorer()))
+    return process(event, Dependencies(clients=clients, enrich_fn=live_enrichment, keep_pcm=keep_pcm))

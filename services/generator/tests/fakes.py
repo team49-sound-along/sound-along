@@ -23,6 +23,15 @@ class FakeS3:
             raise KeyError(Key)
         return {"Body": io.BytesIO(self.objects[Key])}
 
+    def list_objects_v2(self, Bucket: str, Prefix: str = "", ContinuationToken: str | None = None) -> dict[str, Any]:
+        keys = sorted(k for k in self.objects if k.startswith(Prefix) and (ContinuationToken is None or k > ContinuationToken))
+        page = keys[:2]  # two per page, so the code under test has to follow the continuation token (a key, like S3's, so deleting a page does not skip the next)
+        return {"Contents": [{"Key": k} for k in page], **({"NextContinuationToken": page[-1]} if len(keys) > 2 else {})}
+
+    def delete_objects(self, Bucket: str, Delete: dict[str, Any]) -> None:
+        for item in Delete["Objects"]:
+            self.objects.pop(item["Key"], None)
+
     def put_object(self, Bucket: str, Key: str, Body: bytes, ContentType: str, ContentEncoding: str | None = None, CacheControl: str | None = None) -> None:
         self.objects[Key] = Body
         self.content_types[Key] = ContentType

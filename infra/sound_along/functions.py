@@ -155,8 +155,11 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
     # It also READS what it published: the previous timing (skip unchanged input), reviewed cards (never replace them), and in translate mode the
     # source timing, cards and pictures it must link and translate. ListBucket makes a missing key a clean 404 instead of a 403 the code would swallow.
     fn.add_to_role_policy(object_access(props.bucket, ["s3:GetObject"], "data/*"))
-    fn.add_to_role_policy(list_bucket(props.bucket, ["data/*"]))
+    fn.add_to_role_policy(list_bucket(props.bucket, ["data/*", "raw/work/*"]))
     fn.add_to_role_policy(object_access(props.bucket, ["s3:PutObject"], "data/*"))
+    # The chunks of a long document are narrated in a private work folder (raw/work/<document id>/, never served, and `raw/` expires after 7 days anyway),
+    # then joined into one passage and the folder is deleted.
+    fn.add_to_role_policy(object_access(props.bucket, ["s3:PutObject", "s3:DeleteObject"], "raw/work/*"))
     if props.tts.is_polly:
         fn.add_to_role_policy(polly_synthesize())
     if props.translate_model and props.translate_model.startswith("amazon"):  # Amazon Translate has no resource-level permissions for plain text

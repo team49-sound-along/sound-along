@@ -11,34 +11,11 @@ const FRIENDLY_FAILURE = "We could not start audio generation right now. Please 
 /**
  * Starts generation on AWS: job input to S3 (raw/{passageId}.json), then a Step Functions execution (docs/AWS.md).
  * start(spec) takes the same spec as the local runner; a `passageId` re-runs an existing passage.
+ * A long document (spec.chunks as text, or spec.chunkHtml when regenerating) is still ONE job and ONE passage: its chunks get internal ids and their own inputs
+ * (raw/{chunkId}.json), are narrated in a private work folder, and the state machine joins them into the passage at the end.
  */
 export function createSfnRunner({ jobs, s3, sfn, bucket, stateMachineArn, logger = console }) {
-  /** Creates the job and writes the generator's input to S3. The state machine only ever receives keys (its state is limited to 256 KB). */
-  async function prepare(spec) {
-    const { title } = spec;
-    const passageId = spec.passageId ?? randomUUID();
-    const rawKey = `raw/${passageId}.json`;
-    const recording = spec.recording ?? (spec.recordingId ? { key: recordingKey(spec.recordingId) } : null);
-    const input = buildJobInput({
-      passageId,
-      title,
-      content: spec.content ?? textToHtml(spec.text),
-      source: spec.source ?? "generated",
-      language: spec.language,
-      settings: spec.settings,
-      pronunciations: spec.pronunciations,
-      recording,
-      humanPassageId: spec.humanPassageId,
-      series: spec.series,
-    });
-    const job = await jobs.create(title, { humanPassageId: input.humanPassageId });
-    try {
-      await s3.send(new PutObjectCommand({ Bucket: bucket, Key: rawKey, ContentType: "application/json", Body: JSON.stringify(input) }));
-    } catch (err) {
-      await failJob(job, err);
-    }
-    return { job, passageId, part: { jobId: job.id, passageId, title, rawKey, humanPassageId: input.humanPassageId } };
-  }
+  const put = (key, body) => s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: "application/json", Body: JSON.stringify(body) }));
 
   async function failJob(job, err) {
     logger.error("could not start generation", { jobId: job.id, message: err?.message });
@@ -46,36 +23,38 @@ export function createSfnRunner({ jobs, s3, sfn, bucket, stateMachineArn, logger
     throw new HttpError(503, FRIENDLY_FAILURE);
   }
 
-  /** One Step Functions execution for the whole submission: {parts: [...]} (one entry for an ordinary passage). */
-  async function execute(prepared, name) {
+  async function execute(job, passageId, input, executionInput) {
     try {
-      await sfn.send(new StartExecutionCommand({ stateMachineArn, name, input: JSON.stringify({ parts: prepared.map((p) => p.part) }) }));
+      await sfn.send(new StartExecutionCommand({ stateMachineArn, name: job.id, input: JSON.stringify(executionInput) }));
     } catch (err) {
-      await Promise.all(prepared.map((p) => jobs.update(p.job.id, { status: "failed", error: FRIENDLY_FAILURE, finishedAt: new Date().toISOString() })));
-      logger.error("could not start generation", { message: err?.message });
-      throw new HttpError(503, FRIENDLY_FAILURE);
+      await failJob(job, err);
     }
-    return Promise.all(prepared.map(async (p) => (await jobs.update(p.job.id, { passageId: p.passageId })) ?? { ...p.job, passageId: p.passageId }));
+    return (await jobs.update(job.id, { passageId })) ?? { ...job, passageId };
   }
 
+  /** Creates the job and writes the generator's input to S3. The state machine only ever receives keys (its state is limited to 256 KB). */
   async function start(spec) {
-    const prepared = await prepare(spec);
-    const [job] = await execute([prepared], prepared.job.id);
-    return job;
-  }
-
-  /** A long document: every part's job exists now, and the parts are generated one after another by one execution. */
-  async function startSeries(specs) {
-    const prepared = [];
+    const { title } = spec;
+    const passageId = spec.passageId ?? randomUUID();
+    const rawKey = `raw/${passageId}.json`;
+    const recording = spec.recording ?? (spec.recordingId ? { key: recordingKey(spec.recordingId) } : null);
+    const chunkHtml = spec.chunkHtml ?? spec.chunks?.map((piece) => textToHtml(piece));
+    const common = { source: spec.source ?? "generated", language: spec.language, settings: spec.settings, pronunciations: spec.pronunciations };
+    const input = buildJobInput({ passageId, title, content: spec.content ?? textToHtml(spec.text), ...common, recording, humanPassageId: spec.humanPassageId, chunks: chunkHtml });
+    const job = await jobs.create(title, { humanPassageId: input.humanPassageId, chunks: chunkHtml?.length ?? 0 });
+    const chunkIds = (chunkHtml ?? []).map(() => randomUUID());
     try {
-      for (const spec of specs) prepared.push(await prepare(spec));
+      await put(rawKey, input);
+      for (const [k, id] of chunkIds.entries()) await put(`raw/${id}.json`, buildJobInput({ passageId: id, title, content: chunkHtml[k], ...common }));
     } catch (err) {
-      // Jobs already created for earlier parts would stay "queued" for ever and count as active: fail them all before giving up.
-      await Promise.all(prepared.map((p) => jobs.update(p.job.id, { status: "failed", error: FRIENDLY_FAILURE, finishedAt: new Date().toISOString() })));
-      throw err;
+      await failJob(job, err);
     }
-    return execute(prepared, specs[0].series.id);
+    if (!chunkIds.length) {
+      return execute(job, passageId, input, { parts: [{ jobId: job.id, passageId, title, rawKey, humanPassageId: input.humanPassageId }] });
+    }
+    const chunks = chunkIds.map((id) => ({ jobId: job.id, passageId: id, rawKey: `raw/${id}.json`, title, workFor: passageId }));
+    return execute(job, passageId, input, { document: { jobId: job.id, passageId, title, rawKey, chunkIds, chunks } });
   }
 
-  return { start, startSeries };
+  return { start };
 }

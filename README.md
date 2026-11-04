@@ -42,7 +42,7 @@ Everything is defined in `infra/` (AWS CDK 2, Python, region us-west-2). The sta
 | Amazon S3 | Private bucket for the web app and every generated file (audio, word timing, cards) | on |
 | Amazon CloudFront | One address for the web app, `/data/*` (audio and timing, byte-range playback) and `/api/*` | on |
 | AWS Lambda | The API, the generator (a container image: narration, word timing, translation) and the question-drafting function | on |
-| AWS Step Functions | One run per passage: generate the audio, then make the other-language version; long documents run part by part | on |
+| AWS Step Functions | One run per passage: generate the audio, then make the other-language version. A long text is narrated in internal chunks and joined into one passage | on |
 | Amazon DynamoDB | Jobs, passage summaries, settings, pronunciations, assignments, activity and listening ratings | on |
 | Amazon EC2 | The content-management API on a small VM (`-c cmsHost=lambda` runs it on Lambda instead) | on |
 | Amazon ECR, IAM, CloudWatch Logs | The generator image, least-privilege roles, logs | on |

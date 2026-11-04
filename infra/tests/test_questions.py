@@ -177,7 +177,8 @@ def test_the_parts_of_a_document_run_one_at_a_time_from_a_list_of_keys_and_a_cra
     top = definition(synth())["States"]
     each = top["EachPart"]
     assert each["Type"] == "Map" and each["ItemsPath"] == "$.parts" and each["MaxConcurrency"] == 1 and each["ResultPath"] is None
-    assert top[definition(synth())["StartAt"]]["Type"] == "Map" and each.get("End") is True
+    start = top[definition(synth())["StartAt"]]
+    assert start["Type"] == "Choice" and start["Default"] == "EachPart" and each.get("End") is True  # an ordinary passage; a long document takes the other branch
     inner = (each.get("ItemProcessor") or each.get("Iterator"))["States"]
     catch = inner["InvokeGenerator"]["Catch"][0]
     assert catch["ErrorEquals"] == ["States.ALL"] and inner[catch["Next"]]["Type"] == "Task"  # records the failure, then the next part runs
@@ -192,3 +193,23 @@ def test_a_crashed_part_has_its_job_marked_failed_so_it_never_stays_running_or_b
     params = json.dumps(step["Parameters"])
     assert '"failed"' in params and "$.jobId" in params and "attribute_exists(pk)" in params
     assert inner[step["Catch"][0]["Next"]]["Type"] == "Pass", "recording the failure is best effort"
+
+
+def test_a_long_document_is_narrated_chunk_by_chunk_then_joined_into_one_passage_and_questions_are_drafted_once() -> None:
+    top = definition(synth(questions_model="bedrock:amazon.nova-lite-v1:0", questions_enabled=True))["States"]
+    start = top["IsDocument"]
+    assert start["Choices"][0]["Variable"] == "$.document" and start["Choices"][0]["IsPresent"] is True and start["Choices"][0]["Next"] == "EachChunk"
+    each = top["EachChunk"]
+    assert each["Type"] == "Map" and each["ItemsPath"] == "$.document.chunks" and each["MaxConcurrency"] == 1 and each["Next"] == "InvokeStitch"
+    inner = (each.get("ItemProcessor") or each.get("Iterator"))["States"]
+    assert inner["InvokeChunk"]["Next"] == "InvokeChunkTranslation" and inner["InvokeChunkTranslation"]["Next"] == "ChunkDone" and inner["ChunkDone"].get("End") is True
+    assert inner["InvokeChunk"]["Catch"][0]["Next"] == "ChunkSkipped" and inner["ChunkSkipped"]["Next"] == "ChunkDone", "a crashed chunk does not stop the next one"
+    params = json.dumps(inner["ChunkDone"]["Parameters"])
+    assert "ADD chunksDone" in params and "attribute_exists(pk)" in params and "$.jobId" in params, "progress is counted on the person's own job"
+    assert "workFor" in json.dumps(inner["InvokeChunk"]["Parameters"]) and '"translate"' in json.dumps(inner["InvokeChunkTranslation"]["Parameters"])
+    stitch = top["InvokeStitch"]
+    assert '"stitch"' in json.dumps(stitch["Parameters"]) and "chunkIds" in json.dumps(stitch["Parameters"]) and stitch["Catch"][0]["Next"] == "DocumentFailed"
+    assert stitch["Next"] == "DocumentIsEnglish" and top["DocumentIsEnglish"]["Choices"][0]["Next"] == "InvokeDocumentQuestions"
+    assert '"failed"' in json.dumps(top["DocumentFailed"]["Parameters"]) and "$.document.jobId" in json.dumps(top["DocumentFailed"]["Parameters"])
+    questions_calls = [n for n in top if n.startswith("InvokeDocumentQuestions")] + [n for n in inner if "Questions" in n]
+    assert questions_calls == ["InvokeDocumentQuestions"], "questions run once, for the whole passage, never per chunk"
