@@ -349,7 +349,7 @@ function onKey(event) {
                   :tabindex="soundAlong && w.i === focusIndex ? 0 : -1"
                   :role="soundAlong ? 'button' : undefined"
                   @click="playFrom(w.i)"
-                >{{ w.text }}</span><span v-if="k < line.length - 1" class="sp" :class="{ band: isBand(w) && line[k + 1].sentence === w.sentence }">{{ " " }}</span>
+                >{{ w.text }}</span><span v-if="k < line.length - 1 && !line[k + 1].join" class="sp" :class="{ band: isBand(w) && line[k + 1].sentence === w.sentence }">{{ " " }}</span>
               </template>
             </span>
           </p>

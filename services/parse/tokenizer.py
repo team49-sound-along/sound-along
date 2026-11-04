@@ -38,9 +38,12 @@ class Token:
     sentence: int
     paragraph: int
     vocab_sense_id: Optional[str] = None
+    joined: bool = False  # no whitespace before this word: it continues the word before it ("good—" + "and"), so the page shows no space between them
 
     def to_dict(self) -> dict:
         data = {"i": self.i, "text": self.text, "sentence": self.sentence, "paragraph": self.paragraph}
+        if self.joined:
+            data["join"] = True
         if self.vocab_sense_id is not None:
             data["vocabId"] = self.vocab_sense_id
         return data
@@ -143,7 +146,7 @@ def tokenize_html(content_html: str) -> list[Token]:
             word = text[start:end]
             following = text[spans[n + 1][0]:spans[n + 1][1]] if n + 1 < len(spans) else None
             vocab = next((v for v in vocab_by_char[start:end] if v), None)
-            tokens.append(Token(len(tokens), word, sentence, p_index, vocab))
+            tokens.append(Token(len(tokens), word, sentence, p_index, vocab, joined=n > 0 and spans[n - 1][1] == start))
             paragraph_has_tokens = True
             if _ends_sentence(word, following):
                 sentence += 1

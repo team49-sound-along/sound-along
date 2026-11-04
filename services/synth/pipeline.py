@@ -97,6 +97,8 @@ def generate(content_html: str, engine: Engine, on_step: StepCallback = _noop) -
             }
             if token.vocab_sense_id is not None:
                 entry["vocabId"] = token.vocab_sense_id
+            if token.joined:
+                entry["join"] = True
             words.append(entry)
         parts.append(sentence_audio)
         clock += len(sentence_audio) / SAMPLE_RATE

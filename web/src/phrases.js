@@ -19,7 +19,8 @@ export function phraseLines(words) {
       const endsSentence = !next || next.sentence !== word.sentence || HARD_END.test(text);
       const endsPhrase = fromData ? word.phraseEnd === true : SOFT_END.test(text) && current.length >= MIN_WORDS;
       const full = !fromData && current.length >= MAX_WORDS;
-      return endsSentence || endsPhrase || full
+      const gluedToNext = next?.join === true && !endsSentence; // "good—" + "and" are one visual word: never put a line break between them
+      return endsSentence || ((endsPhrase || full) && !gluedToNext)
         ? { lines: [...state.lines, current], current: [] }
         : { lines: state.lines, current };
     },

@@ -105,3 +105,9 @@ test("sentence ends still break even when phraseEnd is missing on that word", ()
   const words = [{ i: 0, text: "Go", sentence: 0, paragraph: 0, phraseEnd: false }, { i: 1, text: "on", sentence: 1, paragraph: 0, phraseEnd: false }];
   assert.deepEqual(lines(words), ["Go", "on"]);
 });
+
+test("a line never breaks between a dash and the word glued to it", () => {
+  const w = (text, extra = {}) => ({ text, sentence: 0, ...extra });
+  const lines = phraseLines([w("It"), w("was"), w("a"), w("good—"), w("and", { join: true }), w("fun."), w("Next", { sentence: 1 })]);
+  assert.ok(lines.every((l) => !l[0].join), "no line starts with a glued word");
+});

@@ -83,3 +83,11 @@ def test_etc_ends_a_sentence_only_before_a_capital():
 
 def test_all_lowercase_text_still_splits_at_full_stops():
     assert _sentence_texts("<p>we went home. we ate dinner. it was good.</p>") == ["we went home.", "we ate dinner.", "it was good."]
+
+
+def test_a_word_split_at_a_dash_remembers_that_no_space_followed_the_dash():
+    tokens = tokenize_html("<p>It was good—and fun. Wait – what? 1990–1991 ok</p>")
+    by_text = {t.text: t for t in tokens}
+    assert by_text["and"].joined is True and by_text["1991"].joined is True
+    assert by_text["good—"].joined is False and by_text["what?"].joined is False
+    assert by_text["and"].to_dict()["join"] is True and "join" not in by_text["good—"].to_dict()
