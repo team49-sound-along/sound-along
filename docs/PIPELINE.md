@@ -10,7 +10,7 @@ every push.
 ## What the pipeline does
 
 ```
-GitHub (rohanreigns007/sound-along, main)
+GitHub (team49-sound-along/sound-along, main)
    |  push  -> CodeStar Connections (GitHub v2)
    v
 CodePipeline
@@ -43,7 +43,7 @@ npx --yes aws-cdk@2 deploy SoundAlongPipeline `
 
 The `-c` flags are baked into the pipeline's buildspec, so they become the arguments the pipeline passes to `cdk deploy`
 on every run. Defaults when omitted: `ttsEngine=kokoro`, `cmsHost=ec2`, no cost budget. Override the source with
-`-c githubOwner=...`, `-c githubRepo=...`, `-c githubBranch=...` (defaults: `rohanreigns007` / `sound-along` / `main`).
+`-c githubOwner=...`, `-c githubRepo=...`, `-c githubBranch=...` (defaults: `team49-sound-along` / `sound-along` / `main`).
 
 ## Authorize the GitHub connection (one time, manual, required)
 
@@ -53,7 +53,7 @@ be scripted. Until you do this, the pipeline's Source stage fails.
 1. Open the AWS console in `us-west-2`: **Developer Tools > Settings > Connections** (or CodePipeline > Settings >
    Connections). The connection is named `sound-along-github`.
 2. Select it, click **Update pending connection**.
-3. Install/authorize the AWS Connector for GitHub app on the `rohanreigns007` account and grant it the `sound-along`
+3. Install/authorize the AWS Connector for GitHub app on the `team49-sound-along` organization and grant it the `sound-along`
    repository.
 4. The connection status flips to **Available**.
 
