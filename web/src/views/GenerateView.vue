@@ -11,11 +11,24 @@ import { TEXT_MAX, TEXT_MIN, TITLE_MAX, generateErrorMessage, validateGenerate }
 import { LANGUAGES, PRONUNCIATION_NOTE, langAttr, languageCopy, withLanguage } from "../language.js";
 import { formatCount } from "../format.js";
 import { guessLanguage } from "../languageGuess.js";
+import { analyzeMix, keepLanguage } from "../languageMix.js";
+import LanguageMixNotice from "../components/LanguageMixNotice.vue";
 
 const title = ref("");
 const text = ref("");
 const language = ref("en");
 const autoLanguageNote = ref("");
+const textBeforeKeep = ref(null);
+const mix = computed(() => analyzeMix(text.value));
+function keepOnly(lang) {
+  textBeforeKeep.value = text.value;
+  text.value = keepLanguage(text.value, lang);
+  language.value = lang;
+}
+function undoKeep() {
+  if (textBeforeKeep.value !== null) text.value = textBeforeKeep.value;
+  textBeforeKeep.value = null;
+}
 // Pasted Spanish text with English selected (or the reverse) would be read by the wrong voice, so the language follows the text when it is clear.
 watch(text, (value) => {
   const guess = guessLanguage(value);
@@ -105,6 +118,7 @@ function reset() {
       </div>
       <div class="field">
         <label for="g-text">{{ copy.textLabel }}</label>
+        <LanguageMixNotice v-if="!running" :mix="mix" :can-undo="textBeforeKeep !== null && !mix.mixed" @keep="keepOnly" @undo="undoKeep" />
         <textarea id="g-text" v-model="text" class="input" :lang="langAttr(language)" :placeholder="copy.textPlaceholder" :aria-invalid="submitted && !!check.errors.text" aria-describedby="g-count g-text-err" :disabled="running"></textarea>
         <div class="count-row">
           <span id="g-text-err" class="error-text">{{ submitted ? check.errors.text : "" }}</span>
