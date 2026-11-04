@@ -34,6 +34,26 @@ Rebuild every sample and every measured number from scratch (about 3 minutes, pl
 
 Tests: `cd services/parse && ../../.venv/bin/python -m pytest` (same for `synth`, `eval`, `generator`, `scripts`), `cd services/api && npm test`, `cd web && npm test`, and for the infrastructure (Python) `cd infra && python -m pytest`.
 
+## AWS services used
+Everything is defined in `infra/` (AWS CDK 2, Python, region us-west-2). The stack synthesizes and passes its infrastructure tests; deploy steps are below.
+
+| Service | What it does here | Default? |
+|---|---|---|
+| Amazon S3 | Private bucket for the web app and every generated file (audio, word timing, cards) | on |
+| Amazon CloudFront | One address for the web app, `/data/*` (audio and timing, byte-range playback) and `/api/*` | on |
+| AWS Lambda | The API, the generator (a container image: narration, word timing, translation) and the question-drafting function | on |
+| AWS Step Functions | One run per passage: generate the audio, then make the other-language version; long documents run part by part | on |
+| Amazon DynamoDB | Jobs, passage summaries, settings, pronunciations, assignments, activity and listening ratings | on |
+| Amazon EC2 | The content-management API on a small VM (`-c cmsHost=lambda` runs it on Lambda instead) | on |
+| Amazon ECR, IAM, CloudWatch Logs | The generator image, least-privilege roles, logs | on |
+| Amazon Polly | Narration in place of the built-in voices (`-c ttsEngine=polly`, `pollyVoice`, `pollyVoiceEs`, `pollyEngine`) | off |
+| Amazon Translate | Sentence translation in front of the built-in translator (`-c translateModel=amazon`) | off |
+| Amazon Bedrock | Practice-question drafting (`-c questionsModel=bedrock:<modelId>`) and an optional context-aware translator (`-c translateModel=bedrock:<modelId>`) | off |
+| AWS Budgets | A cost alert (`-c alertEmail=you@example.com`) | off |
+| AWS CodePipeline and CodeBuild | Optional CI/CD stack that deploys on every push to `main` (`infra/sound_along/pipeline_stack.py`, `docs/PIPELINE.md`) | separate stack |
+
+The optional services are off unless you switch them on, and each adds only the one permission it needs (for example `polly:SynthesizeSpeech`).
+
 ## Deploy to AWS
 Region `us-west-2`. Docker must be running (the generator is a container image). The infrastructure is AWS CDK 2.x in Python. In short:
 ```bash
