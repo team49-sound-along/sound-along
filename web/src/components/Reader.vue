@@ -7,6 +7,7 @@ import QuizButton from "./QuizButton.vue";
 import ReadingSettings from "./ReadingSettings.vue";
 import ReadAloudPanel from "./ReadAloudPanel.vue";
 import { recognitionSupported } from "../speechRecognizer.js";
+import { readAloudSettingsFor } from "../readAloudShare.js";
 import { api, audioUrl, fetchCards } from "../api.js";
 import { findWordCard, placeAt, wordKey } from "../cards.js";
 import { loadState, saveState, toggleStar } from "../practice.js";
@@ -39,7 +40,12 @@ const cards = ref(null);
 const showSettings = ref(false);
 const settingsButton = ref(null);
 // Read aloud with the microphone (ReadAloudPanel): the panel follows the learner and sends back a mark for each word.
-const canReadAloud = recognitionSupported();
+// The teacher decides per class whether the button is offered and whether anonymous word counts are shared (loaded here; until it has loaded,
+// or if it cannot be loaded, the button is hidden and nothing is shared).
+const raSettings = ref({ mic: false, share: false, readers: false });
+api.readAloudSettings().then((view) => { raSettings.value = readAloudSettingsFor(view, props.classId); }).catch(() => {});
+const canReadAloud = computed(() => recognitionSupported() && raSettings.value.mic);
+const shareReadAloud = computed(() => raSettings.value.share && role.value === "student"); // a teacher trying it out adds nothing to the counts
 const readAloudOn = ref(false);
 const readAloudButton = ref(null);
 const raMarks = ref({});
@@ -351,7 +357,8 @@ function onKey(event) {
     <p v-if="timing.machineTranslated" class="small muted" role="note">Translated automatically.</p>
     <ReadingSettings v-if="showSettings" :prefs="prefs" @change="prefs = $event" @close="closeSettings" />
     <ReadAloudPanel
-      v-if="readAloudOn" :words="words" :language="timing.language || 'en'" :passage-id="practiceId"
+      v-if="readAloudOn" :words="words" :language="timing.language || 'en'" :passage-id="practiceId" :share-passage-id="passageId"
+      :class-id="classId" :share="shareReadAloud" :readers="raSettings.readers"
       @marks="raMarks = $event" @cursor="revealActive" @hear="hearAt" @listen="audio?.pause()" @close="closeReadAloud"
     />
 

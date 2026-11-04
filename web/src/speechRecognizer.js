@@ -1,7 +1,7 @@
 // Thin wrapper over the browser's built-in speech recognition (SpeechRecognition / webkitSpeechRecognition). No DOM or Vue.
 //
-// PRIVACY: Chrome, Edge and Safari send the microphone audio to the browser maker's speech service while this runs, so the screen asks for
-// consent first (micConsent.js). The wrapper itself keeps nothing: it only passes transcripts on as { id, transcript, isFinal }.
+// PRIVACY: Chrome, Edge and Safari send the microphone audio to the browser maker's speech service while this runs, so the panel says so in a short
+// line and the browser asks for the microphone itself. The wrapper itself keeps nothing: it only passes transcripts on as { id, transcript, isFinal }.
 // Chrome stops listening after a few seconds of silence, so the wrapper starts a new session by itself until stop() is called. Each session
 // numbers its results in its own range, so a transcript id never repeats and the follower (readAloud.js) keeps its place across restarts.
 

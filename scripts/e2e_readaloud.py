@@ -1,7 +1,7 @@
 """Browser check for "Read aloud with the microphone", with a FAKE speech recognizer (no real microphone, no network).
 
 It serves web/dist (run `cd web && npm run build` first), answers the passage and API requests itself, replaces SpeechRecognition with a
-scripted fake, and walks the flow: consent, following, a skipped word, Hear it, Read from here, finishing, saved results, Spanish, and a
+scripted fake, and walks the flow: the short speech-service line (no consent screen), following, a skipped word, Hear it, Read from here, finishing, saved results, Spanish, and a
 browser without speech recognition. Optional accessibility check: set AXE_JS to the path of axe-core's axe.min.js.
 
 Usage: python3 scripts/e2e_readaloud.py        (exit code 0 only when every step passes)
@@ -35,6 +35,7 @@ window.__say = (items) => { const r = window.__recs[window.__recs.length - 1];
 """
 
 failures = []
+SETTINGS = {"defaults": {"mic": True, "share": True, "readers": False}, "classes": []}
 
 
 def check(name, ok, detail=""):
@@ -58,8 +59,11 @@ def open_reader(ctx, pid, speech=True):
     page.route(re.compile(r".*/data/.*\.(mp3|json)$"), lambda r: r.fulfill(status=404, body=""))
     page.route(re.compile(r".*/data/.*\.timing\.json"), lambda r: r.fulfill(json=PASSAGES[re.search(r"/data/(.*)\.timing", r.request.url).group(1)]))
     page.route(re.compile(r".*/api/.*"), lambda r: r.fulfill(json={"ok": True, "data": []}))
+    page.route(re.compile(r".*/api/read-aloud/settings"), lambda r: r.fulfill(json={"success": True, "data": SETTINGS}))
     page.goto(f"{BASE}#/read/{pid}")
     page.wait_for_selector("#w-0")
+    if speech:
+        page.wait_for_selector("text=Read aloud with the mic")  # the teacher's switch has loaded
     return page
 
 
@@ -85,12 +89,10 @@ with sync_playwright() as pw:
     btn = page.get_by_role("button", name="Read aloud with the mic")
     check("button is shown when speech recognition exists", btn.count() == 1)
     btn.focus(); page.keyboard.press("Enter")
-    check("keyboard opens the panel with the consent step", page.get_by_role("button", name="I agree, continue").is_visible())
-    check("consent says the audio goes to the browser's speech service", "speech service" in page.locator("section.ra").inner_text())
-    check("nothing started before consent", page.evaluate("window.__recs.length") == 0)
-    axe_clean(page, "consent")
-    page.get_by_role("button", name="I agree, continue").click()
-    check("consent is remembered on this device", page.evaluate("localStorage.getItem('soundalong.micConsent.v1')") == "yes")
+    check("keyboard opens the panel and there is no consent screen", page.get_by_role("button", name="Start reading").is_visible() and page.get_by_role("button", name="I agree, continue").count() == 0)
+    check("a short line says the browser's speech service listens", "speech service listens" in page.locator("section.ra").inner_text())
+    check("nothing started before Start reading", page.evaluate("window.__recs.length") == 0)
+    axe_clean(page, "panel")
     page.get_by_role("button", name="Start reading").click()
     page.wait_for_function("window.__recs.length === 1 && window.__recs[0].started")
     check("recognizer listens in the passage language", page.evaluate("window.__recs[0].lang") == "en-US")

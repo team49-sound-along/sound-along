@@ -88,32 +88,77 @@ describe("read-aloud results and the teacher view", () => {
     for (const bad of [{}, { mic: "yes" }, { classId: "nope", mic: false }, { name: "x", mic: false }]) assert.equal((await app.call("PUT", "/api/read-aloud/settings", bad)).status, 400);
   });
 
-  test("reader codes: dropped and refused while the switch is off, kept and shown only when it is on", async () => {
-    const CODE = "K7Q29XMA";
+  const readersOf = (q) => app.call("GET", `/api/insights/read-aloud/readers${q}`);
+  const CODE = "K7Q29XMA";
+
+  test("reader codes: dropped and an empty view while the switch is off, kept and shown only when it is on", async () => {
     await post(result({ readerCode: CODE })); // switch off: the code is not kept
-    assert.equal((await app.call("GET", `/api/insights/read-aloud/readers?classId=${CLASS}`)).status, 404);
+    const off = await readersOf(`?classId=${CLASS}`);
+    assert.equal(off.status, 200);
+    assert.deepEqual(off.json.data, { classId: CLASS, enabled: false, enough: false, readers: [], selected: null });
     await app.call("PUT", "/api/read-aloud/settings", { classId: CLASS, readers: true });
-    assert.equal((await app.call("GET", `/api/insights/read-aloud/readers?classId=${CLASS}`)).json.data.readers.length, 0);
+    const none = (await readersOf(`?classId=${CLASS}`)).json.data;
+    assert.deepEqual([none.enabled, none.enough, none.readers.length], [true, false, 0]);
     await post(result({ readerCode: CODE, wordsRead: 5 }));
     await post(result({ readerCode: CODE, wordsRead: 8 }));
-    const list = (await app.call("GET", `/api/insights/read-aloud/readers?classId=${CLASS}`)).json.data;
-    assert.deepEqual(list.readers, [{ code: CODE, sessions: 2, passages: 1 }]);
-    const one = (await app.call("GET", `/api/insights/read-aloud/readers?classId=${CLASS}&code=${CODE}`)).json.data.selected;
-    assert.deepEqual(one.sessions.map((s) => s.pct), [50, 80]);
+    const few = (await readersOf(`?classId=${CLASS}&code=${CODE}`)).json.data; // two sessions: below the minimum, nothing listed
+    assert.deepEqual([few.enough, few.readers, few.selected], [false, [], null]);
+    await post(result({ readerCode: CODE, wordsRead: 9 }));
+    const list = (await readersOf(`?classId=${CLASS}`)).json.data;
+    assert.deepEqual(list.readers, [{ code: CODE, sessions: 3, passages: 1 }]);
+    const one = (await readersOf(`?classId=${CLASS}&code=${CODE}`)).json.data.selected;
+    assert.deepEqual(one.sessions.map((s) => s.pct), [50, 80, 90]);
     assert.deepEqual(one.words.map((w) => w.word), ["because", "island"]);
     assert.ok(one.summary.length > 0);
-    assert.equal((await app.call("GET", `/api/insights/read-aloud/readers?classId=${CLASS}&code=bad code`)).status, 400);
-    assert.equal((await app.call("GET", "/api/insights/read-aloud/readers")).status, 400);
+    assert.equal((await readersOf(`?classId=${CLASS}&code=K7Q29XMB`)).json.data.selected, null); // not a code in this class
     await app.call("PUT", "/api/read-aloud/settings", { classId: CLASS, readers: false }); // turned off: nothing is shown any more
-    assert.equal((await app.call("GET", `/api/insights/read-aloud/readers?classId=${CLASS}&code=${CODE}`)).status, 404);
-    await post(result({ readerCode: "ZZZZ2222" }));
-    await app.call("PUT", "/api/read-aloud/settings", { classId: CLASS, readers: true });
-    assert.equal((await app.call("GET", `/api/insights/read-aloud/readers?classId=${CLASS}`)).json.data.readers.some((r) => r.code === "ZZZZ2222"), false);
+    const gone = (await readersOf(`?classId=${CLASS}&code=${CODE}`)).json.data;
+    assert.deepEqual([gone.enabled, gone.readers, gone.selected], [false, [], null]);
+    assert.ok(!JSON.stringify(gone).includes(CODE));
+  });
+
+  test("the readers route refuses unknown classes, a missing class and bad codes, and never leaks across classes", async () => {
+    assert.equal((await readersOf("?classId=nope")).status, 400);
+    assert.equal((await readersOf("")).status, 400);
+    assert.equal((await readersOf(`?classId=${CLASS}&code=bad code`)).status, 400);
+    await app.call("PUT", "/api/read-aloud/settings", { classId: "cls-g4-p4", readers: true });
+    assert.deepEqual((await readersOf("?classId=cls-g4-p4")).json.data.readers, []);
+    await app.call("PUT", "/api/read-aloud/settings", { classId: "cls-g4-p4", readers: false });
   });
 
   test("readers need sharing: with sharing off the switch is not in force", async () => {
+    await app.call("PUT", "/api/read-aloud/settings", { classId: CLASS, readers: true });
     await app.call("PUT", "/api/read-aloud/settings", { classId: CLASS, share: false });
-    assert.equal((await app.call("GET", `/api/insights/read-aloud/readers?classId=${CLASS}`)).status, 404);
+    assert.equal((await readersOf(`?classId=${CLASS}`)).json.data.enabled, false);
     await app.call("PUT", "/api/read-aloud/settings", { classId: CLASS, share: true });
+    await app.call("PUT", "/api/read-aloud/settings", { classId: CLASS, readers: false });
+  });
+
+  test("settings PUT rejects unknown fields, unknown classes and wrong types, and changes nothing", async () => {
+    const before = JSON.stringify((await app.call("GET", "/api/read-aloud/settings")).json);
+    for (const bad of [{ mic: false, extra: 1 }, { classId: "nope", mic: false }, { classId: 5, mic: false }, { mic: 1 }, { readers: "yes" }, []]) {
+      assert.equal((await app.call("PUT", "/api/read-aloud/settings", bad)).status, 400, JSON.stringify(bad));
+    }
+    assert.equal(JSON.stringify((await app.call("GET", "/api/read-aloud/settings")).json), before);
+  });
+});
+
+describe("rate limits", () => {
+  test("the teacher reads and the settings writes are limited like the rest of the API", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "sa-ra-lim-"));
+    await writeFile(path.join(dir, `${PID}.timing.json`), JSON.stringify(timing));
+    await writeFile(path.join(dir, `${PID}.mp3`), "x");
+    const limited = await startLocalApp({ dir, config: { writePerMinute: 2, readPerMinute: 3 } });
+    try {
+      const reads = [];
+      for (let n = 0; n < 4; n += 1) reads.push((await limited.call("GET", "/api/insights/read-aloud")).status);
+      assert.deepEqual(reads, [200, 200, 200, 429]);
+      const writes = [];
+      for (let n = 0; n < 3; n += 1) writes.push((await limited.call("PUT", "/api/read-aloud/settings", { mic: true })).status);
+      assert.deepEqual(writes, [200, 200, 429]);
+      assert.equal((await limited.call("POST", "/api/read-aloud/results", result())).status, 429); // results share the write limiter
+    } finally {
+      limited.close();
+    }
   });
 });

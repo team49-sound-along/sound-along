@@ -1,6 +1,6 @@
 // Gathers the stored counters for the teacher's "Reading aloud" view and hands them to the pure aggregation. Every read is bounded:
 // one capped query for the totals, one for the last 8 weeks, and word counters for at most ORG_PASSAGES passages.
-import { buildReadAloudInsights, classComparison, meetsMinimum, weeklySeries, wordKey } from "./aggregate.js";
+import { MIN_SESSIONS, buildReadAloudInsights, classComparison, meetsMinimum, weeklySeries, wordKey } from "./aggregate.js";
 import { classSettingsView, effectiveClassSettings } from "./classSettings.js";
 import { listReaders, readerDetail } from "./readers.js";
 import { lastWeeks } from "./weeks.js";
@@ -40,17 +40,28 @@ export async function readAloudInsights({ store, timingOf, passages, classes, fi
   };
 }
 
-/** The reader view of one class. Refuses (null) unless the class's "progress by reader" switch is on, so codes are never returned otherwise. */
+export const READERS_SHOWN = 100;
+
+/**
+ * The reader view of one class. Defence in depth, since the API has no sign-in in this build: it returns an EMPTY view unless the class's
+ * "progress by reader" switch is on (and sharing with it), and an empty view until the class has at least MIN_SESSIONS reader sessions, so a
+ * lone code is never listed. The list is capped, and a code that is not in the class returns nothing.
+ */
 export async function readerInsights({ store, timingOf, classId, code, passageId }) {
+  const empty = { classId, enabled: false, enough: false, readers: [], selected: null };
   const settings = effectiveClassSettings(await store.getClassSettings(), classId);
-  if (!settings.readers) return null;
+  if (!settings.readers) return empty;
   const items = await store.readAloudReaders(classId);
+  const total = items.reduce((n, i) => n + i.sessions.length, 0);
+  if (total < MIN_SESSIONS) return { ...empty, enabled: true };
   const timings = new Map(await Promise.all([...new Set(items.map((i) => i.passageId))].map(async (id) => [id, textLookup(await timingOf(id))])));
   const readers = listReaders(items);
   return {
     classId,
-    readers,
-    selected: code && readers.some((r) => r.code === code) ? readerDetail(items, { code, passageId }, (id) => timings.get(id) ?? (() => "")) : null,
+    enabled: true,
+    enough: true,
+    readers: readers.slice(0, READERS_SHOWN),
+    selected: code && readers.slice(0, READERS_SHOWN).some((r) => r.code === code) ? readerDetail(items, { code, passageId }, (id) => timings.get(id) ?? (() => "")) : null,
   };
 }
 

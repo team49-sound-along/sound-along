@@ -2,13 +2,17 @@
 // "Read aloud with the microphone": the learner reads the passage, the panel follows word by word and stops with a plain explanation when a
 // word is skipped or clearly heard as a different word. Logic lives in readAloud.js (follower) and speechRecognizer.js (browser speech
 // recognition); this file only wires them to the screen. The reader draws the marks this panel emits.
-// PRIVACY: the browser's speech recognition sends the voice to the browser maker's speech service, so a consent step comes first
-// (micConsent.js). Only counts are saved, on this device (readAloudStore.js). Nothing is sent by Sound Along itself.
+// PRIVACY: the browser's speech recognition sends the voice to the browser maker's speech service; the panel says so in one short line and
+// the browser asks for the microphone itself. The school (teacher switches) decides whether the feature is offered and whether anonymous
+// word counts are shared. Sound Along never records audio and never keeps what was said. Counts are saved on this device (readAloudStore.js);
+// at the end of a session ONE anonymous result is sent, only when the class allows it (readAloudShare.js).
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { createReadAlong, cursorIndex, feed, restartFrom, summarize } from "../readAloud.js";
 import { calloutText, marksFor, sentenceAround } from "../readAloudMarks.js";
 import { createRecognizer } from "../speechRecognizer.js";
-import { giveMicConsent, hasMicConsent } from "../micConsent.js";
+import { api } from "../api.js";
+import { buildSharePayload } from "../readAloudShare.js";
+import { readerCode, readerLabel, startNewReaderCode } from "../readerCode.js";
 import { addResult, clearResults, loadResults } from "../readAloudStore.js";
 import { langAttr } from "../language.js";
 import { wordSlice } from "../timing.js";
@@ -17,20 +21,26 @@ const props = defineProps({
   words: { type: Array, required: true },
   language: { type: String, default: "en" },
   passageId: { type: String, required: true },
+  sharePassageId: { type: String, default: undefined }, // the passage whose own word positions these are (not the shared practice id)
+  classId: { type: String, default: undefined },
+  share: { type: Boolean, default: false }, // the class shares anonymous word counts and this is a student
+  readers: { type: Boolean, default: false }, // the class shows progress by anonymous reader code
 });
 const emit = defineEmits(["marks", "cursor", "hear", "listen", "close"]);
 
-const phase = ref(hasMicConsent() ? "ready" : "consent"); // consent | ready | listening | paused | halted | done
+const phase = ref("ready"); // ready | listening | paused | halted | done
 const follower = ref(createReadAlong(props.words, { language: props.language }));
 const callout = ref(null);
 const starting = ref(false);
 const errorText = ref("");
 const announcement = ref("");
 const savedBefore = ref(loadResults(props.passageId));
-const keepsChoice = ref(true);
+const code = ref(props.share && props.readers ? readerCode() : null);
 const calloutButton = ref(null);
 let recognizer = null;
 let saved = false;
+let began = false;
+let shared = false;
 
 const summary = computed(() => summarize(follower.value));
 const message = computed(() => calloutText(callout.value, props.words));
@@ -59,6 +69,7 @@ function handle(events) {
     phase.value = "done";
     recognizer?.stop();
     persist();
+    shareResult();
     say(`Well done. You read ${summary.value.read} of ${summary.value.total} words.`);
   }
 }
@@ -86,6 +97,7 @@ function begin() {
   recognizer ??= createRecognizer({ language: props.language, onResult, onStatus, onError });
   emit("listen"); // the passage audio pauses, or the microphone would hear it
   phase.value = "listening";
+  began = true;
   starting.value = true;
   recognizer.start();
 }
@@ -96,9 +108,16 @@ function persist() {
   savedBefore.value = addResult(props.passageId, summary.value, Date.now());
 }
 
-function agree() {
-  keepsChoice.value = giveMicConsent();
-  phase.value = "ready";
+/** One anonymous result per session, only when the class shares and the session really started. */
+function shareResult() {
+  if (shared || !began || !props.share) return;
+  shared = true;
+  const payload = buildSharePayload({ passageId: props.sharePassageId ?? props.passageId, classId: props.classId, language: props.language, state: follower.value, readerCode: props.readers ? code.value : null });
+  if (payload) api.shareReadAloud(payload);
+}
+function newCode() {
+  code.value = startNewReaderCode();
+  say("Started a new reader code.");
 }
 function pause() {
   recognizer?.stop();
@@ -115,9 +134,13 @@ function readFromHere() {
   begin();
 }
 function startOver() {
+  persist();
+  shareResult(); // the session being left is shared before a fresh one starts
   follower.value = createReadAlong(props.words, { language: props.language });
   callout.value = null;
   saved = false;
+  shared = false;
+  began = false;
   emit("cursor", 0);
   begin();
 }
@@ -129,12 +152,14 @@ function forgetResults() {
 function close() {
   recognizer?.stop();
   persist();
+  shareResult();
   emit("close");
 }
 
 onBeforeUnmount(() => {
   recognizer?.stop();
   persist();
+  shareResult();
   emit("marks", {});
 });
 </script>
@@ -147,22 +172,7 @@ onBeforeUnmount(() => {
     </div>
     <p class="sr-only" role="status" aria-live="polite">{{ announcement }}</p>
 
-    <template v-if="phase === 'consent'">
-      <p>To follow along, this uses your browser&rsquo;s own speech recognition. While you read, your browser sends your voice to its speech service (for example Google in Chrome, or Apple in Safari) so it can turn it into words.</p>
-      <ul class="small">
-        <li>Sound Along does not record your voice and does not keep what you say.</li>
-        <li>Only counts, such as how many words you read, are saved, and only on this device.</li>
-        <li>Everything else in Sound Along stays on this device. This is the one feature that uses an online service.</li>
-        <li>If a child is using this device, a parent or teacher should decide whether to turn it on.</li>
-      </ul>
-      <div class="row">
-        <button type="button" class="btn primary" @click="agree">I agree, continue</button>
-        <button type="button" class="btn" @click="close">Not now</button>
-      </div>
-    </template>
-
-    <template v-else>
-      <p v-if="!keepsChoice" class="small muted">Your browser is not saving this choice, so you may be asked again next time.</p>
+    <div class="ra-body">
 
       <template v-if="phase === 'ready'">
         <p>Press <strong>Start reading</strong>, then read the passage aloud at your own pace. A pause is fine. Only words that are clearly different from the text are pointed out.</p>
@@ -211,17 +221,24 @@ onBeforeUnmount(() => {
         <div><dt>Tried again</dt><dd>{{ summary.retried }}</dd></div>
       </dl>
 
-      <p class="small muted">
-        Results stay on this device only.
+      <p v-if="phase !== 'listening'" class="small muted">Your browser&rsquo;s speech service listens while this is on.</p>
+      <p class="small muted" data-testid="ra-privacy">
+        <template v-if="share">Only anonymous word counts are shared with your teacher, never your voice or name. </template>
+        <template v-else>Nothing about your reading is shared. </template>
+        Your own results stay on this device.
         <template v-if="savedBefore.length"> {{ savedBefore.length }} earlier {{ savedBefore.length === 1 ? "session is" : "sessions are" }} saved here.
           <button type="button" class="btn ghost small" @click="forgetResults">Clear my reading results</button></template>
       </p>
-    </template>
+      <p v-if="share && readers && code" class="small muted" data-testid="ra-reader">
+        You are <strong>{{ readerLabel(code) }}</strong>. This code is not your name. <button type="button" class="btn ghost small" @click="newCode">Start a new reader code</button>
+      </p>
+    </div>
   </section>
 </template>
 
 <style scoped>
 .ra { display: grid; gap: var(--s2); }
+.ra-body { display: grid; gap: var(--s2); }
 .ra-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
 .row { display: flex; flex-wrap: wrap; gap: var(--s1); }
 .state { display: flex; align-items: center; gap: 8px; }

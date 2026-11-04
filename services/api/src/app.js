@@ -48,6 +48,7 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
   });
   const generateLimiter = createRateLimiter({ max: config.generatePerMinute, windowMs: 60_000 });
   const writeLimiter = createRateLimiter({ max: config.writePerMinute ?? 60, windowMs: 60_000 });
+  const readLimiter = createRateLimiter({ max: config.readPerMinute ?? 120, windowMs: 60_000 }); // teacher read-aloud views
 
   // The raw audio upload streams its own body, so it is mounted before the JSON parser.
   mountLocalRecordingUpload(app, { recordings, config, writeLimiter });
@@ -114,7 +115,7 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
   recordingRoutes(api, { recordings, config, writeLimiter });
   ratingRoutes(api, { store, manifest, writeLimiter, config, random });
   questionRoutes(api, { questions, readyList, writeLimiter });
-  readAloudRoutes(api, { store, catalog, readyList, passageIds, classIds, writeLimiter });
+  readAloudRoutes(api, { store, catalog, readyList, passageIds, classIds, writeLimiter, readLimiter });
   contentRoutes(api, { store, catalog, voices: config.voices ?? loadVoices(), writeLimiter });
 
   api.get(
