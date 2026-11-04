@@ -45,6 +45,10 @@ Only the most human-sounding voices are offered, each with a "Hear it" sample in
   **not been rated by anyone yet**: listen to them in Settings before relying on them.
 - **Removed:** the other Kokoro English voices. Kokoro's grades do not predict how human a voice sounds (Bella A- and Nicole B- were called robotic,
   shrill or creepy), and everything else is C+ or lower.
-- **Spanish (2):** Kokoro Dora and Alex. Santa was removed after a listening round (rated no). In the same round MeloTTS Spanish and Qwen3-TTS were rated yes and VoxCPM2 no; none of them is in the app yet (MeloTTS is MIT; Qwen3-TTS runs on a Mac only). Nothing else is licensed and runnable: Phonon's Spanish voices need a non-commercial model, Amazon
+- **Spanish (2):** Kokoro Dora and Alex. Santa was removed after a listening round (rated no). In the same round MeloTTS Spanish and Qwen3-TTS were rated yes and VoxCPM2 no; none of them is in the app yet 
+  - **MeloTTS Spanish:** code and model weights are both MIT (model card checked 2026-11-04). It cannot go into the generator image as it is: it pins `transformers==4.27.4` and
+    `librosa==0.9.1`, while the image runs `transformers==5.22.1` and `numpy==2.5.4`, and it needs a dozen unused Chinese/Japanese/Korean libraries stubbed out just to import.
+    It would need its inference code ported to the image's library versions first. Local use only until then.
+  - **Qwen3-TTS** (MLX build) runs on a Mac only and cannot run on Lambda. **VoxCPM2** was rated no. Nothing else is licensed and runnable: Phonon's Spanish voices need a non-commercial model, Amazon
   Polly's Spanish voices (neural Lupe, Pedro; long-form Alba, Raul) have never been run (`-c ttsEngine=polly`, see docs/DEPLOY.md), and
   MeloTTS, Qwen3-TTS and VoxCPM2 are not integrated and have no ratings. Getting to five Spanish voices means a real listening test first.
