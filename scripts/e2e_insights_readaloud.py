@@ -99,6 +99,7 @@ def read_with_skip(ctx, base, pid, words, k, record):
     """One student session: skips word k, then closes the panel (which sends the result when sharing is on)."""
     page = ctx.new_page()
     page.add_init_script(FAKE)
+    page.add_init_script("localStorage.setItem('soundalong.readAloudMode.v1','stop');")
     page.on("request", lambda r: record.append(r.post_data) if r.method == "POST" and "/api/read-aloud/results" in r.url else None)
     page.goto(f"{base}/#/read/{pid}")
     page.wait_for_selector("#w-0")

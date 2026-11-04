@@ -8,7 +8,8 @@
 // at the end of a session ONE anonymous result is sent, only when the class allows it (readAloudShare.js).
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import { createReadAlong, cursorIndex, feed, restartFrom, summarize } from "../readAloud.js";
-import { calloutText, marksFor, marksSignature, sentenceAround } from "../readAloudMarks.js";
+import { calloutText, marksFor, marksSignature, nudgeText, sentenceAround } from "../readAloudMarks.js";
+import { loadMode, saveMode } from "../readAloudMode.js";
 import { createRecognizer } from "../speechRecognizer.js";
 import { api } from "../api.js";
 import { buildSharePayload } from "../readAloudShare.js";
@@ -31,7 +32,9 @@ const props = defineProps({
 const emit = defineEmits(["marks", "cursor", "hear", "listen", "close", "slow", "practice"]);
 
 const phase = ref("ready"); // ready | listening | paused | halted | done
-const follower = shallowRef(createReadAlong(props.words, { language: props.language })); // replaced, never mutated: no deep proxy over a long passage
+const mode = ref(loadMode());
+const fresh = () => createReadAlong(props.words, { language: props.language, mode: mode.value });
+const follower = shallowRef(fresh()); // replaced, never mutated: no deep proxy over a long passage
 const callout = ref(null);
 const starting = ref(false);
 const errorText = ref("");
@@ -39,6 +42,9 @@ const announcement = ref("");
 const savedBefore = ref(loadResults(props.passageId));
 const code = ref(props.share && props.readers ? readerCode() : null);
 const calloutButton = ref(null);
+const nudge = ref(null); // the gentle reminder shown while the learner keeps reading
+let nudgeTimer = null;
+const NUDGE_MS = 9000;
 let recognizer = null;
 let saved = false;
 let began = false;
@@ -64,7 +70,35 @@ const say = (text) => {
   announcement.value = text;
 };
 
+function clearNudge() {
+  clearTimeout(nudgeTimer);
+  nudgeTimer = null;
+  nudge.value = null;
+}
+function showNudge(miss) {
+  nudge.value = { ...miss, text: nudgeText(miss, props.words) };
+  say(nudge.value.text + " You can go back, or keep reading.");
+  clearTimeout(nudgeTimer);
+  nudgeTimer = setTimeout(clearNudge, NUDGE_MS);
+}
+/** "Go back": restart at the start of the sentence with the missed word. The microphone keeps listening, so reading just continues from there. */
+function goBack() {
+  if (!nudge.value) return;
+  const at = sentenceAround(props.words, nudge.value.index).start;
+  clearNudge();
+  follower.value = restartFrom(follower.value, at);
+  emit("cursor", at);
+  say("Read again from the start of that sentence.");
+}
+function chooseMode(next) {
+  mode.value = next;
+  saveMode(next);
+  follower.value = fresh(); // only offered before reading starts, so nothing is lost
+}
+
 function handle(events) {
+  const missedNow = events.filter((e) => e.type === "missed");
+  if (missedNow.length) showNudge(missedNow.at(-1));
   if (events.some((e) => e.type === "advance")) emit("cursor", cursorIndex(follower.value) ?? props.words.length - 1);
   const stopEvent = events.find((e) => e.type === "skipped" || e.type === "differs");
   if (stopEvent) {
@@ -153,8 +187,9 @@ function readFromHere() {
 function startOver() {
   persist();
   shareResult(); // the session being left is shared before a fresh one starts
-  follower.value = createReadAlong(props.words, { language: props.language });
+  follower.value = fresh();
   callout.value = null;
+  clearNudge();
   saved = false;
   shared = false;
   began = false;
@@ -167,6 +202,7 @@ function forgetResults() {
   say("Your reading results were cleared from this device.");
 }
 function close() {
+  clearNudge();
   recognizer?.stop();
   persist();
   shareResult();
@@ -174,6 +210,7 @@ function close() {
 }
 
 onBeforeUnmount(() => {
+  clearNudge();
   recognizer?.stop();
   persist();
   shareResult();
@@ -189,10 +226,21 @@ onBeforeUnmount(() => {
     </div>
     <p class="sr-only" role="status" aria-live="polite">{{ announcement }}</p>
 
+    <div v-if="nudge && phase === 'listening'" class="nudge" role="group" aria-label="Reminder" data-testid="ra-nudge">
+      <span class="nudge-text" :lang="langAttr(language)">{{ nudge.text }}</span>
+      <button type="button" class="btn small" @click="goBack">Go back</button>
+      <button type="button" class="btn ghost small" aria-label="Dismiss reminder" @click="clearNudge">&times;</button>
+    </div>
+
     <div class="ra-body">
 
       <template v-if="phase === 'ready'">
         <p>Press <strong>Start reading</strong>, then read the passage aloud at your own pace. A pause is fine. Only words that are clearly different from the text are pointed out.</p>
+        <fieldset class="mode">
+          <legend class="small">When I miss a word</legend>
+          <label><input type="radio" name="ra-mode" value="keepGoing" :checked="mode === 'keepGoing'" @change="chooseMode('keepGoing')" /> Keep going and remind me</label>
+          <label><input type="radio" name="ra-mode" value="stop" :checked="mode === 'stop'" @change="chooseMode('stop')" /> Stop and guide me back</label>
+        </fieldset>
         <div class="row"><button type="button" class="btn primary" @click="begin"><span aria-hidden="true">&#9679;</span> Start reading</button></div>
       </template>
 
@@ -257,6 +305,11 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.mode { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+.mode legend { font-weight: 700; margin-bottom: 2px; }
+.mode label { display: flex; align-items: center; gap: 8px; min-height: 32px; }
+.nudge { position: fixed; z-index: 40; left: 50%; transform: translateX(-50%); bottom: calc(var(--dock-h, 72px) + 14px); display: flex; align-items: center; gap: 10px; max-width: min(92vw, 560px); padding: 10px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16); }
+.nudge-text { font-size: 16px; }
 .ra { display: grid; gap: var(--s2); }
 .ra-body { display: grid; gap: var(--s2); }
 .ra-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }

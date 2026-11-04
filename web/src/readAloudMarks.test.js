@@ -65,3 +65,12 @@ test("a long skip is described as a count with where it starts and ends", () => 
   assert.match(text, /skipped 20 words/);
   assert.match(text, /“word2” to “word21”/);
 });
+
+import { nudgeText } from "./readAloudMarks.js";
+test("the reminder line is short and calm", () => {
+  const w = Array.from({ length: 12 }, (_, i) => ({ i, text: `w${i}`, sentence: 0 }));
+  assert.equal(nudgeText({ kind: "skipped", index: 3, indexes: [3] }, w), "You missed “w3”.");
+  assert.equal(nudgeText({ kind: "skipped", index: 3, indexes: [3, 4] }, w), "You missed “w3”, “w4”.");
+  assert.match(nudgeText({ kind: "skipped", index: 1, indexes: [1, 2, 3, 4, 5] }, w), /5 words, from “w1” to “w5”/);
+  assert.match(nudgeText({ kind: "differs", index: 2, indexes: [2], heard: "x" }, w), /We heard “x” where the text says “w2”/);
+});

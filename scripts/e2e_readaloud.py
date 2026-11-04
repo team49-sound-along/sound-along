@@ -53,8 +53,9 @@ def axe_clean(page, name):
     check("axe clean: " + name, result == [], str(result))
 
 
-def open_reader(ctx, pid, speech=True):
+def open_reader(ctx, pid, speech=True, mode="stop"):
     page = ctx.new_page()
+    page.add_init_script("localStorage.setItem('soundalong.readAloudMode.v1', '%s');" % mode)
     page.add_init_script(FAKE if speech else "delete window.SpeechRecognition; delete window.webkitSpeechRecognition;")
     page.route(re.compile(r".*/data/.*\.(mp3|json)$"), lambda r: r.fulfill(status=404, body=""))
     page.route(re.compile(r".*/data/.*\.timing\.json"), lambda r: r.fulfill(json=PASSAGES[re.search(r"/data/(.*)\.timing", r.request.url).group(1)]))
@@ -136,6 +137,30 @@ with sync_playwright() as pw:
     es.wait_for_selector("text=Well done")
     check("Spanish accents are forgiven", True)
     es.close()
+
+    # ---- "keep going" (the default): a missed word does not stop the reading
+    ctx2 = browser.new_context(viewport={"width": 1100, "height": 900})
+    keep = open_reader(ctx2, "p-en", mode="keepGoing")
+    keep.get_by_role("button", name="Read aloud with the mic").click()
+    check("the panel offers both ways of reacting to a missed word", keep.get_by_label("Keep going and remind me").is_checked() and keep.get_by_label("Stop and guide me back").count() == 1)
+    keep.get_by_role("button", name="Start reading").click()
+    keep.wait_for_function("window.__recs.length === 1 && window.__recs[0].started")
+    keep.evaluate("window.__say([['I like it it is fun', true]])")
+    keep.wait_for_selector("[data-testid=ra-nudge]")
+    check("a calm reminder names the missed word", "You missed" in keep.locator("[data-testid=ra-nudge]").inner_text() and "because" in keep.locator("[data-testid=ra-nudge]").inner_text())
+    check("no stop: the microphone keeps listening and there is no callout", keep.evaluate("window.__recs[0].stopped") is False and keep.locator(".callout").count() == 0)
+    check("the missed word stays marked while reading goes on", "skipped" in marks(keep).split(","))
+    axe_clean(keep, "reminder")
+    keep.evaluate("window.__say([['I like it it is fun today', true]])")
+    keep.wait_for_selector("text=Well done")
+    check("reading carried on to the end, and the summary counts the miss", "1" in keep.locator(".summary").inner_text())
+    keep.get_by_role("button", name="Read again").click()
+    keep.wait_for_function("window.__recs.length >= 2")
+    keep.evaluate("window.__say([['I like it it is fun', true]])")  # not the last word yet, so the reminder stays visible
+    keep.wait_for_selector("[data-testid=ra-nudge]")
+    keep.get_by_role("button", name="Go back").click()
+    check("Go back clears the reminder and restarts at that sentence", keep.locator("[data-testid=ra-nudge]").count() == 0 and marks(keep).split(",")[0] in ("next", "read"), marks(keep))
+    ctx2.close()
 
     plain = open_reader(ctx, "p-en", speech=False)
     check("button is hidden when the browser has no speech recognition", plain.get_by_role("button", name="Read aloud with the mic").count() == 0)

@@ -297,3 +297,54 @@ test("reading the whole passage straight through still finishes with no stop", (
   assert.equal(events.some((e) => e.type === "skipped" || e.type === "differs"), false);
   assert.ok(events.some((e) => e.type === "done"));
 });
+
+const keep = (words) => createReadAlong(words, { language: "en", mode: "keepGoing" });
+const sentenceWords = (t) => t.split(" ").map((text, i) => ({ i, text, sentence: 0 }));
+
+test("keep going: a skipped word does not stop, is remembered, and reading carries on to the end", () => {
+  const w = sentenceWords("We went to the old market and bought fresh apples today");
+  const { state, events } = feed(keep(w), { id: 0, transcript: "we went to the old and bought fresh apples today", isFinal: true });
+  assert.equal(events.some((e) => e.halted), false);
+  const missed = events.find((e) => e.type === "missed");
+  assert.ok(missed && missed.kind === "skipped" && missed.word === "market");
+  assert.ok(events.some((e) => e.type === "done"), "reading continued to the end");
+  assert.deepEqual(Object.keys(state.missed), ["5"]);
+  assert.equal(state.halted, null);
+});
+
+test("keep going: a word heard as a different word is remembered and reading continues", () => {
+  const w = sentenceWords("The dog chased the red ball across the yard");
+  const { state, events } = feed(keep(w), { id: 0, transcript: "the dog chased the blue ball across the yard", isFinal: true });
+  const missed = events.find((e) => e.type === "missed");
+  assert.ok(missed && missed.kind === "differs" && missed.expected === "red" && missed.heard === "blue");
+  assert.ok(events.some((e) => e.type === "done"));
+  assert.deepEqual(Object.keys(state.missed), ["4"]);
+});
+
+test("keep going: going back and reading the missed word clears it", () => {
+  const w = sentenceWords("We went to the old market and bought fresh apples today");
+  const first = feed(keep(w), { id: 0, transcript: "we went to the old and bought fresh", isFinal: true });
+  assert.deepEqual(Object.keys(first.state.missed), ["5"]);
+  const again = feed(first.state, { id: 1, transcript: "market", isFinal: true });
+  assert.deepEqual(Object.keys(again.state.missed), []);
+  assert.equal(again.state.read[5], true);
+});
+
+test("keep going: a skip of a whole paragraph still stops the learner", () => {
+  const { events } = feed(keep(LONG), { id: 0, transcript: "the old lighthouse stood on a rocky cliff above the grey sea by morning every ship had reached the shore and the village cheered", isFinal: true });
+  assert.ok(events.some((e) => e.type === "skipped"), "a big skip stops");
+  assert.equal(events.some((e) => e.type === "missed"), false);
+});
+
+test("stop mode (the default) is unchanged: a skipped word stops", () => {
+  const w = sentenceWords("We went to the old market and bought fresh apples today");
+  const { events } = feed(createReadAlong(w, { language: "en" }), { id: 0, transcript: "we went to the old and bought fresh apples", isFinal: true });
+  assert.ok(events.some((e) => e.type === "skipped"));
+});
+
+test("restarting from a word drops the reminders from there on", () => {
+  const w = sentenceWords("We went to the old market and bought fresh apples today");
+  const { state } = feed(keep(w), { id: 0, transcript: "we went to the old and bought fresh apples today", isFinal: true });
+  assert.deepEqual(Object.keys(restartFrom(state, 8).missed), ["5"], "a miss before the restart point stays");
+  assert.deepEqual(Object.keys(restartFrom(state, 3).missed), [], "a miss after it is cleared, it will be read again");
+});

@@ -12,6 +12,7 @@ import { digitsFor, spellNumber } from "./numberWords.js";
 
 export const LOOKAHEAD = 4; // how many words ahead a heard word may match when the current word was not heard
 export const STABLE_TAIL = 3; // an interim result's last words may still change: a mismatch is judged only with this many words after it
+export const BIG_SKIP = 10; // in "keep going" mode a skip longer than this still stops the learner: they have probably lost their place
 export const MAX_JUMP = 3000; // how far ahead a heard run of words may match when a whole line, paragraph or page was skipped
 export const REPEAT_WINDOW = 3; // heard words matching one of this many words just read are repeats, not errors
 export const CLOSE = 0.6; // edit-distance similarity that counts as the same word (words of 4+ letters)
@@ -93,7 +94,7 @@ const splitMatches = (heard, target, next) => {
 
 const wordText = (w) => (typeof w === "string" ? w : String(w?.text ?? ""));
 
-export function createReadAlong(words, { language = "en" } = {}) {
+export function createReadAlong(words, { language = "en", mode = "stop" } = {}) {
   const lg = lang(language);
   const targets = (Array.isArray(words) ? words : [])
     .map((w, i) => {
@@ -101,7 +102,7 @@ export function createReadAlong(words, { language = "en" } = {}) {
       return { index: Number.isInteger(w?.i) ? w.i : i, text: wordText(w), norm, ...formsOf(norm, lg) };
     })
     .filter((t) => t.norm !== "");
-  return { language: lg, targets, cursor: 0, seen: {}, len: {}, read: {}, skippedEver: [], differsEver: [], retries: 0, pending: null, halted: null, done: false };
+  return { language: lg, mode: mode === "keepGoing" ? "keepGoing" : "stop", missed: {}, targets, cursor: 0, seen: {}, len: {}, read: {}, skippedEver: [], differsEver: [], retries: 0, pending: null, halted: null, done: false };
 }
 
 export const cursorIndex = (state) => state.targets[state.cursor]?.index ?? null;
@@ -152,6 +153,8 @@ function run(state, tokens, start, final) {
   const skippedEver = [...state.skippedEver];
   const differsEver = [...state.differsEver];
   let { cursor, pending } = state;
+  const missed = { ...state.missed };
+  const keepGoing = state.mode === "keepGoing";
   let halted = null;
   let p = start;
 
@@ -167,6 +170,14 @@ function run(state, tokens, start, final) {
     events.push(event);
     halted = { type: event.type, index: event.index };
   };
+  // "Keep going": a small miss does not stop the learner. The word is remembered, marked, and the cursor moves past it; the reader shows a
+  // gentle reminder. A long skip (a line or more) still stops, because the learner has most likely lost their place.
+  const miss = (kind, skipped, event) => {
+    skipped.forEach((t, k) => { missed[t.index] = { kind, pos: cursor + k }; });
+    events.push({ ...event, type: "missed", kind });
+    cursor += skipped.length;
+    pending = null;
+  };
 
   while (p < n && cursor < targets.length && !halted) {
     const heard = tokens[p];
@@ -179,6 +190,13 @@ function run(state, tokens, start, final) {
     if (p >= resolveLimit) break; // not enough words after this one to judge it yet
 
     if (FILLERS[state.language].has(heard)) { p += 1; continue; }
+    const back = keepGoing ? Object.keys(missed).find((i) => quality(heard, targets[missed[i].pos]) === 2) : undefined;
+    if (back !== undefined) { // the learner went back and read a missed word on their own
+      read[back] = true;
+      delete missed[back];
+      p += 1;
+      continue;
+    }
     const ahead = lookahead(tokens, p, targets, cursor);
     if (ahead && targets.slice(cursor, cursor + ahead.k).every((t) => isWeak(t, state.language))) {
       advance(ahead.k, "close"); // only small words were not heard: not worth stopping for
@@ -187,11 +205,15 @@ function run(state, tokens, start, final) {
     if (ahead) {
       if (pending && ahead.k === 1) {
         differsEver.push(target.index);
-        stop({ type: "differs", index: target.index, heard: pending.heard, expected: target.text });
+        const event = { type: "differs", index: target.index, indexes: [target.index], heard: pending.heard, expected: target.text };
+        if (keepGoing) { miss("differs", [target], event); continue; }
+        stop(event);
       } else {
         const skipped = targets.slice(cursor, cursor + ahead.k);
         skipped.forEach((t) => skippedEver.push(t.index));
-        stop({ type: "skipped", index: target.index, indexes: skipped.map((t) => t.index), word: target.text, words: skipped.map((t) => t.text) });
+        const event = { type: "skipped", index: target.index, indexes: skipped.map((t) => t.index), word: target.text, words: skipped.map((t) => t.text) };
+        if (keepGoing && skipped.length <= BIG_SKIP) { miss("skipped", skipped, event); continue; }
+        stop(event);
       }
       pending = null;
       break;
@@ -200,7 +222,9 @@ function run(state, tokens, start, final) {
     if (jump) {
       const skipped = targets.slice(cursor, cursor + jump);
       skipped.forEach((t) => skippedEver.push(t.index));
-      stop({ type: "skipped", index: target.index, indexes: skipped.map((t) => t.index), word: target.text, words: skipped.map((t) => t.text) });
+      const event = { type: "skipped", index: target.index, indexes: skipped.map((t) => t.index), word: target.text, words: skipped.map((t) => t.text) };
+      if (keepGoing && skipped.length <= BIG_SKIP) { miss("skipped", skipped, event); continue; }
+      stop(event);
       pending = null;
       break;
     }
@@ -216,7 +240,9 @@ function run(state, tokens, start, final) {
       advance(1, "close"); p += 1; // a small word heard as another small word
     } else if (cursor + 1 < targets.length && quality(next, targets[cursor + 1]) > 0) {
       differsEver.push(target.index);
-      stop({ type: "differs", index: target.index, heard, expected: target.text });
+      const event = { type: "differs", index: target.index, indexes: [target.index], heard, expected: target.text };
+      if (keepGoing) { miss("differs", [target], event); p += 1; continue; }
+      stop(event);
     } else {
       p += 1; // unrelated noise or talk
     }
@@ -224,7 +250,7 @@ function run(state, tokens, start, final) {
 
   const finished = cursor >= targets.length;
   if (finished) events.push({ type: "done" });
-  return { events, cursor, pending, read, skippedEver, differsEver, halted, done: finished, consumed: final || halted || finished ? n : p };
+  return { events, cursor, pending, read, missed, skippedEver, differsEver, halted, done: finished, consumed: final || halted || finished ? n : p };
 }
 
 /** Feeds one recognizer result. Returns { state, events }; the old state is untouched. */
@@ -243,11 +269,12 @@ export function feed(state, result) {
  * there on count as unread until they are read again. `retry: false` is for carrying on after a pause, which is not a retry.
  */
 export function restartFrom(state, wordIndex, { retry = true } = {}) {
-  if (state.targets.length === 0) return { ...state, cursor: 0, read: {}, pending: null, halted: null }; // nothing to read from: stay put
+  if (state.targets.length === 0) return { ...state, cursor: 0, read: {}, missed: {}, pending: null, halted: null }; // nothing to read from: stay put
   const at = state.targets.findIndex((t) => t.index >= wordIndex);
   const cursor = at >= 0 ? at : Math.max(0, state.targets.length - 1);
   const read = Object.fromEntries(Object.entries(state.read).filter(([index]) => Number(index) < state.targets[cursor].index));
-  return { ...state, cursor, read, seen: { ...state.len }, pending: null, halted: null, done: false, retries: state.retries + (retry ? 1 : 0) };
+  const missed = Object.fromEntries(Object.entries(state.missed ?? {}).filter(([, m]) => m.pos < cursor));
+  return { ...state, cursor, read, missed, seen: { ...state.len }, pending: null, halted: null, done: false, retries: state.retries + (retry ? 1 : 0) };
 }
 
 /** Counts for the end-of-practice summary. Words are counted once however many times they were read. */

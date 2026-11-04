@@ -65,6 +65,7 @@ def axe_clean(page, name):
 def open_reader(ctx, pid):
     page = ctx.new_page()
     page.add_init_script(FAKE)
+    page.add_init_script("localStorage.setItem('soundalong.readAloudMode.v1','stop');")
     page.route(re.compile(r".*/data/.*\.(mp3|json)$"), lambda r: r.fulfill(status=404, body=""))
     page.route(re.compile(r".*/data/.*\.timing\.json"), lambda r: r.fulfill(json=PASSAGES[re.search(r"/data/(.*)\.timing", r.request.url).group(1)]))
     page.route(re.compile(r".*/api/.*"), lambda r: r.fulfill(json={"ok": True, "data": []}))
