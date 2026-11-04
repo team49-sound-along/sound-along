@@ -83,3 +83,13 @@ def test_the_parts_of_a_document_must_agree_with_each_other():
     assert v.series_link_problems([part(1), {"id": "b", "series": {"id": "s", "index": 1, "total": 3, "partIds": ids}}])  # b says it is part 1
     assert v.series_link_problems([part(1), {"id": "b", "series": {"id": "s", "index": 2, "total": 3, "partIds": ["a", "x", "c"]}}])  # a different list
     assert v.series_link_problems([{"id": "a", "series": {"id": "s", "index": 1, "total": 5, "partIds": ids}}])  # total does not match
+
+
+def test_a_translated_part_is_checked_through_the_part_it_was_translated_from():
+    ids = ["a", "b"]
+    series = lambda i: {"id": "s", "index": i, "total": 2, "partIds": ids}  # noqa: E731
+    parts = [{"id": "a", "series": series(1)}, {"id": "b", "series": series(2)},
+             {"id": "es-a", "translationOf": "a", "series": series(1)}, {"id": "es-b", "translationOf": "b", "series": series(2)}]
+    assert v.series_link_problems(parts) == []
+    wrong = [{"id": "es-b", "translationOf": "a", "series": series(2)}]
+    assert v.series_link_problems(wrong), "a translation of part a cannot claim to be part 2"

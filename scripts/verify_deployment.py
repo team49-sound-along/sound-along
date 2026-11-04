@@ -131,11 +131,14 @@ def series_link_problems(catalog: list[dict[str, Any]]) -> list[str]:
         if s.get("total") != len(ids) or not 1 <= s.get("index", 0) <= len(ids):
             problems.append(f"{p['id']}: series numbers do not add up (part {s.get('index')} of {s.get('total')}, {len(ids)} ids)")
             continue
-        if ids[s["index"] - 1] != p["id"]:
+        # A translated part keeps the original's list of ids (its neighbours are found through each original's own translation link), so the part it
+        # was translated FROM must be the one at its place.
+        own = p.get("translationOf") or p["id"]
+        if ids[s["index"] - 1] != own:
             problems.append(f"{p['id']} says it is part {s['index']} but the list has {ids[s['index'] - 1]} there")
         for i, pid in enumerate(ids, start=1):
             other = by_id.get(pid)
-            if other is not None and (other.get("series") or {}).get("partIds") != ids:
+            if other is not None and (other.get("series") or {}).get("partIds") != ids:  # originals and translations all share one list
                 problems.append(f"part {i} ({pid}) disagrees with part {s['index']} about which parts belong together")
     return problems
 
