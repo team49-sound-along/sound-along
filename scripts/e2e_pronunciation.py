@@ -68,6 +68,7 @@ def open_reader(ctx, pid):
     page.route(re.compile(r".*/data/.*\.(mp3|json)$"), lambda r: r.fulfill(status=404, body=""))
     page.route(re.compile(r".*/data/.*\.timing\.json"), lambda r: r.fulfill(json=PASSAGES[re.search(r"/data/(.*)\.timing", r.request.url).group(1)]))
     page.route(re.compile(r".*/api/.*"), lambda r: r.fulfill(json={"ok": True, "data": []}))
+    page.route(re.compile(r".*/api/read-aloud/settings"), lambda r: r.fulfill(json={"success": True, "data": {"defaults": {"mic": True, "share": True, "readers": False}, "classes": []}}))
     page.goto(f"{BASE}#/read/{pid}")
     page.wait_for_selector("#w-0")
     return page
