@@ -32,7 +32,6 @@ async function dismiss(word) {
         <h2>Pronunciation review</h2>
         <p>Words an automatic check thinks the voice may have said differently from the text.</p>
       </div>
-      <a class="btn" href="#/pronunciations">Pronunciations</a>
     </div>
 
     <div class="notice warn honesty" role="note">

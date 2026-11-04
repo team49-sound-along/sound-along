@@ -78,6 +78,7 @@ const naturalness = computed(() => {
         </section>
 
         <BlindRating :summary="data.quality?.blindRating ?? null" />
+        <p class="small"><a class="btn" href="#/listening">Take the listening test</a> Compare voices without knowing which is which.</p>
 
         <section class="card stack" aria-labelledby="cost-h">
           <div>

@@ -72,7 +72,6 @@ async function remove(word) {
         <h2>Pronunciations</h2>
         <p>Teach the voice how to say names and unusual words. Fixes apply to passages generated or regenerated from now on.</p>
       </div>
-      <a class="btn" href="#/review">Pronunciation review</a>
     </div>
     <PronunciationForm ref="form" :preset-word="preset" :known="known" :busy="busy" :error="formError" @save="add" />
     <p class="sr-only" role="status" aria-live="polite">{{ flash }}</p>

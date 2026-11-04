@@ -34,3 +34,10 @@ test("the practice screen is a route with a passage id, and a missing id falls b
   assert.deepEqual(parseHash("#/practice/abc"), { name: "practice", params: { id: "abc" }, query: {} });
   assert.equal(parseHash("#/practice").name, "library");
 });
+
+test("My words and the Voice section routes", async () => {
+  const { VOICE_SECTION } = await import("./router.js");
+  assert.equal(parseHash("#/words").name, "words");
+  assert.equal(isTeacherOnly("words"), false);
+  assert.deepEqual(VOICE_SECTION, ["settings", "pronunciations", "review", "listening"]);
+});

@@ -29,6 +29,7 @@ const isTeacher = computed(() => role.value === "teacher");
         <p>Every passage has narrated audio with word-level timing. Tap any word while reading to hear it again from there.</p>
       </div>
       <div class="tools">
+        <a class="btn primary" href="#/generate">Create a passage</a>
         <div class="search">
           <Icon name="search" :size="18" />
           <label class="sr-only" for="q">Search passages by title</label>

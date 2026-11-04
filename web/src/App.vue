@@ -13,13 +13,16 @@ import PronunciationsView from "./views/PronunciationsView.vue";
 import ReviewView from "./views/ReviewView.vue";
 import ListeningView from "./views/ListeningView.vue";
 import PracticeView from "./views/PracticeView.vue";
+import MyWordsView from "./views/MyWordsView.vue";
+import SectionTabs from "./components/SectionTabs.vue";
 import TeacherOnly from "./components/TeacherOnly.vue";
-import { route, isTeacherOnly } from "./router.js";
+import { route, isTeacherOnly, VOICE_SECTION } from "./router.js";
 import { role, USERS } from "./session.js";
 
-const VIEWS = { library: LibraryView, read: ReaderView, assignments: AssignmentsView, generate: GenerateView, insights: InsightsView, settings: SettingsView, pronunciations: PronunciationsView, review: ReviewView, listening: ListeningView, practice: PracticeView };
-const TITLES = { library: "Library", read: "Reader", assignments: "Assignments", generate: "Generate", insights: "Insights", settings: "Settings", pronunciations: "Pronunciations", review: "Pronunciation review", listening: "Listening test" };
+const VIEWS = { library: LibraryView, read: ReaderView, assignments: AssignmentsView, generate: GenerateView, insights: InsightsView, settings: SettingsView, pronunciations: PronunciationsView, review: ReviewView, listening: ListeningView, practice: PracticeView, words: MyWordsView };
+const TITLES = { library: "Library", read: "Reader", assignments: "Assignments", generate: "Create a passage", insights: "Insights", settings: "Settings", pronunciations: "Pronunciations", review: "Pronunciation review", listening: "Listening test", practice: "Practice", words: "My words" };
 const view = computed(() => (isTeacherOnly(route.value.name) && role.value !== "teacher" ? TeacherOnly : VIEWS[route.value.name]));
+const showVoiceTabs = computed(() => role.value === "teacher" && VOICE_SECTION.includes(route.value.name));
 const user = computed(() => USERS[role.value]);
 // Reading mode: while a passage is open the page shows only the brand, a way back, and the passage.
 const reading = computed(() => route.value.name === "read");
@@ -69,6 +72,7 @@ watch(
     </header>
     <main id="main" ref="main" tabindex="-1">
       <h1 class="sr-only">Sound Along</h1>
+      <SectionTabs v-if="showVoiceTabs" />
       <component :is="view" :key="route.name + (route.params.id || '')" />
     </main>
     <footer class="demo small muted">Demo data. Sign-in is simulated.</footer>
