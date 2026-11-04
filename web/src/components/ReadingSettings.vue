@@ -32,6 +32,7 @@ const set = (key, value) => emit("change", updatePref(props.prefs, key, value));
       <SwitchControl label="Line breaks at phrases" show-label :model-value="prefs.phraseBreaks" @update:model-value="set('phraseBreaks', $event)" />
       <SwitchControl label="Reduce motion" show-label :model-value="prefs.reduceMotion" @update:model-value="set('reduceMotion', $event)" />
     </div>
+    <p class="small muted"><strong>Reduce motion:</strong> the page never scrolls by itself and nothing fades or slides. When the word being read is off screen, a button lets you jump to it. The highlight still follows the voice; choose the Sentences highlight to move even less.</p>
     <p class="small muted">Atkinson and Lexend are fonts made to be easy to read. Choose what feels best. Your choices stay on this device.</p>
   </section>
 </template>

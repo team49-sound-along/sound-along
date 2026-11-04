@@ -27,6 +27,12 @@ const FONTS = {
   lexend: '"Lexend", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
 };
 
+/** Turn the page-wide calm mode on or off: while it is on, nothing in the app fades, slides or scrolls smoothly (see style.css, html.calm-page). */
+export function applyMotionPreference(root, prefs) {
+  if (!root?.classList) return;
+  root.classList.toggle("calm-page", Boolean(sanitizePrefs(prefs).reduceMotion));
+}
+
 const isPlainObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 
 /** Keep valid values, replace everything else with the default. Always returns a fresh object. */

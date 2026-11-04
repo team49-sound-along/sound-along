@@ -100,6 +100,9 @@ table.data tr:last-child td { border-bottom: 0; }
 .skip { position: absolute; left: var(--s2); top: -100px; z-index: 100; background: var(--primary); color: var(--on-primary); padding: 12px 16px; border-radius: var(--r-sm); font-weight: 700; }
 .skip:focus { top: var(--s1); }
 
+/* "Reduce motion" in the reader's settings: the same calm as the system setting, but applied to the whole app on this device. */
+html.calm-page *, html.calm-page *::before, html.calm-page *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
 }

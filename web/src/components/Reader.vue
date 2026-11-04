@@ -10,7 +10,8 @@ import { loadState, saveState, toggleStar } from "../practice.js";
 import { role } from "../session.js";
 import { langAttr } from "../language.js";
 import { activeSentence, phraseLines, sentenceStart } from "../phrases.js";
-import { loadPrefs, prefsToCssVars, savePrefs } from "../readingPrefs.js";
+import { applyMotionPreference, loadPrefs, prefsToCssVars, savePrefs } from "../readingPrefs.js";
+import { followAction } from "../readerFollow.js";
 import { findActiveIndex, seekSeconds, wordSlice } from "../timing.js";
 import { route } from "../router.js";
 import { firstWordOfSentence, isHuman, LANGUAGE_NAMES, languageSwitch, resumeIndex, resumeSentence, targetSentence, voiceLabel } from "../voices.js";
@@ -49,7 +50,10 @@ const getStorage = () => {
   }
 };
 const prefs = ref(loadPrefs(getStorage()));
-watch(prefs, (next) => savePrefs(getStorage(), next));
+watch(prefs, (next) => {
+  savePrefs(getStorage(), next);
+  applyMotionPreference(document.documentElement, next); // the whole app calms down at once, not only this passage
+});
 const cssVars = computed(() => prefsToCssVars(prefs.value));
 
 const words = computed(() => props.timing.words ?? []);
@@ -75,6 +79,7 @@ const bandSentence = computed(() => (highlightOn.value ? activeSentence(words.va
 const isBand = (w) => bandSentence.value !== null && w.sentence === bandSentence.value;
 
 onBeforeUnmount(() => {
+  window.removeEventListener("scroll", hideJumpWhenVisible);
   cancelAnimationFrame(frame);
   dockObserver?.disconnect();
 });
@@ -114,6 +119,8 @@ function switchVoice() {
   location.hash = `#/read/${encodeURIComponent(props.timing.pairId)}?at=${at}${resume}`;
 }
 onMounted(() => {
+  window.addEventListener("scroll", hideJumpWhenVisible, { passive: true });
+  applyMotionPreference(document.documentElement, prefs.value);
   if (dock.value && typeof ResizeObserver !== "undefined") {
     dockObserver = new ResizeObserver(([entry]) => (dockHeight.value = Math.ceil(entry.contentRect.height)));
     dockObserver.observe(dock.value);
@@ -142,14 +149,24 @@ onMounted(() => {
 const track = (type) => api.event({ passageId: props.passageId, type, ...(props.classId ? { classId: props.classId } : {}) });
 const reduceMotion = () => prefs.value.reduceMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+// With Reduce motion the page never scrolls by itself: when the spoken word is off screen a button offers the jump instead.
+const offerJump = ref(false);
 function revealActive(index) {
   const el = document.getElementById(`w-${index}`);
   if (!el) return;
-  const rect = el.getBoundingClientRect();
-  if (rect.top < 190 || rect.bottom > window.innerHeight - dockHeight.value - 24) {
-    el.scrollIntoView({ block: "center", behavior: reduceMotion() ? "auto" : "smooth" });
-  }
+  const action = followAction({ reduce: reduceMotion(), rect: el.getBoundingClientRect(), bottomLimit: window.innerHeight - dockHeight.value - 24 });
+  if (action === "scroll") el.scrollIntoView({ block: "center", behavior: "smooth" });
+  offerJump.value = action === "offer-jump";
 }
+function jumpToActive() {
+  document.getElementById(`w-${activeIndex.value}`)?.scrollIntoView({ block: "center", behavior: "auto" });
+  offerJump.value = false;
+}
+const hideJumpWhenVisible = () => {
+  if (!offerJump.value) return;
+  const el = document.getElementById(`w-${activeIndex.value}`);
+  if (el) offerJump.value = followAction({ reduce: true, rect: el.getBoundingClientRect(), bottomLimit: window.innerHeight - dockHeight.value - 24 }) === "offer-jump";
+};
 
 function tick() {
   const el = audio.value;
@@ -364,6 +381,7 @@ function onKey(event) {
     </div>
 
     <div v-if="soundAlong" ref="dock" class="dock">
+      <div v-if="offerJump" class="jump-row"><button type="button" class="btn primary" @click="jumpToActive">Jump to the word being read</button></div>
       <AudioBar
         :playing="playing" :current-ms="currentMs" :duration-ms="timing.duration_ms" :speed="speed"
         v-model:word-help="wordHelp" @toggle="toggle" @seek="seekTo" @speed="changeSpeed" @skip="skip"
@@ -379,6 +397,7 @@ function onKey(event) {
 .stage { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--s5); align-items: start; }
 .side { position: sticky; top: calc(var(--topbar-h) + var(--s2)); }
 .body { display: grid; gap: var(--s2); min-width: 0; }
+.jump-row { display: flex; justify-content: center; padding: 8px 0; background: var(--surface); }
 .dock { position: sticky; bottom: 0; z-index: 20; margin: 0 calc(var(--s2) * -1); }
 .dock :deep(.bar) { border-radius: 0; border-width: 1px 0 0; padding: 12px var(--s3); }
 .hint { display: flex; align-items: center; gap: 8px; }

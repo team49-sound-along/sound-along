@@ -71,3 +71,16 @@ test("save reports failure instead of throwing", () => {
   assert.equal(savePrefs(brokenStorage, DEFAULTS), false);
   assert.equal(savePrefs(undefined, DEFAULTS), false);
 });
+
+test("the calm mode is switched on the page itself, so every screen stops animating, and only for the Reduce motion switch", async () => {
+  const { applyMotionPreference, DEFAULTS } = await import("./readingPrefs.js");
+  const classes = new Set();
+  const root = { classList: { toggle: (name, on) => (on ? classes.add(name) : classes.delete(name)) } };
+  applyMotionPreference(root, { ...DEFAULTS, reduceMotion: true });
+  assert.deepEqual([...classes], ["calm-page"]);
+  applyMotionPreference(root, { ...DEFAULTS, reduceMotion: false });
+  assert.deepEqual([...classes], []);
+  applyMotionPreference(root, { reduceMotion: "yes" });  // anything that is not a real boolean is the default (off)
+  assert.deepEqual([...classes], []);
+  assert.doesNotThrow(() => applyMotionPreference(null, DEFAULTS));
+});
