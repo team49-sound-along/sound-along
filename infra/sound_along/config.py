@@ -83,6 +83,15 @@ def parse_questions_model(value: object) -> str | None:
     return value
 
 
+def parse_translate_model(value: object) -> str | None:
+    """Validate the `translateModel` CDK context value: `bedrock:<modelId>` or absent. Absent means the built-in Opus-MT translator only; there is no default model."""
+    if value is None:
+        return None
+    if not isinstance(value, str) or not _MODEL_ID.match(value) or ".." in value:
+        raise ValueError(f'Invalid CDK context "translateModel": {value!r}. Use -c translateModel=bedrock:<modelId> (there is no default).')
+    return value
+
+
 def parse_questions_enabled(value: object) -> bool:
     """The `questionsEnabled` switch is on only for the exact value true; anything else is off."""
     return value is True or value == "true"

@@ -19,19 +19,19 @@
  },
  {
   "id": "ef_dora",
-  "label": "Dora (Spanish female, not graded)",
+  "label": "Dora (Spanish female)",
   "lang": "es",
   "engine": "kokoro"
  },
  {
   "id": "em_alex",
-  "label": "Alex (Spanish male, not graded)",
+  "label": "Alex (Spanish male)",
   "lang": "es",
   "engine": "kokoro"
  },
  {
   "id": "em_santa",
-  "label": "Santa (Spanish male, not graded)",
+  "label": "Santa (Spanish male)",
   "lang": "es",
   "engine": "kokoro"
  }

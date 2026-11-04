@@ -19,9 +19,9 @@ describe("voices.json", () => {
     assert.deepEqual(voices.filter((v) => v.lang === "en").map((v) => v.id), ["af_heart", "phonon_hadley", "phonon_everly"]);
     assert.ok(voices.every((v) => v.id && v.label && ["en", "es"].includes(v.lang)));
     assert.deepEqual(voices.filter((v) => v.lang === "es"), [
-      { id: "ef_dora", label: "Dora (Spanish female, not graded)", lang: "es", engine: "kokoro" },
-      { id: "em_alex", label: "Alex (Spanish male, not graded)", lang: "es", engine: "kokoro" },
-      { id: "em_santa", label: "Santa (Spanish male, not graded)", lang: "es", engine: "kokoro" },
+      { id: "ef_dora", label: "Dora (Spanish female)", lang: "es", engine: "kokoro" },
+      { id: "em_alex", label: "Alex (Spanish male)", lang: "es", engine: "kokoro" },
+      { id: "em_santa", label: "Santa (Spanish male)", lang: "es", engine: "kokoro" },
     ]);
     assert.equal(new Set(voices.map((v) => v.id)).size, voices.length);
   });

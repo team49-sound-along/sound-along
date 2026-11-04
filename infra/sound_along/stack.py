@@ -43,6 +43,7 @@ class SoundAlongStackProps:
     sources: SourcePaths | None = None
     questions_model: str | None = None  # "bedrock:<modelId>"; no default. None means no Bedrock permission and the function stays off
     questions_enabled: bool = False
+    translate_model: str | None = None  # "bedrock:<modelId>"; no default. None means Opus-MT only and no Bedrock permission for the generator
 
 
 class SoundAlongStack(Stack):
@@ -73,7 +74,7 @@ class SoundAlongStack(Stack):
         )
 
         generator = create_generator_function(
-            self, GeneratorFunctionProps(generator_dir=sources.generator_dir, bucket=bucket, table=table)
+            self, GeneratorFunctionProps(generator_dir=sources.generator_dir, bucket=bucket, table=table, translate_model=props.translate_model)
         )
         questions = create_questions_function(
             self, QuestionsFunctionProps(code_dir=sources.questions_dir, bucket=bucket, model=props.questions_model, enabled=props.questions_enabled)

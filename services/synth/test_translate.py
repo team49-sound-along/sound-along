@@ -42,7 +42,7 @@ def test_place_names_are_masked_before_translation_and_restored_exactly_after():
     model = FakeModel()
     out = run(model)
     sent = [t for batch in model.calls for t in batch if "park called" in t][0]
-    assert "Piedmont Park" not in sent and "Atlanta" not in sent and "Xq" in sent  # the model never sees the real names
+    assert "Piedmont Park" not in sent and "Xq" in sent  # the model never sees a longer name (single words like Atlanta are left to the model)
     assert "ES In Atlanta, Georgia, there's a big park called Piedmont Park." in out.content_html and out.unprotected == []
 
 
@@ -127,3 +127,63 @@ def test_a_failing_localiser_just_keeps_the_original_names():
 
     out = tr.translate_passage({"title": "", "content": "<p>We saw Great Britain.</p>"}, lambda xs: ["Vimos " + x.split()[-1] for x in xs], names_fn=lambda t: ["Great Britain"], localize=boom)
     assert "Great Britain" in out.content_html and out.localized == {}
+
+
+def test_casual_english_is_written_out_in_full_for_young_readers():
+    assert tr.plain_register("They're gonna eat. Gonna go? I wanna play and I gotta run.") == "They're going to eat. Going to go? I want to play and I have to run."
+    assert tr.plain_register("The gonnas of the town") == "The gonnas of the town"  # whole words only
+    assert tr.plain_register("Nothing to change here.") == "Nothing to change here."
+
+
+def test_a_single_word_place_with_no_local_name_is_left_to_the_model_but_longer_names_stay_protected():
+    model = FakeModel()
+    out = tr.translate_passage({"title": "", "content": "<p>We saw Britain and Piedmont Park today.</p>"}, model, names_fn=lambda t: ["Britain", "Piedmont Park"], localize=lambda names: {})
+    sent = model.calls[0][0]
+    assert "Britain" in sent and "Piedmont Park" not in sent and "Xq" in sent
+    assert "Piedmont Park" in out.content_html  # restored exactly
+    model = FakeModel()
+    tr.translate_passage({"title": "", "content": "<p>We saw Britain today.</p>"}, model, names_fn=lambda t: ["Britain"], localize=None)
+    assert "Britain" in model.calls[0][0]  # the same when place lookups are switched off
+    model = FakeModel()
+    tr.translate_passage({"title": "", "content": "<p>We saw Britain today.</p>"}, model, names_fn=lambda t: ["Britain"], localize=lambda names: {"Britain": "Gran Bretaña"})
+    assert "Britain" not in model.calls[0][0]  # a name that has a local form is protected, then restored in that form
+
+
+def test_the_larger_model_is_used_only_for_short_english_to_spanish_passages(monkeypatch):
+    monkeypatch.delenv("TRANSLATE_BIG", raising=False)
+    assert tr.use_big("en", "es", 300) and tr.use_big("en", "es", tr.BIG_MAX_WORDS)
+    assert not tr.use_big("en", "es", tr.BIG_MAX_WORDS + 1)  # long: the small model keeps Lambda inside its time limit
+    assert not tr.use_big("es", "en", 100)  # no larger Spanish to English model exists
+    assert not tr.use_big("en", "es", None) and not tr.use_big("en", "es", 0)
+    monkeypatch.setenv("TRANSLATE_BIG", "off")
+    assert not tr.use_big("en", "es", 300)
+
+
+def test_the_larger_model_is_pinned_by_full_commit_hash():
+    repo, revision = tr.BIG[("en", "es")]
+    assert repo == "Helsinki-NLP/opus-mt-tc-big-en-es" and len(revision) == 40
+
+
+def test_su_never_becomes_your_in_a_story_but_a_reader_is_still_addressed_as_you():
+    assert tr.fix_possessive("El parque está cerca de su casa.", "The park is close to your house.") == "The park is close to their house."
+    assert tr.fix_possessive("Usted debe traer su libro.", "You must bring your book.") == "You must bring your book."
+    assert tr.fix_possessive("Tu casa es grande y su jardín también.", "Your house is big and your garden too.") == "Your house is big and your garden too."
+    assert tr.fix_possessive("La casa es azul.", "The house is blue.") == "The house is blue."
+
+
+def test_a_name_the_model_changed_in_one_sentence_is_restored_when_it_kept_it_in_another():
+    src = ["Los sábados, Ana y su hermano Pablo van al parque.", "Primero, Pablo corre hasta el columpio.", "Hoy Pablo quiere jugar."]
+    out = ["On Saturdays, Ana and her brother Pablo go to the park.", "First, Paul runs to the swing.", "Today Pablo wants to play."]
+    assert tr.restore_names(src, out)[1] == "First, Pablo runs to the swing."
+
+
+def test_names_are_left_alone_when_there_is_no_evidence_or_the_change_is_ambiguous():
+    src = ["Pedro y Lucía llegaron tarde.", "Luego Pedro se fue."]
+    out = ["Peter and Lucia were late.", "Then Peter left."]
+    assert tr.restore_names(src, out) == out  # changed everywhere: consistent, so untouched
+    src = ["Vivimos en Estados Unidos.", "Visitamos Estados Unidos hoy."]
+    out = ["We live in United States.", "We visited United States today."]
+    assert tr.restore_names(src, out) == out
+    src = ["Ana vio a Pablo con Lucía.", "Hoy Pablo y Lucía comen."]
+    out = ["Ana saw Pablo with Lucia.", "Today Pablo and Lucia eat."]
+    assert tr.restore_names(src, out)[0] == out[0]  # two names, one vanished and one new word: too ambiguous to fix

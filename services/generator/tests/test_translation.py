@@ -16,7 +16,7 @@ def fake_model(texts):
 
 
 def deps_for(s3, table, with_model=True):
-    kwargs = {"translate_model": (lambda s, t: fake_model)} if with_model else {}
+    kwargs = {"translate_model": (lambda s, t, w=None: fake_model)} if with_model else {}
     return h.Dependencies(Clients(s3=s3, table=table, bucket=BUCKET), FakeEngine, fake_encoder, localize_fn=lambda names, s, t: {}, **kwargs)
 
 
@@ -94,7 +94,7 @@ def test_translated_cards_and_pictures_are_uploaded_with_an_image_type_and_a_lon
         def __call__(self, texts):
             return ["parque" if t == "park" else "ES " + t for t in texts]
 
-    deps = h.Dependencies(deps.clients, FakeEngine, fake_encoder, translate_model=lambda s, t: WordModel(), localize_fn=lambda n, s, t: {})
+    deps = h.Dependencies(deps.clients, FakeEngine, fake_encoder, translate_model=lambda s, t, w=None: WordModel(), localize_fn=lambda n, s, t: {})
     tid = run(s3, table, deps)["translatedId"]
     cards = json.loads(s3.objects[f"data/{tid}.cards.json"])
     assert cards["machineTranslated"] is True and cards["words"] == {} or "parque" in cards["words"]
@@ -141,7 +141,7 @@ def test_a_passage_too_long_for_the_lambda_limit_is_skipped_with_a_clear_reason(
 
 def _spy_deps(deps, names_for=lambda lang: (lambda text: ["Piedmont Park"])):
     calls = []
-    return h.Dependencies(deps.clients, FakeEngine, fake_encoder, translate_model=lambda s, t: fake_model,
+    return h.Dependencies(deps.clients, FakeEngine, fake_encoder, translate_model=lambda s, t, w=None: fake_model,
                           names_for=names_for, localize_fn=lambda names, s, t: calls.append(list(names)) or {}), calls
 
 
@@ -187,3 +187,19 @@ def test_generated_translated_cards_are_marked_unreviewed_and_machine_translated
     tid = run(s3, table, deps)["translatedId"]
     cards = json.loads(s3.objects[f"data/{tid}.cards.json"])
     assert cards["reviewed"] is False and cards["machineTranslated"] is True and cards["source"] == "translated"
+
+
+def test_spanish_names_are_not_masked_so_the_model_can_see_who_is_a_girl():
+    assert h._names_for("es")("Ana y su hermano Pablo van al parque.") == []
+    assert h._names_for("en")("We went to Piedmont Park.") in ([], ["Piedmont Park"])  # spaCy decides; never people
+
+
+def test_the_translator_is_opus_mt_unless_a_bedrock_model_is_configured(monkeypatch):
+    import translate
+
+    sentinel = lambda texts: texts  # noqa: E731
+    monkeypatch.setattr(translate, "load_model", lambda source, target, words=None: sentinel)
+    monkeypatch.delenv("TRANSLATE_MODEL", raising=False)
+    assert h._load_translator("es", "en", 100) is sentinel
+    monkeypatch.setenv("TRANSLATE_MODEL", "bedrock:")
+    assert h._load_translator("es", "en", 100) is sentinel

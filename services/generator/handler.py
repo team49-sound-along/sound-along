@@ -24,7 +24,7 @@ from flow import Variant, run_flow
 from mp3 import encode_mp3, resolve_kbps
 from tokenizer import tokenize_html
 from summary import index_entry, passage_summary
-from translate import translate_passage
+from translate import translate_passage, word_count
 from translate_cards import translate_cards
 from translate_flow import build_translated_passage, link, other_language, should_translate
 
@@ -51,7 +51,7 @@ class Dependencies:
     decode_fn: Callable[..., Any] = decode_audio
     enrich_fn: Callable[[dict[str, Any]], Any] = lambda passage: None  # production turns this on in handler(); unit tests never touch the network
     # Translation (a second invocation, see process_translation). None means "not configured": the step reports skipped and does nothing.
-    translate_model: Optional[Callable[[str, str], Callable[[list[str]], list[str]]]] = None
+    translate_model: Optional[Callable[..., Callable[[list[str]], list[str]]]] = None  # (source, target, words) -> model
     names_for: Callable[[str], Callable[[str], list[str]]] = lambda language: (lambda text: [])  # place names to protect, by source language
     localize_fn: Optional[Callable[[list[str], str, str], dict[str, str]]] = None
 
@@ -268,7 +268,7 @@ def process_translation(event: dict[str, Any], deps: Dependencies) -> dict[str, 
             return {**out, "status": "skipped", "reason": f"too long to translate automatically ({words} words, limit {MAX_TRANSLATE_WORDS})"}
         source_lang = passage["language"]
         lang = other_language(source_lang)
-        model = deps.translate_model(source_lang, lang)
+        model = deps.translate_model(source_lang, lang, word_count(passage.get("content") or ""))
         # Wikipedia sees only place names spaCy found in English text, and only when place lookups are allowed (teacher setting or operator switch).
         # Spanish text has no place detector here (its candidates are every capitalised name, people included), so nothing is sent for it.
         allowed = deps.localize_fn is not None and source_lang == "en" and not _place_lookups_off(passage)
@@ -303,19 +303,20 @@ def _mark_failed(tracker: JobTracker, job_id: str) -> None:
         LOG.exception("could not record failure for job %s", job_id)
 
 
-def _load_translator(source: str, target: str) -> Callable[[list[str]], list[str]]:
+def _load_translator(source: str, target: str, words: Optional[int] = None) -> Callable[[list[str]], list[str]]:
+    from bedrock_translate import from_environment
     from translate import load_model
 
-    return load_model(source, target)
+    # Opus-MT always; in front of it a Bedrock language model when TRANSLATE_MODEL=bedrock:<id> is set (it falls back to Opus-MT per batch).
+    return from_environment(source, target, load_model(source, target, words))
 
 
 def _names_for(language: str) -> Callable[[str], list[str]]:
-    """Place names to protect during translation: spaCy places for English, capitalised names otherwise."""
-    from enrich_places import ner_places, place_candidates
+    """Place names to protect during translation: spaCy places for English. Spanish names are NOT masked: a masked name hides its gender from the
+    model (it turned "Ana y su hermano" into "Ana and his brother"), and the model translates Spanish place names well on its own."""
+    from enrich_places import ner_places
 
-    if language == "en":
-        return ner_places
-    return lambda text: place_candidates(tokenize_html("<p>" + text + "</p>"))
+    return ner_places if language == "en" else (lambda text: [])
 
 
 def _localize(names: list[str], source: str, target: str) -> dict[str, str]:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CDK entry. Context: alertEmail (optional cost budget), cmsHost = ec2 (default) | lambda, questionsModel = bedrock:<modelId> (optional, no default), questionsEnabled = true."""
+"""CDK entry. Context: alertEmail (optional cost budget), cmsHost = ec2 (default) | lambda, questionsModel = bedrock:<modelId> (optional, no default), questionsEnabled = true, translateModel = bedrock:<modelId> (optional, no default)."""
 from __future__ import annotations
 
 import os
@@ -7,7 +7,7 @@ import re
 
 import aws_cdk as cdk
 
-from sound_along.config import REGION, parse_cms_host, parse_questions_enabled, parse_questions_model
+from sound_along.config import REGION, parse_cms_host, parse_questions_enabled, parse_questions_model, parse_translate_model
 from sound_along.stack import SoundAlongStack, SoundAlongStackProps
 
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -29,6 +29,7 @@ def main() -> None:
             alert_email=alert_email, cms_host=cms_host,
             questions_model=parse_questions_model(app.node.try_get_context("questionsModel")),
             questions_enabled=parse_questions_enabled(app.node.try_get_context("questionsEnabled")),
+            translate_model=parse_translate_model(app.node.try_get_context("translateModel")),
         ),
         env=cdk.Environment(account=os.environ.get("CDK_DEFAULT_ACCOUNT"), region=REGION),
     )

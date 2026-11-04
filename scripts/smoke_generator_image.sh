@@ -44,7 +44,7 @@ assert {'cookies', 'tea', 'trees'} <= set(cards) and len(pics) >= 3, cards.keys(
 import translate
 from enrich_places import ner_places
 for src, dst, text in (('en', 'es', '<p>We visited Piedmont Park in Atlanta.</p>'), ('es', 'en', '<p>Visitamos el parque con Ana.</p>')):
-    out = translate.translate_passage({'title': 'T', 'content': text}, translate.load_model(src, dst), names_fn=(ner_places if src == 'en' else (lambda t: ['Ana'])))
+    out = translate.translate_passage({'title': 'T', 'content': text}, translate.load_model(src, dst, 50), names_fn=(ner_places if src == 'en' else (lambda t: ['Ana'])))
     assert out.content_html.startswith('<p>') and out.unprotected == [], (src, dst, out)
     assert ('Piedmont Park' in out.content_html) if src == 'en' else ('Ana' in out.content_html), out.content_html
 print('OK: handler imports, offline synthesis, 2 extra voices, offline recognition, Spanish with recognizer timing, Phonon (2 voices) offline, place detection, word pictures, offline-safe enrichment and en<->es translation;', len(result.words), 'English words, 0 unaligned')

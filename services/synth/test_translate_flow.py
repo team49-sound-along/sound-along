@@ -128,3 +128,15 @@ def test_which_passages_get_an_automatic_translation(passage, expected):
 def test_the_translated_job_is_marked_so_it_is_never_translated_again():
     job = tf.build_translated_passage(PASSAGE, "es", TRANSLATED)
     assert job["noTranslate"] is True and tf.should_translate(job) is False
+
+
+def test_localiser_follows_wikipedia_redirects_so_britain_finds_great_britain():
+    reply = {"query": {"redirects": [{"from": "Britain", "to": "Great Britain"}],
+                       "pages": {"1": {"title": "Great Britain", "langlinks": [{"lang": "es", "*": "Gran Bretaña"}]}}}}
+    assert tf.localize_with_wikipedia(["Britain"], "en", "es", http_get=lambda url, binary=False: reply) == {"Britain": "Gran Bretaña"}
+
+
+def test_localiser_keeps_the_original_when_the_article_title_is_much_longer_than_the_name():
+    reply = {"query": {"pages": {"1": {"title": "China", "langlinks": [{"lang": "es", "*": "República Popular China"}]},
+                                 "2": {"title": "United States", "langlinks": [{"lang": "es", "*": "Estados Unidos"}]}}}}
+    assert tf.localize_with_wikipedia(["China", "United States"], "en", "es", http_get=lambda url, binary=False: reply) == {"United States": "Estados Unidos"}

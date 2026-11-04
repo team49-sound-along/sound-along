@@ -66,6 +66,7 @@ class GeneratorFunctionProps:
     generator_dir: Path
     bucket: s3.IBucket
     table: dynamodb.ITable
+    translate_model: str | None = None  # "bedrock:<modelId>": a context-aware LLM translator in front of Opus-MT; None = no Bedrock permission at all
 
 
 def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -> lambda_.DockerImageFunction:
@@ -80,7 +81,8 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
         timeout=Duration.seconds(900),  # the Lambda maximum: translating and narrating the longest text can take minutes on 2 CPUs
         reserved_concurrent_executions=2,
         log_group=_log_group(scope, "GeneratorLogs"),
-        environment={"BUCKET": props.bucket.bucket_name, "TABLE_NAME": props.table.table_name},
+        environment={"BUCKET": props.bucket.bucket_name, "TABLE_NAME": props.table.table_name,
+                     **({"TRANSLATE_MODEL": props.translate_model, "TRANSLATE_REGION": REGION} if props.translate_model else {})},
     )
     props.table.grant_read_write_data(fn)
     fn.add_to_role_policy(object_access(props.bucket, ["s3:GetObject"], "raw/*"))
@@ -89,6 +91,9 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
     fn.add_to_role_policy(object_access(props.bucket, ["s3:GetObject"], "data/*"))
     fn.add_to_role_policy(list_bucket(props.bucket, ["data/*"]))
     fn.add_to_role_policy(object_access(props.bucket, ["s3:PutObject"], "data/*"))
+    if props.translate_model:  # one model only, and only when the operator chose it
+        model_id = props.translate_model.removeprefix("bedrock:")
+        fn.add_to_role_policy(iam.PolicyStatement(actions=["bedrock:InvokeModel"], resources=[f"arn:aws:bedrock:{REGION}::foundation-model/{model_id}"]))
     return fn
 
 

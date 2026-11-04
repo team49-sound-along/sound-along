@@ -14,7 +14,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable, Optional, Sequence
 
-from translate import Translated, load_model, translate_passage
+from translate import Translated, load_model, translate_passage, word_count
 from translate_cards import translate_cards
 
 LOG = logging.getLogger(__name__)
@@ -80,11 +80,17 @@ def localize_with_wikipedia(names: Sequence[str], source_lang: str, target_lang:
         reply = get(url)
         pages = reply["query"]["pages"].values()
         titles = {p.get("title"): next((l["*"] for l in p.get("langlinks", []) if l.get("lang") == target_lang), None) for p in pages}
+        moved = {m["from"]: m["to"] for key in ("normalized", "redirects") for m in reply["query"].get(key, [])}  # "Britain" -> "Great Britain"
         out = {}
         for name in names:
-            local = titles.get(name)
-            if local:
-                out[name] = local.split(" (")[0].strip()
+            final = name
+            for _ in range(3):  # a name can be normalised and then redirected
+                final = moved.get(final, final)
+            local = titles.get(final)
+            cleaned = local.split(" (")[0].strip() if local else ""
+            # A title much longer than the name is an article title, not the name people use ("China" -> "República Popular China"): keep the original.
+            if cleaned and len(cleaned.split()) <= len(name.split()) + 1:
+                out[name] = cleaned
         return out
     except Exception as err:  # noqa: BLE001
         LOG.info("place names not localised: %s", err)
@@ -125,8 +131,8 @@ def publish_translation(
                 from enrich_places import ner_places, place_candidates  # noqa: F401
                 from pipeline import tokenize_html
 
-                names_fn = ner_places if source_lang == "en" else (lambda text: place_candidates(tokenize_html("<p>" + text + "</p>")))
-            model = model or load_model(source_lang, lang)
+                names_fn = ner_places if source_lang == "en" else (lambda text: [])  # Spanish names are not masked: a masked name hides its gender from the model, which then guesses "his" for Ana
+            model = model or load_model(source_lang, lang, word_count(passage.get("content") or ""))
             localize = localize or (lambda names: localize_with_wikipedia(names, source_lang, lang))
             translated = translate_passage(passage, model, names_fn, localize=localize)
         if run_fn is None:

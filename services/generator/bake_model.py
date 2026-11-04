@@ -57,8 +57,9 @@ TRANSLATE_DIR = Path("/opt/translate")
 TRANSLATE = (
     ("Helsinki-NLP/opus-mt-en-es", "5bc4493d463cf000c1f0b50f8d56886a392ed4ab", "en-es"),
     ("Helsinki-NLP/opus-mt-es-en", "c96e2c5399ebfae4fc43d9669556b9afa74bb69d", "es-en"),
+    ("Helsinki-NLP/opus-mt-tc-big-en-es", "8f4d4924189681076e9c642b2fd85278d793fd4d", "en-es-big"),  # CC-BY-4.0: short English passages (see translate.BIG)
 )
-TRANSLATE_FILES = ["config.json", "generation_config.json", "pytorch_model.bin", "source.spm", "target.spm", "tokenizer_config.json", "vocab.json"]
+TRANSLATE_FILES = ["config.json", "generation_config.json", "pytorch_model.bin", "source.spm", "special_tokens_map.json", "target.spm", "tokenizer_config.json", "vocab.json"]
 
 
 def bake_translation() -> None:

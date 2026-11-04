@@ -24,6 +24,11 @@ PAIRS: dict[tuple[str, str], tuple[str, str]] = {
     ("en", "es"): ("Helsinki-NLP/opus-mt-en-es", "5bc4493d463cf000c1f0b50f8d56886a392ed4ab"),
     ("es", "en"): ("Helsinki-NLP/opus-mt-es-en", "c96e2c5399ebfae4fc43d9669556b9afa74bb69d"),
 }
+# A larger model reads better (the small one said "mucho" for "a great deal"; this one says "un gran negocio") but is about three times slower, so it is used
+# for passages up to BIG_MAX_WORDS only. Measured in the image with 2 CPUs and 4 GB: 0.20 s/word (small: 0.08). With narration at about 0.48 s/word, 900 words
+# is about 180 s + 430 s, inside the 900 s Lambda limit with a third to spare. Not yet measured on Lambda itself.
+BIG: dict[tuple[str, str], tuple[str, str]] = {("en", "es"): ("Helsinki-NLP/opus-mt-tc-big-en-es", "8f4d4924189681076e9c642b2fd85278d793fd4d")}  # CC-BY-4.0
+BIG_MAX_WORDS = 900
 BATCH = 16
 _END = re.compile(r"[.!?…][\"')”’»]*$")
 TranslateFn = Callable[[list[str]], list[str]]
@@ -107,8 +112,13 @@ def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Cal
         local: dict[str, str] = dict(localize(names)) if (localize and names) else {}
     except Exception:  # noqa: BLE001 (offline or garbage: keep the original names)
         local = {}
-    masked = [mask(text_of[i], names) for i in order]
+    # A single-word place with no local name ("Britain") is left to the model, which translates well-known places correctly; restoring the
+    # English word would leave "a Britain" in the Spanish text. Names with a local name, and longer names ("Piedmont Park"), stay protected.
+    protect = [n for n in names if n in local or len(n.split()) > 1]
+    masked = [mask(text_of[i], protect) for i in order]
     first = _translate_all([m for m, _ in masked], model)
+    if not protect:  # names were left to the model: keep each character's name the same in every sentence
+        first = restore_names([m for m, _ in masked], first)
     results: list[str] = []
     unprotected: list[int] = []
     for i, (raw, (_, table)) in zip(order, zip(first, masked)):
@@ -139,24 +149,86 @@ def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Cal
 
 
 # ---- the real model --------------------------------------------------------------------------------------------------------------
-_MODELS: dict[tuple[str, str], TranslateFn] = {}
+_MODELS: dict[tuple[str, str, bool], TranslateFn] = {}
 _LOCK = threading.Lock()
 
 
-def load_model(source: str, target: str) -> TranslateFn:
+_SU = re.compile(r"\bsus?\b", re.I)
+_FORMAL = re.compile(r"\b(usted|ustedes|tú|tu|tus|ti|contigo|vosotros|vuestro|vuestra|vuestros|vuestras)\b", re.I)
+_YOUR = re.compile(r"\b(your|yours)\b")
+
+
+def fix_possessive(source: str, translated: str) -> str:
+    """Spanish su/sus means his, her or their in a story; the model sometimes writes "your" ("close to your house"). When the Spanish has su/sus and
+    nothing addressing a reader (usted, tú ...), "your" is wrong, and "their" is the safe reading."""
+    if _SU.search(source) and not _FORMAL.search(source) and _YOUR.search(translated):
+        return _YOUR.sub(lambda m: "theirs" if m.group(1) == "yours" else "their", translated)
+    return translated
+
+
+def _caps(sentence: str) -> list[str]:
+    """Capitalised words that are not the first word of the sentence (the first is capitalised anyway)."""
+    return [w for w in re.findall(r"(?<!^)(?<=\s)([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñü]+)", " ".join(sentence.split()))]
+
+
+def restore_names(sources: list[str], outputs: list[str]) -> list[str]:
+    """Keep a character's name the same in every sentence. A model sometimes translates a first name in one sentence (Pablo -> Paul) and leaves it in
+    another. A name counts as confirmed only when the model kept it unchanged somewhere; then, in a sentence where that one name vanished and exactly one
+    new capitalised word appeared in its place, the confirmed name is put back. Anything less certain is left alone (Estados Unidos -> United States)."""
+    kept = {w for s, o in zip(sources, outputs) for w in _caps(s) if re.search(rf"(?<!\w){re.escape(w)}(?!\w)", o)}
+    result = []
+    for s, o in zip(sources, outputs):
+        src_caps = _caps(s)
+        missing = [w for w in src_caps if w in kept and not re.search(rf"(?<!\w){re.escape(w)}(?!\w)", o)]
+        extra = [w for w in _caps(o) if w not in src_caps and len(w) > 1]
+        if len(missing) == 1 and len(extra) == 1:
+            o = re.sub(rf"(?<!\w){re.escape(extra[0])}(?!\w)", missing[0], o, count=1)
+        result.append(o)
+    return result
+
+
+def word_count(content_html: str) -> int:
+    """Number of spoken words in a passage, counted exactly as the reader counts them."""
+    return len(tokenize_html(content_html or ""))
+
+
+_SLANG = {"gonna": "going to", "wanna": "want to", "gotta": "have to", "kinda": "kind of", "sorta": "sort of", "lemme": "let me", "gimme": "give me", "dunno": "do not know"}
+_SLANG_RE = re.compile(r"\b(" + "|".join(_SLANG) + r")\b", re.I)
+
+
+def plain_register(text: str) -> str:
+    """Opus-MT often picks casual English ("they're gonna"). A reader for children gets the full form. Keeps the capital of a sentence start."""
+    def fix(m: "re.Match[str]") -> str:
+        full = _SLANG[m.group(1).lower()]
+        return full[0].upper() + full[1:] if m.group(1)[0].isupper() else full
+
+    return _SLANG_RE.sub(fix, text)
+
+
+def use_big(source: str, target: str, words: Optional[int]) -> bool:
+    """The larger model, for a known passage length up to BIG_MAX_WORDS, where one exists. TRANSLATE_BIG=off turns it off."""
+    return (words is not None and 0 < words <= BIG_MAX_WORDS and (source, target) in BIG
+            and os.environ.get("TRANSLATE_BIG", "on").strip().lower() not in ("off", "0", "false", "no"))
+
+
+def load_model(source: str, target: str, words: Optional[int] = None) -> TranslateFn:
     """The Opus-MT translator for a language pair. TRANSLATE_MODELS_DIR (baked into the Lambda image) is read with local_files_only, so nothing is
-    downloaded at run time there; otherwise the pinned revision is fetched and cached. Loaded once per process."""
+    downloaded at run time there; otherwise the pinned revision is fetched and cached. Loaded once per process.
+    `words` is the passage length: a short passage gets the larger model where there is one (see BIG)."""
     if (source, target) not in PAIRS:
         raise ValueError("Translation is available for en to es or es to en.")
+    big = use_big(source, target, words)
+    key = (source, target, big)
     with _LOCK:
-        if (source, target) in _MODELS:
-            return _MODELS[(source, target)]
+        if key in _MODELS:
+            return _MODELS[key]
         import torch
         from transformers import MarianMTModel, MarianTokenizer
 
-        repo, revision = PAIRS[(source, target)]
+        repo, revision = BIG[(source, target)] if big else PAIRS[(source, target)]
         baked = os.environ.get("TRANSLATE_MODELS_DIR")
-        where, kwargs = (os.path.join(baked, f"{source}-{target}"), {"local_files_only": True}) if baked else (repo, {"revision": revision})
+        folder = f"{source}-{target}" + ("-big" if big else "")
+        where, kwargs = (os.path.join(baked, folder), {"local_files_only": True}) if baked else (repo, {"revision": revision})
         tokenizer = MarianTokenizer.from_pretrained(where, **kwargs)
         marian = MarianMTModel.from_pretrained(where, **kwargs).eval()
 
@@ -164,7 +236,8 @@ def load_model(source: str, target: str) -> TranslateFn:
             batch = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=256)
             with torch.no_grad():
                 ids = marian.generate(**batch, num_beams=4, max_new_tokens=256)
-            return tokenizer.batch_decode(ids, skip_special_tokens=True)
+            out = tokenizer.batch_decode(ids, skip_special_tokens=True)
+            return [fix_possessive(s, plain_register(t)) for s, t in zip(texts, out)] if target == "en" else out
 
-        _MODELS[(source, target)] = translate
+        _MODELS[key] = translate
         return translate
