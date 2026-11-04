@@ -177,13 +177,13 @@ describe("sfnRunner", () => {
     const s3 = fakeClient();
     const sfn = fakeClient();
     const runner = createSfnRunner({ jobs, s3, sfn, bucket: "B", stateMachineArn: "arn:sm", logger: quiet });
-    const job = await runner.start({ title: "T", text: "One.\nTwo <b>." });
+    const job = await runner.start({ title: "T", text: "One.\nTwo <3." });
     const put = s3.calls[0];
     assert.equal(put.name, "PutObjectCommand");
     assert.equal(put.input.Bucket, "B");
     const raw = JSON.parse(put.input.Body);
     assert.equal(put.input.Key, `raw/${raw.uuid}.json`);
-    assert.equal(raw.content, "<p>One.</p>\n<p>Two &lt;b&gt;.</p>");
+    assert.equal(raw.content, "<p>One.</p>\n<p>Two &lt;3.</p>");
     assert.equal(raw.source, "generated");
     const exec = sfn.calls[0];
     assert.equal(exec.name, "StartExecutionCommand");

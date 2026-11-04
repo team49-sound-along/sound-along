@@ -15,8 +15,9 @@ test("rate limiter blocks after max inside the window and recovers", () => {
   assert.equal(allow("a"), true);
 });
 
-test("textToHtml escapes markup and splits paragraphs", () => {
-  assert.equal(textToHtml("One <b>two</b>.\n\nThree & four."), "<p>One &lt;b&gt;two&lt;/b&gt;.</p>\n<p>Three &amp; four.</p>");
+test("textToHtml escapes what is left of < and & after cleaning, and splits paragraphs", () => {
+  assert.equal(textToHtml("One <3 two.\n\nThree & four."), "<p>One &lt;3 two.</p>\n<p>Three &amp; four.</p>");
+  assert.equal(textToHtml("One <b>two</b>.\n\nThree & four."), "<p>One two.</p>\n<p>Three &amp; four.</p>");
 });
 
 import { buildInsights } from "../src/insights.js";
@@ -200,4 +201,20 @@ test("a part of a long document exposes its series in the passage summary; anyth
   const s = summarizePassage({ id: "x", timing: { title: "T", words: [], series: SERIES }, mtimeMs: 0, source: "generated" });
   assert.deepEqual(s.series, SERIES);
   assert.equal(summarizePassage({ id: "x", timing: { title: "T", words: [] }, mtimeMs: 0 }).series, null);
+});
+
+test("pasted HTML becomes plain text: tags removed, blocks become paragraphs, entities decoded, scripts dropped", () => {
+  const html = "<h1>Space</h1><p>The <b>moon</b> circles the Earth &amp; reflects sunlight.</p><p>It takes 27 days.</p><script>alert('x')</script><style>p{color:red}</style>";
+  assert.equal(stripMarkup(html), "Space\nThe moon circles the Earth & reflects sunlight.\nIt takes 27 days.");
+  assert.equal(stripMarkup("Tom&nbsp;and&nbsp;Ann said &quot;hi&quot; &#8217;bye&#8217;<br>Next line<br/>end"), "Tom and Ann said \"hi\" ’bye’\nNext line\nend");
+});
+
+test("text that only looks a little like HTML is left alone", () => {
+  assert.equal(stripMarkup("If a < b and c > d then 3 < 5."), "If a < b and c > d then 3 < 5.");
+  assert.equal(stripMarkup("I <3 you and 2<3."), "I <3 you and 2<3.");
+});
+
+test("a missing space after a full stop is added between two sentences, but abbreviations and initials are left alone", () => {
+  assert.equal(stripMarkup("They went home happy.The next day was sunny!Then it rained."), "They went home happy. The next day was sunny! Then it rained.");
+  assert.equal(stripMarkup("The U.S.A team met Dr.Smith and Mr.Brown at example.com today."), "The U.S.A team met Dr.Smith and Mr.Brown at example.com today.");
 });
