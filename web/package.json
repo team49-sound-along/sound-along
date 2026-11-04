@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "fflate": "0.8.3",
+    "hyphenation.en-us": "0.2.1",
+    "hypher": "0.2.5",
     "pdfjs-dist": "6.5.438",
     "vue": "3.5.13"
   },
