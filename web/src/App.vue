@@ -114,6 +114,7 @@ main { min-width: 0; outline: none; }
 }
 @media (max-width: 480px) {
   .back-label { display: none; } /* phones: the arrow alone (the link keeps its "All passages" name) */
+  .chip { display: none; } /* the Settings cog took the avatar's room: the Teacher/Student switcher already shows who is using the app */
 }
 @media (max-width: 380px) {
   /* 320px phones: the Teacher/Student switcher already shows the role, so the avatar chip makes way for it. */

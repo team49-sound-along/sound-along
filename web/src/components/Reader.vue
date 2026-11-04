@@ -61,17 +61,9 @@ function hearAt(index) {
 }
 // "Hear it slowly" from the pronunciation help: the word's own narration slice at a slower speed, pitch kept (slowPlay.js).
 const slowPlayer = createSlowPlayer();
-// The word is played twice with a short pause, so the learner can catch it on the second go.
-const SLOW_REPEAT_GAP_MS = 500;
-let slowRun = 0;
 function slowAt({ index, done }) {
   stopAtSec = null;
-  const win = slowWindow(words.value, index);
-  const run = ++slowRun;
-  slowPlayer.play(audio.value, win, (ok) => {
-    if (!ok || run !== slowRun) return done(false);
-    setTimeout(() => (run === slowRun ? slowPlayer.play(audio.value, win, done) : done(false)), SLOW_REPEAT_GAP_MS);
-  });
+  slowPlayer.play(audio.value, slowWindow(words.value, index), done);
 }
 const dock = ref(null);
 const dockHeight = ref(0);

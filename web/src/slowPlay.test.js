@@ -11,7 +11,7 @@ const words = [
 test("slow window is the word's slice at the slow rate", () => {
   const w = slowWindow(words, 1);
   assert.equal(w.rate, SLOW_RATE);
-  assert.equal(SLOW_RATE, 0.4);
+  assert.equal(SLOW_RATE, 0.5);
   assert.ok(Math.abs(w.startSec - 0.96) < 1e-9 && Math.abs(w.endSec - 1.68) < 1e-9);
   assert.ok(Math.abs(w.wallSec - 0.72 / SLOW_RATE) < 1e-9); // real time it takes at the slow rate
 });

@@ -93,7 +93,9 @@ function goBack() {
 function chooseMode(next) {
   mode.value = next;
   saveMode(next);
-  follower.value = fresh(); // only offered before reading starts, so nothing is lost
+  // Before reading starts a fresh follower is made; while reading, only the mode changes, so the place and what was read are kept.
+  follower.value = phase.value === "ready" ? fresh() : { ...follower.value, mode: next };
+  if (next === "stop") clearNudge();
 }
 
 function handle(events) {
@@ -233,14 +235,14 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="ra-body">
-
-      <template v-if="phase === 'ready'">
-        <p>Press <strong>Start reading</strong>, then read the passage aloud at your own pace. A pause is fine. Only words that are clearly different from the text are pointed out.</p>
-        <fieldset class="mode">
+    <fieldset class="mode">
           <legend class="small">When I miss a word</legend>
           <label><input type="radio" name="ra-mode" value="keepGoing" :checked="mode === 'keepGoing'" @change="chooseMode('keepGoing')" /> Keep going and remind me</label>
           <label><input type="radio" name="ra-mode" value="stop" :checked="mode === 'stop'" @change="chooseMode('stop')" /> Stop and guide me back</label>
         </fieldset>
+
+      <template v-if="phase === 'ready'">
+        <p>Press <strong>Start reading</strong>, then read the passage aloud at your own pace. A pause is fine. Only words that are clearly different from the text are pointed out.</p>
         <div class="row"><button type="button" class="btn primary" @click="begin"><span aria-hidden="true">&#9679;</span> Start reading</button></div>
       </template>
 
@@ -305,10 +307,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.mode { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+.mode { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; min-width: 0; } /* a fieldset is as wide as its content by default, which pushed the page wider than a phone */
 .mode legend { font-weight: 700; margin-bottom: 2px; }
 .mode label { display: flex; align-items: center; gap: 8px; min-height: 32px; }
-.nudge { position: fixed; z-index: 40; left: 50%; transform: translateX(-50%); bottom: calc(var(--dock-h, 72px) + 14px); display: flex; align-items: center; gap: 10px; max-width: min(92vw, 560px); padding: 10px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16); }
+.nudge { position: fixed; z-index: 40; left: 12px; right: 12px; margin: 0 auto; width: fit-content; bottom: calc(var(--dock-h, 72px) + 14px); display: flex; align-items: center; gap: 10px; max-width: min(calc(100vw - 24px), 560px); padding: 10px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16); }
 .nudge-text { font-size: 16px; }
 .ra { display: grid; gap: var(--s2); }
 .ra-body { display: grid; gap: var(--s2); }

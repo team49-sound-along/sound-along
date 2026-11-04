@@ -22,7 +22,7 @@ const props = defineProps({
 const emit = defineEmits(["slow", "practice"]);
 
 const LISTEN_LIMIT_MS = 8000;
-const SLOW_FALLBACK_MS = 10000; // the word is played twice, slowly
+const SLOW_FALLBACK_MS = 6000;
 
 const open = ref(false);
 const chosen = ref(props.indexes[0]);
