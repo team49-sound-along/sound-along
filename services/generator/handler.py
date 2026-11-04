@@ -54,6 +54,7 @@ class Dependencies:
     translate_model: Optional[Callable[..., Callable[[list[str]], list[str]]]] = None  # (source, target, words) -> model
     names_for: Callable[[str], Callable[[str], list[str]]] = lambda language: (lambda text: [])  # place names to protect, by source language
     localize_fn: Optional[Callable[[list[str], str, str], dict[str, str]]] = None
+    pronoun_scorer: Optional[Callable[[str, str], dict[str, float]]] = None  # Spanish su/sus: his, her or their from context (possessives.py)
 
 
 def _read_raw(clients: Clients, raw_key: str) -> dict[str, Any]:
@@ -273,7 +274,7 @@ def process_translation(event: dict[str, Any], deps: Dependencies) -> dict[str, 
         # Spanish text has no place detector here (its candidates are every capitalised name, people included), so nothing is sent for it.
         allowed = deps.localize_fn is not None and source_lang == "en" and not _place_lookups_off(passage)
         localize = (lambda names: deps.localize_fn(names, source_lang, lang)) if allowed else None
-        translated = translate_passage(passage, model, deps.names_for(source_lang), localize=localize)
+        translated = translate_passage(passage, model, deps.names_for(source_lang), localize=localize, pronoun_scorer=deps.pronoun_scorer if source_lang == "es" else None)
         job = build_translated_passage(passage, lang, translated)
         tid = job["uuid"]
         kbps = resolve_kbps((passage.get("settings") or {}).get("mp3Kbps"))
@@ -332,5 +333,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         LOG.exception("generator configuration error")
         return {"status": "failed", "jobId": event.get("jobId", "")}
     if event.get("mode") == "translate":
-        return process_translation(event, Dependencies(clients=clients, translate_model=_load_translator, names_for=_names_for, localize_fn=_localize))
+        from possessives import load_scorer
+
+        return process_translation(event, Dependencies(clients=clients, translate_model=_load_translator, names_for=_names_for, localize_fn=_localize, pronoun_scorer=load_scorer()))
     return process(event, Dependencies(clients=clients, enrich_fn=live_enrichment))

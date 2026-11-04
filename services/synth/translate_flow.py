@@ -135,7 +135,9 @@ def publish_translation(
                 names_fn = ner_places if source_lang == "en" else (lambda text: [])  # Spanish names are not masked: a masked name hides its gender from the model, which then guesses "his" for Ana
             model = model or load_model(source_lang, lang, word_count(passage.get("content") or ""))
             localize = localize or (lambda names: localize_with_wikipedia(names, source_lang, lang))
-            translated = translate_passage(passage, model, names_fn, localize=localize)
+            from possessives import load_scorer
+
+            translated = translate_passage(passage, model, names_fn, localize=localize, pronoun_scorer=load_scorer() if source_lang == "es" else None)
         if run_fn is None:
             from run_local import run as run_fn  # type: ignore[assignment]
         job = build_translated_passage(passage, lang, translated)

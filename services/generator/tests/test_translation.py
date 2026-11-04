@@ -203,3 +203,23 @@ def test_the_translator_is_opus_mt_unless_a_bedrock_model_is_configured(monkeypa
     assert h._load_translator("es", "en", 100) is sentinel
     monkeypatch.setenv("TRANSLATE_MODEL", "bedrock:")
     assert h._load_translator("es", "en", 100) is sentinel
+
+
+def test_a_spanish_part_is_checked_for_possessives_and_an_english_one_never_is():
+    seen = []
+
+    def spy_scorer(context, before):
+        seen.append(before)
+        return {"his": 0.0, "her": 0.0, "their": 0.0}
+
+    s3, table, deps = published(content="<p>Ana y Pablo van al parque. El parque está cerca de su casa.</p>")
+    raw = json.loads(s3.objects[EVENT["rawKey"]])
+    s3.objects[EVENT["rawKey"]] = json.dumps({**raw, "language": "es"}).encode()
+    spy = h.Dependencies(deps.clients, FakeEngine, fake_encoder, translate_model=lambda s, t, w=None: (lambda texts: ["Ana and Pablo go to the park." if "van" in t else "The park is close to his house." for t in texts]),
+                         names_for=lambda lang: (lambda text: []), localize_fn=lambda n, s, t: {}, pronoun_scorer=spy_scorer)
+    run(s3, table, spy)
+    assert seen, "a Spanish source passes through the possessive check"
+    seen.clear()
+    s3, table, deps = published(content="<p>We saw his house. It is big.</p>")
+    run(s3, table, h.Dependencies(deps.clients, FakeEngine, fake_encoder, translate_model=lambda s, t, w=None: fake_model, pronoun_scorer=spy_scorer, localize_fn=lambda n, s, t: {}))
+    assert seen == []

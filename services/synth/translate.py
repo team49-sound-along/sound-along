@@ -157,7 +157,7 @@ def _sentence_count(text: str) -> int:
 
 
 def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Callable[[str], list[str]],
-                      localize: Optional[Callable[[list[str]], Any]] = None) -> Translated:
+                      localize: Optional[Callable[[list[str]], Any]] = None, pronoun_scorer: Optional[Callable[[str, str], dict[str, float]]] = None) -> Translated:
     """Translate title and text. `names_fn(plain_text)` returns the place names to protect (spaCy places for English; capitalised names otherwise)."""
     tokens = tokenize_html(passage.get("content") or "")
     if not tokens:
@@ -202,6 +202,11 @@ def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Cal
         # there) keeps that ending; adding a full stop would give ";."
         soft_source = bool(re.search(r"[;:,]$", text_of[i].rstrip()))
         results.append(restored if _END.search(restored) or (soft_source and re.search(r"[;:,]$", restored)) else restored + ".")
+
+    if pronoun_scorer is not None:  # Spanish su/sus: choose his, her or their from the sentences before (see possessives.py)
+        from possessives import resolve_possessives
+
+        results = resolve_possessives([text_of[i] for i in order], results, pronoun_scorer)
 
     title = _translate_all([passage.get("title") or ""], model)[0] if passage.get("title") else ""
     paragraphs: dict[int, list[str]] = {}

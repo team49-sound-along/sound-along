@@ -81,6 +81,19 @@ def bake_translation() -> None:
                     f.chmod(0o644)
 
 
+# A tiny English language model (Apache-2.0) that decides his, her or their for Spanish su/sus from the sentences before it (see synth/possessives.py).
+LM_DIR = Path("/opt/lm/smollm2-135m")
+LM = ("HuggingFaceTB/SmolLM2-135M", "93efa2f097d58c2a74874c7e644dbc9b0cee75a2")
+LM_FILES = ["config.json", "generation_config.json", "merges.txt", "model.safetensors", "special_tokens_map.json", "tokenizer.json", "tokenizer_config.json", "vocab.json"]
+
+
+def bake_possessive_lm() -> None:
+    snapshot_download(LM[0], revision=LM[1], local_dir=str(LM_DIR), allow_patterns=LM_FILES)
+    for f in LM_DIR.iterdir():
+        if f.is_file():
+            f.chmod(0o644)
+
+
 def bake_phonon() -> None:
     for repo, revision, folder, files in PHONON:
         snapshot_download(repo, revision=revision, local_dir=str(PHONON_DIR / folder), allow_patterns=files)
@@ -94,6 +107,7 @@ def main() -> None:
         (refs / "main").write_text(revision)
     bake_phonon()
     bake_translation()
+    bake_possessive_lm()
 
 
 if __name__ == "__main__":
