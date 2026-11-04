@@ -15,12 +15,12 @@ describe("totals and ranking", () => {
     assert.equal(totalsOf([]).finishRate, null);
   });
   test("words are merged by their letters, capped at the session count and ranked", () => {
-    const ranked = rankWords([group("a", 5, 0, 0, { 2: { s: 3, d: 0 }, 3: { s: 2, d: 1 }, 1: { s: 0, d: 2 } })], textOf, 5);
+    const ranked = rankWords([group("a", 5, 0, 0, { 2: { s: 3, d: 0 }, 3: { s: 2, d: 1 }, 1: { s: 0, d: 2 } })], textOf);
     assert.deepEqual(ranked.map((w) => [w.word, w.missed, w.share]), [["because", 5, 1], ["island", 2, 0.4]]);
   });
   test("positions that resolve to no letters are dropped and at most ten are listed", () => {
     const many = Object.fromEntries(Array.from({ length: 30 }, (_, i) => [i, { s: 1, d: 0 }]));
-    const ranked = rankWords([group("a", 5, 0, 0, many)], (i) => (i === 0 ? "..." : `w${i}`), 5);
+    const ranked = rankWords([group("a", 5, 0, 0, many)], (i) => (i === 0 ? "..." : `w${i}`));
     assert.equal(ranked.length, 10);
     assert.ok(!ranked.some((w) => w.word === "..."));
   });
@@ -61,10 +61,10 @@ describe("buildReadAloudInsights", () => {
     assert.deepEqual(out.words.items.map((w) => w.word), ["dog"]);
     assert.equal(out.totals.sessions, 3);
   });
-  test("no passage chosen: tiles and a passage list but no words", () => {
+  test("no passage chosen: tiles, a passage list and the words of the groups passed in", () => {
     const p2 = group("a", 3, 1, 3, {}, "p2");
-    const out = buildReadAloudInsights({ ...base, summaries: [big, p2], filters: { passageId: null, classId: null } });
-    assert.equal(out.words.state, "choose");
+    const out = buildReadAloudInsights({ ...base, summaries: [big, p2], wordGroups: [big], filters: { passageId: null, classId: null } });
+    assert.equal(out.words.state, "ok");
     assert.deepEqual(out.passages.map((p) => [p.id, p.sessions]), [["p1", 22], ["p2", 3]]);
     assert.equal(out.totals.sessions, 25);
   });

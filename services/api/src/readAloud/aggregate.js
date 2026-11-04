@@ -26,23 +26,55 @@ export function totalsOf(groups) {
  * Words most often skipped or heard differently, merged by the word's letters ("Because" and "because" are one word). `groups` carry
  * `words`: { [position]: { s: skipped, d: differs } }. `textOf(position)` is the server's own lookup in the passage timing file.
  */
-export function rankWords(groups, textOf, sessions, limit = TOP_WORDS) {
+export function rankWords(groups, textOf, limit = TOP_WORDS) {
   const merged = new Map();
   for (const group of groups) {
+    const lookup = group.textOf ?? textOf;
     for (const [position, counts] of Object.entries(group.words ?? {})) {
-      const text = textOf(Number(position));
+      const text = lookup(Number(position));
       const key = keyOf(text);
       if (!key) continue;
       const before = merged.get(key) ?? { word: String(text).replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""), skipped: 0, differs: 0 };
       merged.set(key, { ...before, skipped: before.skipped + (counts.s ?? 0), differs: before.differs + (counts.d ?? 0) });
     }
   }
-  return [...merged.values()]
-    .map((w) => ({ ...w, missed: Math.min(w.skipped + w.differs, sessions), sessions })) // the same word twice in a text must not exceed the number of sessions
+  // A word's sessions are those of the passages it appears in (group.keys, when given), so a word in one passage is not diluted by the others.
+  const sessionsFor = (key) => sumOf(groups.filter((g) => !g.keys || g.keys.has(key)), (g) => g.sessions);
+  return [...merged.entries()]
+    .map(([key, w]) => {
+      const sessions = sessionsFor(key);
+      return { ...w, missed: Math.min(w.skipped + w.differs, sessions), sessions }; // the same word twice in a text must not exceed the number of sessions
+    })
     .filter((w) => w.missed > 0)
     .sort((a, b) => b.missed - a.missed || b.skipped - a.skipped || a.word.localeCompare(b.word))
     .slice(0, limit)
-    .map((w) => ({ ...w, share: w.missed / sessions }));
+    .map((w) => ({ ...w, share: w.missed / w.sessions }));
+}
+
+export const wordKey = keyOf;
+
+/** Finish and retry rate for each class. A class below the minimum has no numbers: the screen says "not enough sessions yet". */
+export function classComparison(summaries, classes) {
+  return classes.map((c) => {
+    const mine = summaries.filter((s) => s.classId === c.id);
+    const sessions = sumOf(mine, (s) => s.sessions);
+    const enough = mine.filter(meetsMinimum);
+    const totals = totalsOf(enough);
+    return { id: c.id, name: c.name, enough: totals.sessions >= MIN_SESSIONS, sessions: totals.sessions > 0 ? totals.sessions : null, finishRate: totals.finishRate, retryRate: totals.retryRate, hidden: sessions - totals.sessions };
+  });
+}
+
+/** Sessions per week for the given weeks (oldest first), from groups that pass the minimum on their own. */
+export function weeklySeries(weeks, summaries, filters, weekList) {
+  const passing = new Set(summaries.filter(meetsMinimum).map((s) => `${s.passageId}#${s.classId ?? "-"}`));
+  const counts = new Map(weekList.map((w) => [w, { sessions: 0, finished: 0 }]));
+  for (const row of weeks) {
+    if (!counts.has(row.week) || !passing.has(`${row.passageId}#${row.classId ?? "-"}`)) continue;
+    if ((filters.passageId && row.passageId !== filters.passageId) || (filters.classId && row.classId !== filters.classId)) continue;
+    const before = counts.get(row.week);
+    counts.set(row.week, { sessions: before.sessions + row.sessions, finished: before.finished + row.finished });
+  }
+  return weekList.map((week) => ({ week, ...counts.get(week) }));
 }
 
 function passageRows(summaries, titles) {
@@ -72,14 +104,12 @@ export function buildReadAloudInsights({ summaries, wordGroups = [], passages, f
   const totals = totalsOf(passing);
   const hiddenSessions = sumOf(selected, (g) => g.sessions) - totals.sessions;
 
-  let words = { state: "choose", items: [] };
-  if (filters.passageId) {
-    const pool = wordGroups.filter((g) => (!filters.classId || g.classId === filters.classId) && meetsMinimum(g));
-    const n = sumOf(pool, (g) => g.sessions);
-    if (selected.length === 0) words = { state: "none", items: [] };
-    else if (pool.length === 0) words = { state: "small", items: [] };
-    else words = { state: "ok", items: rankWords(pool, textOf, n) };
-  }
+  // One passage chosen: that passage's words. None chosen: the words across the passages passed in (each group brings its own textOf and keys).
+  const pool = wordGroups.filter((g) => (!filters.classId || g.classId === filters.classId) && meetsMinimum(g));
+  let words;
+  if (selected.length === 0) words = { state: "none", items: [] };
+  else if (pool.length === 0) words = { state: "small", items: [] };
+  else words = { state: "ok", items: rankWords(pool, textOf) };
   return {
     minSessions: MIN_SESSIONS,
     filters: { passageId: filters.passageId ?? null, classId: filters.classId ?? null },

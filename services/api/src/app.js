@@ -8,6 +8,7 @@ import { contentRoutes } from "./routes/content.js";
 import { mountLocalClips, ratingRoutes } from "./routes/ratings.js";
 import { createFileManifest } from "./ratings/manifest.js";
 import { summarizeRatings } from "./ratings/summary.js";
+import { readAloudRoutes } from "./routes/readAloud.js";
 import { generationRoutes } from "./routes/generation.js";
 import { createLocalQuestions } from "./questions/localQuestions.js";
 import { questionRoutes } from "./routes/questions.js";
@@ -113,6 +114,7 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
   recordingRoutes(api, { recordings, config, writeLimiter });
   ratingRoutes(api, { store, manifest, writeLimiter, config, random });
   questionRoutes(api, { questions, readyList, writeLimiter });
+  readAloudRoutes(api, { store, catalog, readyList, passageIds, classIds, writeLimiter });
   contentRoutes(api, { store, catalog, voices: config.voices ?? loadVoices(), writeLimiter });
 
   api.get(

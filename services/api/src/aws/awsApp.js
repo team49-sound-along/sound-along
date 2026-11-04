@@ -11,6 +11,7 @@ import { createDynamoStore } from "./dynamoStore.js";
 import { createS3Questions } from "./s3Questions.js";
 import { createS3Recordings } from "./s3Recordings.js";
 import { createS3Sources } from "./s3Sources.js";
+import { createS3Timing } from "./s3Timing.js";
 import { createSfnRunner } from "./sfnRunner.js";
 
 /**
@@ -37,7 +38,7 @@ export function createAwsApp(env, clients, logger = console) {
       trustProxy: trustedProxyHops(env),
     },
     store: createDynamoStore({ client: clients.ddb, tableName }),
-    catalog: createDynamoCatalog({ client: clients.ddb, tableName }),
+    catalog: { ...createDynamoCatalog({ client: clients.ddb, tableName }), ...createS3Timing({ s3: clients.s3, bucket }) },
     jobs,
     recordings: createS3Recordings({ s3: clients.s3, bucket, presign: clients.presign ?? ((command, opts) => getSignedUrl(clients.s3, command, opts)) }),
     sources: createS3Sources({ s3: clients.s3, bucket }),

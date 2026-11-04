@@ -51,6 +51,16 @@ export function createFileCatalog(dataDir) {
     async list() {
       return (await all()).map(({ id, mtimeMs, timing, source }) => summarizePassage({ id, timing, mtimeMs, source }));
     },
+    /** One passage's timing document (its words), or null when there is none. The server looks words up here; clients never send word text. */
+    async timing(id) {
+      if (!/^[0-9a-f-]{36}$/.test(String(id))) return null;
+      try {
+        return (await readTiming(`${id}.timing.json`)).timing;
+      } catch (err) {
+        if (err.code === "ENOENT") return null;
+        throw err;
+      }
+    },
     /** Full timing documents, for metrics aggregation. */
     async timings() {
       return (await all()).map(({ timing }) => timing);
