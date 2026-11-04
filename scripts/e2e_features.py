@@ -226,12 +226,17 @@ with sync_playwright() as pw:
         go("#/review"); pg.wait_for_timeout(1000)
         b = pg.get_by_role("button", name="Regenerate with current fixes")
         if not b.count(): return True  # nothing to review in this data
+        listed = lambda: {p["id"] for p in api(BASE, "passages")["data"]}
+        before = listed()
         b.first.click(); pg.wait_for_timeout(1500)
         for _ in range(120):
             pg.wait_for_timeout(2000)
+            vanished = before - listed()
+            if vanished: return f"a passage disappeared from the Library while it was regenerated: {sorted(vanished)[0][:8]}"
             if pg.get_by_role("button", name="Regenerate with current fixes").first.is_enabled(): break
+        if before - listed(): return "a passage is missing from the Library after regeneration"
         return pg.get_by_role("button", name="Regenerate with current fixes").first.is_enabled() or "regeneration did not finish"
-    step("words to check: Regenerate runs a job and finishes", regenerate)
+    step("words to check: Regenerate runs a job, finishes, and the passage stays in the Library throughout", regenerate)
 
     errs = sorted(set(p for p in problems))
     results.append(not errs); print(("PASS " if not errs else "FAIL ") + "no uncaught page errors" + ("" if not errs else f" — {errs[:5]}"))

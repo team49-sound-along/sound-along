@@ -76,6 +76,7 @@ def main() -> None:
             tts_engine=tts.engine,
             cms_host=cms_host,
             alert_email=alert_email,
+            extra_context=tuple((key, str(app.node.try_get_context(key))) for key in ("pollyVoice", "pollyVoiceEs", "pollyEngine", "translateModel") if app.node.try_get_context(key) is not None),
         ),
         env=env,
     )

@@ -190,6 +190,34 @@ def _sentence_count(text: str) -> int:
     return max(1, len({t.sentence for t in tokenize_html(f"<p>{html_lib.escape(text, quote=False)}</p>")}))
 
 
+_PART_WORDS = {"en": ("Part", "of"), "es": ("Parte", "de")}
+
+
+def _split_part_suffix(title: str) -> tuple[str, tuple[int, int] | None]:
+    """("The Story", (2, 5)) for "The Story (Part 2 of 5)" or "La historia (Parte 2 de 5)"; the title unchanged and None when there is no such ending."""
+    stripped = title.rstrip()
+    if not stripped.endswith(")") or " (" not in stripped:
+        return title, None
+    head, _, tail = stripped[:-1].rpartition(" (")
+    parts = tail.split(" ")
+    if len(parts) == 4 and parts[0] in ("Part", "Parte") and parts[1].isdigit() and parts[2] in ("of", "de") and parts[3].isdigit():
+        return head, (int(parts[1]), int(parts[3]))
+    return title, None
+
+
+def _translate_title(title: str, model: TranslateFn, source_lang: str) -> str:
+    """The part ending "(Part 2 of 5)" is built by us in the target language, never sent to the model, so every part of a document is titled alike."""
+    if not title:
+        return ""
+    head, part = _split_part_suffix(title)
+    translated = _translate_all([head], model)[0] if head.strip() else ""
+    if part is None:
+        return translated
+    target = "es" if source_lang == "en" else "en"
+    label, joiner = _PART_WORDS[target]
+    return f"{translated} ({label} {part[0]} {joiner} {part[1]})".strip()
+
+
 def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Callable[[str], list[str]],
                       localize: Optional[Callable[[list[str]], Any]] = None, pronoun_scorer: Optional[Callable[[str, str], dict[str, float]]] = None) -> Translated:
     """Translate title and text. `names_fn(plain_text)` returns the place names to protect (spaCy places for English; capitalised names otherwise)."""
@@ -244,7 +272,7 @@ def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Cal
 
         results = resolve_possessives([text_of[i] for i in order], results, pronoun_scorer)
 
-    title = _translate_all([passage.get("title") or ""], model)[0] if passage.get("title") else ""
+    title = _translate_title(passage.get("title") or "", model, passage.get("language") or "en")
     paragraphs: dict[int, list[str]] = {}
     for i, text in zip(order, results):
         paragraphs.setdefault(paragraph_of[i], []).append(html_lib.escape(text, quote=False))

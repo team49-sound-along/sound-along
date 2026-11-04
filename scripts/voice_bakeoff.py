@@ -26,7 +26,7 @@ from quality_lab import load_predictor, mos_of  # noqa: E402
 PARK = ROOT / "samples" / "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98.json"
 SPANISH = ROOT / "samples" / "5e5f1d3c-7a2b-4c9e-8d1a-3b6f2c9e4a70.json"
 ENGLISH_VOICES = "af_heart af_bella af_nicole af_aoede af_kore af_sarah af_sky af_nova af_alloy af_jessica af_river bf_emma bf_isabella bf_alice bf_lily am_michael am_fenrir am_puck am_adam am_echo am_eric am_liam am_onyx bm_george bm_fable bm_daniel bm_lewis".split()
-SPANISH_VOICES = "ef_dora em_alex em_santa".split()
+SPANISH_VOICES = "ef_dora em_alex".split()
 
 
 def first_paragraphs(html: str, count: int = 2) -> str:

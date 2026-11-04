@@ -342,3 +342,20 @@ def test_a_translated_passage_is_tidied_after_names_are_put_back():
     out = tr.translate_passage({"title": "", "content": "<p>Piedmont Park loses 60 lbs. of honey.</p>"}, M(),
                                names_fn=lambda text: ["Piedmont Park"], localize=lambda ns: {"Piedmont Park": "Estados Unidos"})
     assert "el Estados" not in out.content_html.lower() and "60 libras de miel" in out.content_html
+
+
+# ---- titles of the parts of a long document ----------------------------------------------------------------------------------------------
+def test_the_part_ending_of_a_title_is_built_in_the_target_language_and_never_sent_to_the_model():
+    import translate as t
+
+    seen = []
+
+    def model(texts):
+        seen.extend(texts)
+        return ["ES " + x for x in texts]
+
+    assert t._translate_title("The Lighthouse (Part 2 of 5)", model, "en") == "ES The Lighthouse (Parte 2 de 5)"
+    assert t._translate_title("La hija del faro (Parte 1 de 2)", model, "es") == "ES La hija del faro (Part 1 of 2)"
+    assert seen == ["The Lighthouse", "La hija del faro"]  # the model only ever saw the title itself
+    assert t._translate_title("A day (in the park)", model, "en") == "ES A day (in the park)"  # other brackets are ordinary text
+    assert t._translate_title("", model, "en") == "" and t._split_part_suffix("No ending") == ("No ending", None)

@@ -61,3 +61,45 @@ def test_summaries_and_index_entries_carry_the_translation_links():
     back = passage_summary({"id": "T1", "language": "es", "translationOf": {"id": "x", "lang": "en", "sentenceMap": [0]}}, "t")
     assert back["translationOf"] == "x" and back["translations"] == {}
     assert index_entry(s)["translations"] == {"es": "T1"} and index_entry({"id": "a"})["translations"] == {} and index_entry({"id": "a"})["translationOf"] is None
+
+
+# ---- readiness (mirrors services/api/src/readiness.js) -------------------------------------------------------------------------------
+from datetime import datetime, timedelta, timezone
+
+from summary import ready_entries
+
+NOW = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
+_ID = [f"00000000-0000-4000-8000-00000000000{i}" for i in range(10)]
+
+
+def _entry(n, minutes_ago=1, **extra):
+    return {"id": _ID[n], "title": f"P{n}", "createdAt": (NOW - timedelta(minutes=minutes_ago)).isoformat().replace("+00:00", "Z"), **extra}
+
+
+def _series(i):
+    return {"id": _ID[9], "index": i, "total": 2, "title": "Doc", "partIds": [_ID[1], _ID[2]]}
+
+
+def _ids(entries):
+    return [e["id"] for e in ready_entries(entries, NOW)]
+
+
+def test_entries_without_a_marker_are_ready():
+    assert _ids([_entry(1), _entry(2, translationOf=_ID[1])]) == [_ID[1], _ID[2]]
+
+
+def test_a_held_entry_is_not_ready_and_a_stale_hold_is_ignored():
+    assert _ids([_entry(1, held=True)]) == []
+    assert _ids([_entry(1, held=True, minutes_ago=45)]) == [_ID[1]]
+
+
+def test_a_long_document_is_ready_only_when_every_part_is_there_and_unheld():
+    assert _ids([_entry(1, series=_series(1))]) == []
+    assert _ids([_entry(1, series=_series(1)), _entry(2, series=_series(2), held=True)]) == []
+    assert _ids([_entry(1, series=_series(1)), _entry(2, series=_series(2))]) == [_ID[1], _ID[2]]
+    assert _ids([_entry(1, series=_series(1), minutes_ago=45)]) == [_ID[1]]  # a part that never came: shown as it is
+
+
+def test_a_translation_waits_for_its_original():
+    assert _ids([_entry(1, held=True), _entry(3, translationOf=_ID[1])]) == []
+    assert _ids([_entry(1), _entry(3, translationOf=_ID[1])]) == [_ID[1], _ID[3]]

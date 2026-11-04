@@ -45,6 +45,19 @@ Only the most human-sounding voices are offered, each with a "Hear it" sample in
   **not been rated by anyone yet**: listen to them in Settings before relying on them.
 - **Removed:** the other Kokoro English voices. Kokoro's grades do not predict how human a voice sounds (Bella A- and Nicole B- were called robotic,
   shrill or creepy), and everything else is C+ or lower.
-- **Spanish (3):** Kokoro Dora, Alex, Santa. Nothing else is licensed and runnable: Phonon's Spanish voices need a non-commercial model, Amazon
+- **Spanish (2):** Kokoro Dora and Alex. Santa was removed after a listening round (rated no). In the same round MeloTTS Spanish and Qwen3-TTS were rated yes and VoxCPM2 no; none of them is in the app yet 
+  - **MeloTTS Spanish:** code and model weights are both MIT (model card checked 2026-11-04). It cannot go into the generator image as it is: it pins `transformers==4.27.4` and
+    `librosa==0.9.1`, while the image runs `transformers==5.22.1` and `numpy==2.5.4`, and it needs a dozen unused Chinese/Japanese/Korean libraries stubbed out just to import.
+    It would need its inference code ported to the image's library versions first. Local use only until then.
+  - **Qwen3-TTS** (MLX build) runs on a Mac only and cannot run on Lambda. **VoxCPM2** was rated no. Nothing else is licensed and runnable: Phonon's Spanish voices need a non-commercial model, Amazon
   Polly's Spanish voices (neural Lupe, Pedro; long-form Alba, Raul) have never been run (`-c ttsEngine=polly`, see docs/DEPLOY.md), and
   MeloTTS, Qwen3-TTS and VoxCPM2 are not integrated and have no ratings. Getting to five Spanish voices means a real listening test first.
+
+## Rule: only voices that run in the AWS build too (2026-11-04)
+A voice is offered only if it runs in the Lambda image or is an AWS service, so what is tested locally is what ships. That rules out Qwen3-TTS and VoxCPM2 (Mac only) and, until its code is ported
+to the image's library versions, MeloTTS. Open-source Piper was also left out for now: its current runtime is GPL-licensed, and only some of its Spanish voices have a clear permissive licence
+(its es_MX high-quality voice is Apache-2.0, es_ES "sharvard" is CC BY 3.0).
+- **Deployable Spanish candidates:** Kokoro Dora and Alex (in the image today) and Amazon Polly's Spanish voices: neural and generative Lupe, Pedro, Carlos (generative only), Mia, Andrés, Lucia, Sergio,
+  and long-form Alba and Raúl. Polly works locally too when the machine has AWS credentials that may call `polly:SynthesizeSpeech`.
+- **Next step, once the sandbox is connected:** `python3 scripts/polly_rating_pack.py --dry-run` (14 clips, about $0.33), then run it without `--dry-run`, send the `clips` folder to raters, and keep the key file.
+  The winners are then added to `voices.json` as Polly voices chosen by voice id, like the Phonon voices, with a "Hear it" sample each.

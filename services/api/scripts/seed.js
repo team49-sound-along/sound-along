@@ -12,13 +12,16 @@ const PLACE_PICTURE = /^[0-9a-f-]{36}\.(?:place|word|figure)-[a-z0-9-]{1,60}-[0-
 
 const exists = (file) => access(file).then(() => true, () => false);
 
+// CloudFront caches an object for a day when the origin sends no Cache-Control; these files change under the same name, so they are revalidated.
+const REVALIDATE = "public, max-age=0, must-revalidate";
+
 /** The `source` field of raw/<id>.json, or "sample" when the file is missing or unreadable. */
 const readSource = (file) => readFile(file, "utf8").then((t) => JSON.parse(t).source, () => "sample");
 
 /** Publish data/index.json (newest first, same fields as GET /api/passages): the Library reads this document directly. */
 async function publishIndex({ s3, bucket, summaries }) {
   const sorted = [...summaries].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  await s3.send(new PutObjectCommand({ Bucket: bucket, Key: "data/index.json", Body: gzipSync(JSON.stringify(sorted)), ContentType: "application/json", ContentEncoding: "gzip" }));
+  await s3.send(new PutObjectCommand({ Bucket: bucket, Key: "data/index.json", Body: gzipSync(JSON.stringify(sorted)), ContentType: "application/json", ContentEncoding: "gzip", CacheControl: REVALIDATE }));
 }
 
 /** Upload every local passage (mp3 + timing) to S3 and write its PASSAGE summary item. Returns the ids seeded. */
@@ -41,12 +44,12 @@ export async function seed({ s3, ddb, bucket, tableName, dataDir, logger = conso
       readSource(path.join(dataDir, "raw", `${id}.json`)),
     ]);
     const timing = JSON.parse(timingText);
-    await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.mp3`, Body: audio, ContentType: "audio/mpeg" }));
-    await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.timing.json`, Body: gzipSync(timingText), ContentType: "application/json", ContentEncoding: "gzip" }));
+    await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.mp3`, Body: audio, ContentType: "audio/mpeg", CacheControl: REVALIDATE }));
+    await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.timing.json`, Body: gzipSync(timingText), ContentType: "application/json", ContentEncoding: "gzip", CacheControl: REVALIDATE }));
     const cardsPath = path.join(dataDir, `${id}.cards.json`);
     if (await exists(cardsPath)) {
       // Small and read as-is by the browser: plain application/json, no gzip.
-      await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.cards.json`, Body: await readFile(cardsPath), ContentType: "application/json" }));
+      await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `data/${id}.cards.json`, Body: await readFile(cardsPath), ContentType: "application/json", CacheControl: REVALIDATE }));
     }
     // Place pictures (small JPEG/PNG chosen ahead of time). The content hash is in the file name, so they can be cached for a year.
     for (const picture of (await readdir(dataDir)).filter((f) => PLACE_PICTURE.test(f) && f.startsWith(`${id}.`)).sort()) {

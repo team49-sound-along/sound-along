@@ -14,7 +14,7 @@ MAX_ALT = 125  # a screen reader reads alt text in one go; longer belongs in the
 MAX_BYTES = 400_000
 THUMB_WIDTH = 500
 PACE_SECONDS = 1.2
-USER_AGENT = "SoundAlongCards/1.0 (https://github.com/rohanreigns007/sound-along; one-off content build, no personal data)"
+USER_AGENT = "SoundAlongCards/1.0 (https://github.com/team49-sound-along/sound-along; one-off content build, no personal data)"
 _BLOCKED = re.compile(r"\b(NC|ND)\b|NON.?COMMERCIAL|NO.?DERIV|GFDL|FAIR USE|ALL RIGHTS")
 _ALLOWED = re.compile(r"^(CC0( .*)?|CC[ -]BY(-SA)?( \d(\.\d)?)?( .*)?|PUBLIC DOMAIN|PD([ -].*)?)$")
 

@@ -15,13 +15,12 @@ const ID = "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98";
 
 describe("voices.json", () => {
   const voices = loadVoices();
-  test("the English voices that passed blind listening (one Kokoro, two Phonon) and the three Spanish voices, every entry with a lang", () => {
+  test("the English voices that passed blind listening (one Kokoro, two Phonon) and the two Spanish voices, every entry with a lang", () => {
     assert.deepEqual(voices.filter((v) => v.lang === "en" && v.recommended).map((v) => v.id), ["af_heart", "phonon_hadley", "phonon_everly", "phonon_bryony", "phonon_trevor"]);
     assert.ok(voices.every((v) => v.id && v.label && ["en", "es"].includes(v.lang)));
     assert.deepEqual(voices.filter((v) => v.lang === "es"), [
       { id: "ef_dora", label: "Dora (Spanish female)", lang: "es", engine: "kokoro", recommended: true },
       { id: "em_alex", label: "Alex (Spanish male)", lang: "es", engine: "kokoro", recommended: true },
-      { id: "em_santa", label: "Santa (Spanish male)", lang: "es", engine: "kokoro", recommended: true },
     ]);
     assert.equal(new Set(voices.map((v) => v.id)).size, voices.length);
   });
@@ -58,7 +57,7 @@ describe("voiceEs settings", async () => {
   });
 
   test("helpers: patch keeps only sent fields and merge never mutates", () => {
-    assert.deepEqual(parseSettingsPatch({ voiceEs: "em_santa", voice: "af_heart" }, loadVoices()), { voiceEs: "em_santa", voice: "af_heart" });
+    assert.deepEqual(parseSettingsPatch({ voiceEs: "em_alex", voice: "af_heart" }, loadVoices()), { voiceEs: "em_alex", voice: "af_heart" });
     const cur = Object.freeze({ voice: "af_heart", speed: 1, mp3Kbps: 48 });
     assert.equal(mergeSettings(cur, {}).voiceEs, "ef_dora");
   });

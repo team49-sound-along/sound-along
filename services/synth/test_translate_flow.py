@@ -174,3 +174,17 @@ def test_a_passage_that_will_be_translated_is_written_held_and_one_that_will_not
     assert "held" not in _held_if_translating({"source": "generated", "language": "en", "settings": {"translate": False}}, variant).timing
     assert "held" not in _held_if_translating({"source": "sample", "language": "en"}, variant).timing
     assert "held" not in variant.timing  # the input is never changed
+
+
+def test_a_passage_that_is_already_published_is_not_held_again_when_it_is_regenerated(tmp_path):
+    import numpy as np
+    from flow import Variant
+    from run_local import _held_if_translating
+
+    variant = Variant(id=SRC, audio=np.zeros(1, dtype="float32"), timing={"id": SRC})
+    passage = {"source": "generated", "language": "en"}
+    assert _held_if_translating(passage, variant, tmp_path).timing["held"] is True  # first publication
+    (tmp_path / f"{SRC}.timing.json").write_text(json.dumps({"id": SRC}))  # published, listed
+    assert "held" not in _held_if_translating(passage, variant, tmp_path).timing  # regeneration: stays listed
+    (tmp_path / f"{SRC}.timing.json").write_text(json.dumps({"id": SRC, "held": True}))  # a run that never finished
+    assert _held_if_translating(passage, variant, tmp_path).timing["held"] is True

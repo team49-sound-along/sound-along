@@ -223,3 +223,55 @@ def test_a_spanish_part_is_checked_for_possessives_and_an_english_one_never_is()
     s3, table, deps = published(content="<p>We saw his house. It is big.</p>")
     run(s3, table, h.Dependencies(deps.clients, FakeEngine, fake_encoder, translate_model=lambda s, t, w=None: fake_model, pronoun_scorer=spy_scorer, localize_fn=lambda n, s, t: {}))
     assert seen == []
+
+
+# ---- a passage stays out of the Library until its translation is in place ---------------------------------------------------------------
+def index_ids(s3):
+    return [e["id"] for e in json.loads(gzip.decompress(s3.objects["data/index.json"]))]
+
+
+def test_a_new_passage_is_held_out_of_the_index_until_its_translation_is_published():
+    s3, table, deps = published()
+    assert timing(s3, PASSAGE_ID).get("held") is True and table.items[("PASSAGE", PASSAGE_ID)].get("held") is True
+    assert PASSAGE_ID not in index_ids(s3)  # nobody can open the English passage before the Spanish one exists
+    out = run(s3, table, deps)
+    assert out["status"] == "done"
+    assert "held" not in timing(s3, PASSAGE_ID) and "held" not in table.items[("PASSAGE", PASSAGE_ID)]
+    assert set(index_ids(s3)) == {PASSAGE_ID, out["translatedId"]}  # both languages appear together
+    assert all("held" not in e for e in json.loads(gzip.decompress(s3.objects["data/index.json"])))
+
+
+def test_the_passage_is_released_when_translation_is_skipped_too_long_or_fails():
+    cases = {"skipped": lambda deps: deps_for(deps.clients.s3, deps.clients.table, with_model=False),
+             "failed": lambda deps: h.Dependencies(deps.clients, FakeEngine, fake_encoder, translate_model=lambda s, t, w=None: (_ for _ in ()).throw(RuntimeError("boom")))}
+    for name, make in cases.items():
+        s3, table, deps = published()
+        assert PASSAGE_ID not in index_ids(s3)
+        run(s3, table, make(deps))
+        assert "held" not in timing(s3, PASSAGE_ID) and PASSAGE_ID in index_ids(s3), name
+    s3, table, deps = published(content="<p>" + "word " * (h.MAX_TRANSLATE_WORDS + 50) + ".</p>")
+    h.process_translation({"jobId": "j", "passageId": PASSAGE_ID, "rawKey": EVENT["rawKey"]}, deps)
+    assert PASSAGE_ID in index_ids(s3)
+
+
+def test_passages_that_will_not_be_translated_are_never_held():
+    for kwargs in ({"settings": {"translate": False}}, {"source": "sample"}):
+        s3, table, deps = published(**kwargs)
+        assert "held" not in timing(s3, PASSAGE_ID) and PASSAGE_ID in index_ids(s3)
+
+
+def test_regenerating_a_listed_passage_keeps_it_listed():
+    s3, table, deps = published()
+    run(s3, table, deps)
+    assert PASSAGE_ID in index_ids(s3)
+    raw = json.loads(s3.objects[EVENT["rawKey"]]) | {"force": True}
+    s3.objects[EVENT["rawKey"]] = json.dumps(raw).encode()
+    h.process(EVENT, deps)  # a regeneration
+    assert "held" not in timing(s3, PASSAGE_ID) and PASSAGE_ID in index_ids(s3)
+
+
+def test_files_that_change_under_the_same_name_are_revalidated_so_cloudfront_never_serves_them_a_day_stale():
+    s3, table, deps = published()
+    run(s3, table, deps)
+    for key in ("data/index.json", f"data/{PASSAGE_ID}.timing.json", f"data/{PASSAGE_ID}.mp3"):
+        assert s3.cache_controls[key] == h.REVALIDATE and "max-age=0" in h.REVALIDATE and "must-revalidate" in h.REVALIDATE, key

@@ -23,7 +23,7 @@ from fingerprint import fingerprint
 from flow import Variant, run_flow
 from mp3 import encode_mp3, resolve_kbps
 from tokenizer import tokenize_html
-from summary import index_entry, passage_summary
+from summary import index_entry, passage_summary, ready_entries
 from translate import translate_passage, word_count
 from translate_cards import translate_cards
 from translate_flow import build_translated_passage, link, other_language, should_translate
@@ -62,13 +62,19 @@ def _read_raw(clients: Clients, raw_key: str) -> dict[str, Any]:
     return json.loads(body)
 
 
+# Everything under data/ is served through CloudFront, which caches an object for a day when the origin sends no Cache-Control. These files keep
+# their file name when a passage is regenerated, and data/index.json changes whenever a passage is published, so they must be revalidated
+# (a cheap conditional request) instead of served stale. Pictures have a content hash in their name and use IMMUTABLE instead.
+REVALIDATE = "public, max-age=0, must-revalidate"
+
+
 def _put(clients: Clients, key: str, body: bytes, content_type: str, gzipped: bool = False, cache_control: str | None = None) -> None:
     """ReadWorks' guide: large word-level timing "can live in S3 in zipped form". Gzipped objects carry
     Content-Encoding, so a browser's fetch() decompresses them without any client code."""
+    extra = {"CacheControl": cache_control or REVALIDATE}
     if gzipped:
-        clients.s3.put_object(Bucket=clients.bucket, Key=key, Body=gzip.compress(body, mtime=0), ContentType=content_type, ContentEncoding="gzip")
+        clients.s3.put_object(Bucket=clients.bucket, Key=key, Body=gzip.compress(body, mtime=0), ContentType=content_type, ContentEncoding="gzip", **extra)
     else:
-        extra = {"CacheControl": cache_control} if cache_control else {}
         clients.s3.put_object(Bucket=clients.bucket, Key=key, Body=body, ContentType=content_type, **extra)
 
 
@@ -124,6 +130,34 @@ def _publish(deps: Dependencies, variant: Variant, kbps: int, source: str, workd
     return summary
 
 
+def _held(variant: Variant) -> Variant:
+    """A new passage that will get a translation is kept out of the Library (`held`) until `process_translation` has finished, so the original
+    and its translation appear together."""
+    return Variant(variant.id, variant.audio, {**variant.timing, "held": True})
+
+
+def _already_listed(clients: Clients, passage_id: str) -> bool:
+    """True when this passage is already published and not held (a regeneration): it must stay listed while it is rebuilt."""
+    previous = _previous_timing(clients, passage_id)
+    return previous is not None and not previous.get("held")
+
+
+def _release_held(deps: Dependencies, pid: str) -> None:
+    """Take the `held` marker off the passage (and its human variant) in S3 and DynamoDB, then publish the index. Never raises."""
+    try:
+        primary = _get_json(deps.clients, f"data/{pid}.timing.json") or {}
+        released = False
+        for sid in [pid, *([primary["pairId"]] if primary.get("pairId") else [])]:
+            doc = _get_json(deps.clients, f"data/{sid}.timing.json")
+            if doc and doc.get("held"):
+                _relink_source(deps, sid, {k: v for k, v in doc.items() if k != "held"})
+                released = True
+        if released:
+            _write_index(deps.clients)
+    except Exception:  # noqa: BLE001
+        LOG.exception("could not release %s (it is listed anyway after 30 minutes)", pid)
+
+
 def _json_default(value: Any) -> Any:
     from decimal import Decimal
 
@@ -135,6 +169,7 @@ def _json_default(value: Any) -> Any:
 def _write_index(clients: Clients) -> None:
     """Publish data/index.json (newest first): the frontend reads this document instead of calling the API."""
     entries = sorted((index_entry(i) for i in list_passage_items(clients.table)), key=lambda e: e.get("createdAt", ""), reverse=True)
+    entries = [{k: v for k, v in e.items() if k != "held"} for e in ready_entries(entries)]  # the Library never lists what is still being made
     body = json.dumps(entries, ensure_ascii=False, default=_json_default).encode("utf-8")
     _put(clients, "data/index.json", body, "application/json", gzipped=True)
 
@@ -176,9 +211,10 @@ def _run(event: dict[str, Any], deps: Dependencies, tracker: JobTracker) -> dict
             recording_path=recording_path, transcribe_fn=deps.transcribe_fn, decode_fn=deps.decode_fn,
         )
         tracker.step("publish")
-        _publish(deps, result.ai, kbps, source, workdir)
+        hold = deps.translate_model is not None and should_translate({**passage, "source": source}) and not _already_listed(deps.clients, passage_id)
+        _publish(deps, _held(result.ai) if hold else result.ai, kbps, source, workdir)
         if result.human:
-            _publish(deps, result.human, kbps, source, workdir)
+            _publish(deps, _held(result.human) if hold else result.human, kbps, source, workdir)
         _put(deps.clients, f"data/{result.ai.id}.soundalong.json", json.dumps(result.soundalong, ensure_ascii=False).encode("utf-8"), "application/json")
         _publish_cards(deps, passage_id, {**passage, "source": source})
         _write_index(deps.clients)
@@ -295,6 +331,8 @@ def process_translation(event: dict[str, Any], deps: Dependencies) -> dict[str, 
     except Exception:
         LOG.exception("translation failed for %s", pid)
         return {**out, "status": "failed"}
+    finally:
+        _release_held(deps, pid)  # success, skipped or failed: the original is listed now (with its translation when there is one)
 
 
 def _mark_failed(tracker: JobTracker, job_id: str) -> None:
