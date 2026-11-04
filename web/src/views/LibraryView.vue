@@ -108,7 +108,7 @@ onBeforeUnmount(() => clearInterval(pendingTimer));
 .search { position: relative; display: flex; align-items: center; }
 .search svg { position: absolute; left: 12px; color: var(--muted); pointer-events: none; }
 .search .input { padding-left: 38px; width: 240px; }
-.pick .input { width: auto; min-width: 150px; }
+.pick .input { width: 180px; }
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; background: var(--surface); }
 .seg button { min-width: 44px; min-height: 44px; border: 0; background: transparent; cursor: pointer; display: grid; place-items: center; color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--primary-soft); color: var(--primary); }

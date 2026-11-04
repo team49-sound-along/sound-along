@@ -93,6 +93,7 @@ async function save() {
 </template>
 
 <style scoped>
+@media (min-width: 521px) { #s-kbps { width: calc(100% - 120px); } } /* same width as the voice dropdowns, which share their row with Hear it */
 .pickrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .pickrow .input { flex: 1 1 260px; min-width: 0; }
 .form { display: grid; gap: var(--s3); }

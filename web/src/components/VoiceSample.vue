@@ -40,4 +40,5 @@ defineExpose({ play });
 
 <style scoped>
 .sample { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sample .btn { min-width: 112px; justify-content: center; }
 </style>
