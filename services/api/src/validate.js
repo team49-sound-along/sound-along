@@ -1,4 +1,5 @@
 import { HttpError } from "./http.js";
+import { languageMismatch } from "./languageGuess.js";
 import { UUID } from "./recordings/rules.js";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -50,7 +51,10 @@ export function parseGenerateInput(body) {
     if (typeof body.recordingId !== "string" || !UUID.test(body.recordingId)) bad("That recording id is not valid. Upload the recording again.");
     recordingId = body.recordingId;
   }
-  return { title, text, recordingId, language: parseLanguage(body.language) };
+  const language = parseLanguage(body.language);
+  const mismatch = languageMismatch(text, language);
+  if (mismatch) bad(mismatch);
+  return { title, text, recordingId, language };
 }
 
 export function parseEvent(body, passageIds) {
@@ -94,12 +98,13 @@ export function unwrapLines(text) {
 export function stripMarkup(text) {
   return text
     .replace(/\[(?:illustration|image|figure|footnote|note)\b[^\]\n]{0,200}\]/gi, "") // editorial tags
-    .replace(/(?<=\w)\[\d{1,3}\]/g, "") // footnote markers: "cual[1]" would be read aloud as "cual uno"
+    .replace(/(?<=[\p{L}\p{N}.,;:!?"\u201D)])\[\d{1,3}\]/gu, "") // footnote markers (after a letter, digit or punctuation, accents included): "cual[1]" would be read aloud as "cual uno"
     .replace(/[ \t]*-{2,3}[ \t]*(?=\S)/g, (m, offset, whole) => (offset === 0 || whole[offset - 1] === "\n" ? "\u2014" : " \u2014 ")) // typed dashes (--Hola, word -- word)
     .replace(/\[([^\]\n]{1,200})\]\((?:https?:\/\/|mailto:)[^)\s]*\)/g, "$1")
     .replace(/(^|[^\w*])\*{1,3}(?=\S)([^*\n]*?\S)\*{1,3}(?![\w*])/g, "$1$2")
     .replace(/(^|[^\w_])_{1,2}(?=[^\s_])([^_\n]*?[^\s_])_{1,2}(?![\w_])/g, "$1$2")
     .replace(/`([^`\n]+)`/g, "$1")
+    .replace(/^[ \t]*#([^#\n]{1,80})#[ \t]*$/gm, "$1") // "#TITLE#" heading markers on a line of their own
     .replace(/^[ \t]{0,3}(?:#{1,6}[ \t]+|>[ \t]?|[-*+][ \t]+)/gm, "");
 }
 

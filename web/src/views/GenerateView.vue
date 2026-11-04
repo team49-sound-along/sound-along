@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import JobTracker from "../components/JobTracker.vue";
 import TextFileDrop from "../components/TextFileDrop.vue";
 import RecordingPicker from "../components/RecordingPicker.vue";
@@ -10,10 +10,20 @@ import { uploadRecording } from "../upload.js";
 import { TEXT_MAX, TEXT_MIN, TITLE_MAX, generateErrorMessage, validateGenerate } from "../validation.js";
 import { LANGUAGES, PRONUNCIATION_NOTE, langAttr, languageCopy, withLanguage } from "../language.js";
 import { formatCount } from "../format.js";
+import { guessLanguage } from "../languageGuess.js";
 
 const title = ref("");
 const text = ref("");
 const language = ref("en");
+const autoLanguageNote = ref("");
+// Pasted Spanish text with English selected (or the reverse) would be read by the wrong voice, so the language follows the text when it is clear.
+watch(text, (value) => {
+  const guess = guessLanguage(value);
+  if (guess && guess !== language.value) {
+    language.value = guess;
+    autoLanguageNote.value = `We set the language to ${guess === "es" ? "Spanish" : "English"} to match your text.`;
+  }
+});
 const copy = computed(() => languageCopy(language.value));
 const recording = ref(null);
 const submitted = ref(false);
@@ -62,6 +72,7 @@ function reset() {
   text.value = "";
   recording.value = null;
   language.value = "en";
+  autoLanguageNote.value = "";
   submitted.value = false;
   startError.value = "";
   resetJob();
@@ -85,6 +96,7 @@ function reset() {
           <option v-for="l in LANGUAGES" :key="l.value" :value="l.value">{{ l.label }}</option>
         </select>
         <p id="g-lang-help" class="small muted">{{ PRONUNCIATION_NOTE }}<template v-if="language === 'es'"> {{ copy.help }}</template></p>
+        <p v-if="autoLanguageNote" class="small" role="status">{{ autoLanguageNote }}</p>
       </div>
       <div class="field">
         <label for="g-title">Title</label>

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createRateLimiter } from "../src/rateLimit.js";
 import { stripMarkup, textToHtml, unwrapLines } from "../src/validate.js";
+import { guessLanguage, languageMismatch } from "../src/languageGuess.js";
 
 test("rate limiter blocks after max inside the window and recovers", () => {
   let now = 0;
@@ -133,4 +134,32 @@ test("footnote markers, editorial tags and typed double dashes are cleaned up", 
   assert.equal(stripMarkup("[Illustration: PLATERO Y YO]\nHello."), "\nHello.");
   assert.equal(stripMarkup("--Espera. ¿Qué es eso?\nHe said -- quietly -- and left."), "\u2014Espera. ¿Qué es eso?\nHe said \u2014 quietly \u2014 and left.");
   assert.equal(stripMarkup("See [1] and the array a[1] stays."), "See [1] and the array a stays.");
+});
+
+
+test("footnote markers after accented letters and heading markers like #TITLE# are removed", () => {
+  assert.equal(stripMarkup("no sé qué[2] cascabeleo y está[12]."), "no sé qué cascabeleo y está.");
+  assert.equal(stripMarkup("#I#\n\n#PLATERO#\n\nPlatero es un burro."), "I\n\nPLATERO\n\nPlatero es un burro.");
+  assert.equal(stripMarkup("Item #5 and #7 stay."), "Item #5 and #7 stay.");
+});
+
+
+const EN_TEXT = "The red fox ran across the green field and the children watched it from the hill. It was a bright afternoon and they were all very happy that the day had come.";
+const ES_TEXT = "El zorro rojo corrió por el campo verde y los niños lo miraban desde la colina. Era una tarde clara y todos estaban muy felices de que el día había llegado.";
+
+test("the language of a text is recognised only when the evidence is clear", () => {
+  assert.equal(guessLanguage(EN_TEXT), "en");
+  assert.equal(guessLanguage(ES_TEXT), "es");
+  assert.equal(guessLanguage("Hola"), null);
+  assert.equal(guessLanguage(""), null);
+  assert.equal(guessLanguage(`${EN_TEXT} ${ES_TEXT}`), null, "a mixed text is not guessed");
+  assert.equal(guessLanguage("Alice Bob Carol Dave Erin Frank 12 34 56 78"), null);
+});
+
+test("Spanish text with English selected (and the reverse) is refused with a helpful message; a match is accepted", () => {
+  assert.match(languageMismatch(ES_TEXT, "en"), /looks like Spanish, but English is selected/);
+  assert.match(languageMismatch(EN_TEXT, "es"), /looks like English, but Spanish is selected/);
+  assert.equal(languageMismatch(ES_TEXT, "es"), null);
+  assert.equal(languageMismatch(EN_TEXT, "en"), null);
+  assert.equal(languageMismatch("Hola", "en"), null, "too short to judge: never blocks");
 });

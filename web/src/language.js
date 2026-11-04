@@ -23,7 +23,7 @@ const COPY = {
     textLabel: "Texto del pasaje",
     titlePlaceholder: "Título del pasaje",
     textPlaceholder: "Pega o escribe aquí el texto en español.",
-    help: "Escribe el texto con sus acentos y signos (á, é, ñ, ¿, ¡). Spanish timing comes from a speech-recognition pass, so it can be a little less exact than English.",
+    help: "Escribe el texto con sus acentos y signos (á, é, ñ, ¿, ¡). Spanish word timing can be a little less exact than English.",
   },
 };
 
