@@ -112,7 +112,7 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
   generationRoutes(api, { store, jobs, runner, recordings, sources, config, generateLimiter });
   recordingRoutes(api, { recordings, config, writeLimiter });
   ratingRoutes(api, { store, manifest, writeLimiter, config, random });
-  questionRoutes(api, { questions, readyList, writeLimiter });
+  questionRoutes(api, { questions, readyList, writeLimiter, logger });
   contentRoutes(api, { store, catalog, voices: config.voices ?? loadVoices(), writeLimiter });
 
   api.get(
