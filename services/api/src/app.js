@@ -9,6 +9,8 @@ import { mountLocalClips, ratingRoutes } from "./routes/ratings.js";
 import { createFileManifest } from "./ratings/manifest.js";
 import { summarizeRatings } from "./ratings/summary.js";
 import { generationRoutes } from "./routes/generation.js";
+import { createLocalQuestions } from "./questions/localQuestions.js";
+import { questionRoutes } from "./routes/questions.js";
 import { mountLocalRecordingUpload, recordingRoutes } from "./routes/recordings.js";
 import { loadVoices } from "./settings.js";
 import { parseAssignmentInput, parseEvent, parseToggle } from "./validate.js";
@@ -31,10 +33,11 @@ const SECURITY_HEADERS = {
  *   jobs     job registry (async)      (memory locally, DynamoDB on AWS)
  *   runner   starts generation         (child process locally, Step Functions on AWS)
  *   recordings  human recording slots   (local disk, or S3 presigned PUT)
+ *   questions question drafts (never served) and the approved questions file (local disk, or S3 raw/questions + data/)
  *   manifest blind-test clip manifest   (<dataDir>/ab/manifest.json locally, S3 raw/ab/manifest.json on AWS)
  *   sources  stored job input by id     (raw/<id>.json on disk or S3; used by regenerate)
  */
-export function createApp({ store, catalog, jobs, runner, recordings, sources, config, manifest = config.dataDir ? createFileManifest(config.dataDir) : null, random, logger = console }) {
+export function createApp({ store, catalog, jobs, runner, recordings, sources, config, manifest = config.dataDir ? createFileManifest(config.dataDir) : null, questions = config.dataDir ? createLocalQuestions({ draftsDir: config.questionDraftsDir ?? path.join(config.dataDir, "question-drafts"), dataDir: config.dataDir }) : null, random, logger = console }) {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", config.trustProxy ?? false);
@@ -109,6 +112,7 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
   generationRoutes(api, { store, jobs, runner, recordings, sources, config, generateLimiter });
   recordingRoutes(api, { recordings, config, writeLimiter });
   ratingRoutes(api, { store, manifest, writeLimiter, config, random });
+  questionRoutes(api, { questions, readyList, writeLimiter });
   contentRoutes(api, { store, catalog, voices: config.voices ?? loadVoices(), writeLimiter });
 
   api.get(

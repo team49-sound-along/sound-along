@@ -9,6 +9,9 @@ from aws_cdk import aws_s3 as s3
 #  raw/ab/manifest.json   the listening-test answer key (read only; outside /data/*, so CloudFront cannot serve it)
 API_RAW_PREFIX = "raw/*"
 API_MANIFEST_KEY = "raw/ab/manifest.json"
+#  data/*.questions.json  the approved practice questions (write only). A teacher publishes them from the app; drafts stay under raw/questions/*
+#                         (covered by raw/*) and are never written to data/. It cannot overwrite audio, timing or any other data file.
+API_QUESTIONS_KEY = "data/*.questions.json"
 
 
 def list_bucket(bucket: s3.IBucket, prefixes: list[str]) -> iam.PolicyStatement:
@@ -26,6 +29,7 @@ def api_s3_policies(bucket: s3.IBucket) -> list[iam.PolicyStatement]:
     return [
         object_access(bucket, ["s3:PutObject", "s3:GetObject"], API_RAW_PREFIX),
         object_access(bucket, ["s3:GetObject"], API_MANIFEST_KEY),
+        object_access(bucket, ["s3:PutObject"], API_QUESTIONS_KEY),
         list_bucket(bucket, [API_RAW_PREFIX, API_MANIFEST_KEY]),
     ]
 
