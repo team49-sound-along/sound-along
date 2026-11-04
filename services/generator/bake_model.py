@@ -63,7 +63,7 @@ TRANSLATE = (
 TRANSLATE_FILES = ["config.json", "generation_config.json", "pytorch_model.bin", "source.spm", "special_tokens_map.json", "target.spm", "tokenizer_config.json", "vocab.json"]
 
 
-HALF_PRECISION_ON_DISK = ("es-en-big",)  # stored as float16 (467 MB instead of 933 MB); loaded back as float32. Checked: identical translations on 38 sentences.
+HALF_PRECISION_ON_DISK = ("en-es", "es-en", "es-en-big")  # stored as float16 (half the size); loaded back as float32. Checked: identical translations on 38 to 40 sentences each.
 
 
 def bake_translation() -> None:
