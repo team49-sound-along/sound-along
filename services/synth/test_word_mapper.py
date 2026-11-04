@@ -35,3 +35,10 @@ def test_missing_timestamps_fall_back_and_flag():
 def test_ends_never_precede_starts():
     words = map_words(["a"], [tok("a", 1.0, 0.5)])
     assert words[0].end_s >= words[0].start_s
+
+
+def test_a_word_never_ends_after_the_next_one_starts():
+    engine = [tok("cien", 1.0, 1.4), tok("años", 1.2, 1.8), tok("!", 1.8, 1.9)]  # the recognizer let two words overlap by 0.2 s
+    words = map_words(["cien", "años!"], engine)
+    assert words[0].end_s <= words[1].start_s
+    assert words[0].start_s <= words[0].end_s and words[1].start_s <= words[1].end_s

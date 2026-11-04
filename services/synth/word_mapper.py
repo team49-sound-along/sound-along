@@ -59,4 +59,13 @@ def map_words(display: Sequence[str], engine: Sequence[EngineToken], fallback_st
         end = max(end, start)
         mapped.append(MappedWord(start, end, ok))
         cursor = end
-    return mapped
+    return _without_overlaps(mapped)
+
+
+def _without_overlaps(words: list[MappedWord]) -> list[MappedWord]:
+    """A word never ends after the next one starts (a recognizer can let neighbours overlap; the highlight then jumps back and forth)."""
+    out: list[MappedWord] = []
+    for w, nxt in zip(words, words[1:] + [None]):
+        end = w.end_s if nxt is None else min(w.end_s, max(nxt.start_s, w.start_s))
+        out.append(MappedWord(w.start_s, max(w.start_s, end), w.aligned))
+    return out
