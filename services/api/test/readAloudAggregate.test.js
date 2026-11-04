@@ -74,6 +74,21 @@ describe("buildReadAloudInsights", () => {
   });
 });
 
+describe("distinct sources", () => {
+  const coded = (distinct, sessions) => ({ ...group("a", sessions, 0, 0, { 2: { s: sessions, d: 0 } }), distinct });
+  test("with reader codes the minimum counts distinct codes, not sessions", () => {
+    const filters = { passageId: "p1", classId: null };
+    const padded = coded(1, 30);
+    assert.equal(buildReadAloudInsights({ ...base, summaries: [padded], wordGroups: [padded], filters }).words.state, "small");
+    const spread = coded(3, 3);
+    assert.equal(buildReadAloudInsights({ ...base, summaries: [spread], wordGroups: [spread], filters }).words.state, "ok");
+  });
+  test("without codes (distinct is null) sessions are what can be counted", () => {
+    const g = { ...group("a", 3, 0, 0, { 2: { s: 3, d: 0 } }), distinct: null };
+    assert.equal(buildReadAloudInsights({ ...base, summaries: [g], wordGroups: [g], filters: { passageId: "p1", classId: null } }).words.state, "ok");
+  });
+});
+
 describe("suggestSteps", () => {
   const w = (word, skipped, differs, sessions = 10) => ({ word, skipped, differs, missed: skipped + differs, sessions, share: (skipped + differs) / sessions });
   test("word practice for skipped words, a spoken warm-up for words heard differently", () => {

@@ -36,6 +36,7 @@ export function createAwsApp(env, clients, logger = console) {
       generatePerMinute: Number(env.GENERATE_PER_MINUTE ?? 3),
       maxConcurrentJobs: Number(env.MAX_CONCURRENT_JOBS ?? 1),
       trustProxy: trustedProxyHops(env),
+      readerInsights: (env.READER_INSIGHTS ?? "false") === "true", // reader codes need teacher sign-in first: off unless the stack is deployed with it
     },
     store: createDynamoStore({ client: clients.ddb, tableName }),
     catalog: { ...createDynamoCatalog({ client: clients.ddb, tableName }), ...createS3Timing({ s3: clients.s3, bucket }) },

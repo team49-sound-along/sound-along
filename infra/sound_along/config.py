@@ -146,6 +146,12 @@ def parse_questions_enabled(value: object) -> bool:
     return value is True or value == "true"
 
 
+def parse_reader_insights(value: object) -> bool:
+    """`readerInsights` (-c readerInsights=true) turns on anonymous per-reader progress codes in the read-aloud insights. Off unless the exact value
+    true: reader codes must not be collected on a deployed site before teacher sign-in exists."""
+    return value is True or value == "true"
+
+
 _POLLY_VOICE = re.compile(r"^[A-Za-zÁ-ú]{3,20}$")
 POLLY_ENGINES = ("neural", "generative", "long-form", "standard")
 

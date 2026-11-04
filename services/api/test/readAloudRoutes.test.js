@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, test } from "node:test";
@@ -20,7 +20,7 @@ before(async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "sa-ra-api-"));
   await writeFile(path.join(dir, `${PID}.timing.json`), JSON.stringify(timing));
   await writeFile(path.join(dir, `${PID}.mp3`), "x");
-  app = await startLocalApp({ dir, config: { writePerMinute: 1000 } });
+  app = await startLocalApp({ dir, config: { writePerMinute: 1000, readerInsights: true } });
 });
 after(() => app.close());
 
@@ -101,11 +101,13 @@ describe("read-aloud results and the teacher view", () => {
     assert.deepEqual([none.enabled, none.enough, none.readers.length], [true, false, 0]);
     await post(result({ readerCode: CODE, wordsRead: 5 }));
     await post(result({ readerCode: CODE, wordsRead: 8 }));
-    const few = (await readersOf(`?classId=${CLASS}&code=${CODE}`)).json.data; // two sessions: below the minimum, nothing listed
-    assert.deepEqual([few.enough, few.readers, few.selected], [false, [], null]);
     await post(result({ readerCode: CODE, wordsRead: 9 }));
+    await post(result({ readerCode: "ZZZZ2222" }));
+    const few = (await readersOf(`?classId=${CLASS}&code=${CODE}`)).json.data; // two readers: below the minimum, nothing listed
+    assert.deepEqual([few.enough, few.readers, few.selected], [false, [], null]);
+    await post(result({ readerCode: "MMMM3333" }));
     const list = (await readersOf(`?classId=${CLASS}`)).json.data;
-    assert.deepEqual(list.readers, [{ code: CODE, sessions: 3, passages: 1 }]);
+    assert.deepEqual(list.readers.map((r) => [r.code, r.sessions]), [["K7Q29XMA", 3], ["MMMM3333", 1], ["ZZZZ2222", 1]]); // alphabetical, not by result
     const one = (await readersOf(`?classId=${CLASS}&code=${CODE}`)).json.data.selected;
     assert.deepEqual(one.sessions.map((s) => s.pct), [50, 80, 90]);
     assert.deepEqual(one.words.map((w) => w.word), ["because", "island"]);
@@ -115,6 +117,24 @@ describe("read-aloud results and the teacher view", () => {
     const gone = (await readersOf(`?classId=${CLASS}&code=${CODE}`)).json.data;
     assert.deepEqual([gone.enabled, gone.readers, gone.selected], [false, [], null]);
     assert.ok(!JSON.stringify(gone).includes(CODE));
+  });
+
+  test("padding with one reader code never unlocks a word list; three distinct codes do", async () => {
+    const C2 = "cls-g5-ell";
+    await app.call("PUT", "/api/read-aloud/settings", { classId: C2, readers: true });
+    for (let n = 0; n < 5; n += 1) await post(result({ classId: C2, readerCode: "PADD2222" }));
+    const padded = (await insights(`?passageId=${PID}&classId=${C2}`)).json.data;
+    assert.equal(padded.words.state, "small");
+    assert.equal(padded.totals.sessions, 0);
+    assert.equal(JSON.stringify(padded).includes("because"), false);
+    for (let n = 0; n < 5; n += 1) await post(result({ classId: C2 })); // sessions without a code do not count while the class uses codes
+    assert.equal((await insights(`?passageId=${PID}&classId=${C2}`)).json.data.words.state, "small");
+    await post(result({ classId: C2, readerCode: "PADE2222" }));
+    assert.equal((await insights(`?passageId=${PID}&classId=${C2}`)).json.data.words.state, "small");
+    await post(result({ classId: C2, readerCode: "PADF2222" }));
+    const open = (await insights(`?passageId=${PID}&classId=${C2}`)).json.data;
+    assert.equal(open.words.state, "ok");
+    await app.call("PUT", "/api/read-aloud/settings", { classId: C2, readers: false });
   });
 
   test("the readers route refuses unknown classes, a missing class and bad codes, and never leaks across classes", async () => {
@@ -140,6 +160,28 @@ describe("read-aloud results and the teacher view", () => {
       assert.equal((await app.call("PUT", "/api/read-aloud/settings", bad)).status, 400, JSON.stringify(bad));
     }
     assert.equal(JSON.stringify((await app.call("GET", "/api/read-aloud/settings")).json), before);
+  });
+});
+
+describe("READER_INSIGHTS flag off (the deployed default)", () => {
+  test("codes are dropped, the readers route is a 404 and the settings never say readers are on", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "sa-ra-flag-"));
+    await writeFile(path.join(dir, `${PID}.timing.json`), JSON.stringify(timing));
+    await writeFile(path.join(dir, `${PID}.mp3`), "x");
+    const off = await startLocalApp({ dir, config: { writePerMinute: 1000 } }); // no readerInsights in the config
+    try {
+      assert.equal((await off.call("PUT", "/api/read-aloud/settings", { classId: CLASS, readers: true })).status, 200);
+      const view = (await off.call("GET", "/api/read-aloud/settings")).json.data;
+      assert.equal(view.readersAvailable, false);
+      assert.equal(view.classes.find((c) => c.id === CLASS).readers, false);
+      for (let n = 0; n < 4; n += 1) assert.equal((await off.call("POST", "/api/read-aloud/results", result({ readerCode: "K7Q29XMA" }))).json.data.recorded, true);
+      assert.equal((await off.call("GET", `/api/insights/read-aloud/readers?classId=${CLASS}`)).status, 404);
+      assert.ok(!(await readFile(path.join(dir, "state.json"), "utf8")).includes("K7Q29XMA")); // never written
+      const counted = (await off.call("GET", "/api/insights/read-aloud")).json.data;
+      assert.equal(counted.totals.sessions, 4); // sessions are still counted without codes
+    } finally {
+      off.close();
+    }
   });
 });
 

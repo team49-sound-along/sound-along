@@ -115,7 +115,7 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
   recordingRoutes(api, { recordings, config, writeLimiter });
   ratingRoutes(api, { store, manifest, writeLimiter, config, random });
   questionRoutes(api, { questions, readyList, writeLimiter });
-  readAloudRoutes(api, { store, catalog, readyList, passageIds, classIds, writeLimiter, readLimiter });
+  readAloudRoutes(api, { store, catalog, readyList, passageIds, classIds, writeLimiter, readLimiter, readerInsightsOn: config.readerInsights === true });
   contentRoutes(api, { store, catalog, voices: config.voices ?? loadVoices(), writeLimiter });
 
   api.get(

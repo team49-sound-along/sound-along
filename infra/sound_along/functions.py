@@ -55,6 +55,7 @@ class ApiFunctionProps:
     code_dir: Path
     bucket: s3.IBucket
     table: dynamodb.ITable
+    reader_insights: bool = False
 
 
 def create_api_function(scope: Construct, props: ApiFunctionProps) -> lambda_.Function:
@@ -77,6 +78,7 @@ def create_api_function(scope: Construct, props: ApiFunctionProps) -> lambda_.Fu
             "BUCKET": props.bucket.bucket_name,
             "TABLE_NAME": props.table.table_name,
             **API_ENV_DEFAULTS,
+            "READER_INSIGHTS": "true" if props.reader_insights else "false",
         },
     )
     props.table.grant_read_write_data(fn)

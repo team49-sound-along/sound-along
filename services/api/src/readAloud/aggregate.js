@@ -12,7 +12,12 @@ const rate = (part, whole) => (whole > 0 ? part / whole : null);
 const keyOf = (text) => String(text ?? "").toLowerCase().normalize("NFC").replace(/[^\p{L}\p{N}]/gu, "");
 const sumOf = (groups, pick) => groups.reduce((total, g) => total + pick(g), 0);
 
-export const meetsMinimum = (group) => group.sessions >= MIN_SESSIONS;
+/**
+ * Enough sources to show anything about a group. When the class uses reader codes (`distinct` is a number) the sources are DISTINCT codes, so
+ * one reader, or one script posting many results with one code, can never unlock a word list. Without codes (`distinct` null) only sessions can
+ * be counted, and a few sessions could still come from one child or one script: an honest limit of an anonymous design (see docs).
+ */
+export const meetsMinimum = (group) => (group.distinct == null ? group.sessions >= MIN_SESSIONS : group.distinct >= MIN_SESSIONS);
 
 /** Totals and rates for groups that already passed the minimum. */
 export function totalsOf(groups) {

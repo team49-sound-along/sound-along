@@ -7,6 +7,8 @@ const limited = (limiter) => (req, res, next) =>
   limiter(req.ip) ? next() : next(new HttpError(429, "Too many changes in a short time. Wait a minute and try again."));
 
 /**
+ * READER_INSIGHTS flag: reader codes need teacher sign-in before they are safe to collect, so the flag is OFF in the deployed stack.
+ *
  * ACCESS: POST /read-aloud/results is anonymous by design and strictly validated. The teacher routes (PUT settings, the two insights GETs)
  * have exactly the protection of the other teacher routes (settings, pronunciations, assignments, questions): the write rate limit on writes,
  * the same limiter family on reads, and on AWS the same CloudFront-signed origin. There is NO sign-in or teacher-to-class check on the API in
@@ -21,11 +23,19 @@ const limited = (limiter) => (req, res, next) =>
  *   GET /insights/read-aloud         org / class / passage view
  *   GET /insights/read-aloud/readers per-reader view (an empty view unless the class has "progress by reader" on)
  */
-export function readAloudRoutes(api, { store, catalog, readyList, passageIds, classIds, writeLimiter, readLimiter }) {
+export function readAloudRoutes(api, { store, catalog, readyList, passageIds, classIds, writeLimiter, readLimiter, readerInsightsOn = false }) {
   const writes = limited(writeLimiter);
   const reads = (req, res, next) => (readLimiter(req.ip) ? next() : next(new HttpError(429, "Too many requests. Wait a minute and try again.")));
   const timingOf = (id) => catalog.timing?.(id) ?? null;
-  const viewOf = async () => classSettingsView(await store.getClassSettings(), await store.listClasses());
+  // READER_INSIGHTS (server flag, off in the deployed stack until teacher sign-in exists): when off, reader codes are neither stored nor shown,
+  // the readers route is a 404, and the settings never report "progress by reader" as on, so devices send no code.
+  const withFlag = (view) => ({
+    ...view,
+    readersAvailable: readerInsightsOn,
+    defaults: { ...view.defaults, readers: readerInsightsOn && view.defaults.readers },
+    classes: view.classes.map((c) => ({ ...c, readers: readerInsightsOn && c.readers })),
+  });
+  const viewOf = async () => withFlag(classSettingsView(await store.getClassSettings(), await store.listClasses()));
 
   api.get("/read-aloud/settings", reads, route(async (req, res) => res.json(ok(await viewOf()))));
 
@@ -48,7 +58,7 @@ export function readAloudRoutes(api, { store, catalog, readyList, passageIds, cl
       const result = parseReadAloudResult(req.body, { passageIds: passages, classIds: await classIds(), timing: passages.has(id) ? await timingOf(id) : null });
       const settings = effectiveClassSettings(await store.getClassSettings(), result.classId);
       if (!settings.share) return res.json(ok({ recorded: false })); // sharing is off for this class: nothing is kept
-      await store.recordReadAloud({ ...result, readerCode: settings.readers ? result.readerCode : null }); // a code is kept only when the class switch is on
+      await store.recordReadAloud({ ...result, readerCode: readerInsightsOn && settings.readers ? result.readerCode : null }); // a code is kept only when the class switch is on
       return res.json(ok({ recorded: true }));
     }),
   );
@@ -67,7 +77,7 @@ export function readAloudRoutes(api, { store, catalog, readyList, passageIds, cl
     route(async (req, res) => {
       const filters = await filtersOf(req.query);
       const [passages, classes] = await Promise.all([readyList(), store.listClasses()]);
-      res.json(ok(await readAloudInsights({ store, timingOf, passages: passages.map((p) => ({ id: p.id, title: p.title })), classes, filters })));
+      res.json(ok(await readAloudInsights({ store, timingOf, passages: passages.map((p) => ({ id: p.id, title: p.title })), classes, filters, readersEnabled: readerInsightsOn })));
     }),
   );
 
@@ -77,6 +87,7 @@ export function readAloudRoutes(api, { store, catalog, readyList, passageIds, cl
     route(async (req, res) => {
       const { passageId, classId } = await filtersOf(req.query);
       const code = req.query.code ? String(req.query.code) : null;
+      if (!readerInsightsOn) throw new HttpError(404, "Unknown API route.");
       if (!classId) throw new HttpError(400, "Choose a class.");
       if (code && !READER_CODE.test(code)) throw new HttpError(400, "That reader code is not valid.");
       res.json(ok(await readerInsights({ store, timingOf, classId, code, passageId })));
