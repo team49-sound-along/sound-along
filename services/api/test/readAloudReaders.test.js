@@ -1,12 +1,27 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { classComparison, weeklySeries } from "../src/readAloud/aggregate.js";
-import { listReaders, readerDetail, readerSummary } from "../src/readAloud/readers.js";
+import { listReaders, readerDetail, readerProgress, readerSummary } from "../src/readAloud/readers.js";
 import { lastWeeks, weekStart } from "../src/readAloud/weeks.js";
 
 const s = (at, pct, skipped = 0, differs = 0) => ({ at, pct, skipped, differs, finished: pct === 100 });
 const TEXT = ["the", "island", "because"];
 const textOf = () => (i) => TEXT[i];
+
+describe("readerProgress", () => {
+  const item = (code, passageId, sessions) => ({ code, passageId, sessions, words: {} });
+  test("share of the passage per read, oldest first, alphabetical by code, last 8 only", () => {
+    const many = Array.from({ length: 10 }, (_, n) => s(`2026-10-${String(10 + n).padStart(2, "0")}`, n * 10));
+    const out = readerProgress([item("ZZZZ2222", "p", [s("2026-11-02", 40), s("2026-11-01", 20)]), item("AAAA3333", "p", many)]);
+    assert.deepEqual(out.map((r) => r.code), ["AAAA3333", "ZZZZ2222"]);
+    assert.deepEqual(out[1].pcts, [20, 40]);
+    assert.deepEqual(out[0].pcts, [20, 30, 40, 50, 60, 70, 80, 90]);
+  });
+  test("a passage filter narrows the reads", () => {
+    const out = readerProgress([item("AAAA3333", "p", [s("2026-11-01", 20)]), item("AAAA3333", "q", [s("2026-11-02", 90)])], "q");
+    assert.deepEqual(out, [{ code: "AAAA3333", pcts: [90] }]);
+  });
+});
 
 describe("weeks", () => {
   test("a week is named by its Monday and the list ends with this week", () => {

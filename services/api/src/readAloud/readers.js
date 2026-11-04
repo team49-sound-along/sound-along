@@ -18,6 +18,23 @@ export function listReaders(items) {
   return [...byCode.values()].sort((a, b) => a.code.localeCompare(b.code));
 }
 
+export const PATH_LENGTH = 8; // the most recent reads shown on a reader's progress path
+
+/**
+ * Each reader's share of the passage read (0 to 100) across their reads, oldest first and at most PATH_LENGTH of them, for the progress path.
+ * Alphabetical by code, never by result. `passageId` narrows to one passage (null = all).
+ */
+export function readerProgress(items, passageId = null) {
+  const byCode = new Map();
+  for (const item of items) {
+    if (passageId && item.passageId !== passageId) continue;
+    byCode.set(item.code, [...(byCode.get(item.code) ?? []), ...item.sessions.map((s) => ({ at: s.at, pct: s.pct }))]);
+  }
+  return [...byCode.entries()]
+    .map(([code, sessions]) => ({ code, pcts: sessions.sort((a, b) => a.at.localeCompare(b.at)).slice(-PATH_LENGTH).map((s) => s.pct) }))
+    .sort((a, b) => a.code.localeCompare(b.code));
+}
+
 /** One sentence, matter-of-fact, from the share of the passage read across the sessions (oldest first). */
 export function readerSummary(sessions) {
   if (sessions.length < 2) return "Not enough sessions yet to show a pattern.";

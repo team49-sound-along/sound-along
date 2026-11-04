@@ -58,6 +58,29 @@ export function rankWords(groups, textOf, limit = TOP_WORDS) {
 
 export const wordKey = keyOf;
 
+/** A word's own count is shown only when at least this many reads missed it (one read's stumble is never pointed out). */
+export const MIN_WORD_MISSES = 2;
+
+/**
+ * The passage text with how many reads missed each word, for the heat-map. `groups` (already past the minimum) carry `words` by position;
+ * `timing` is the passage's own timing document. Words missed fewer than MIN_WORD_MISSES times come back with missed 0, so a single read's
+ * stumble is never shown. Returns null when the passage has no words.
+ */
+export function passageHeat(groups, timing) {
+  const list = Array.isArray(timing?.words) ? timing.words : null;
+  if (!list) return null;
+  const sessions = sumOf(groups, (g) => g.sessions);
+  const counts = new Map();
+  for (const group of groups) {
+    for (const [position, c] of Object.entries(group.words ?? {})) counts.set(Number(position), (counts.get(Number(position)) ?? 0) + (c.s ?? 0) + (c.d ?? 0));
+  }
+  const tokens = list.map((w) => {
+    const raw = Math.min(counts.get(w.i) ?? 0, sessions);
+    return { i: w.i, text: String(w.text ?? ""), paragraph: Number.isInteger(w.paragraph) ? w.paragraph : 0, missed: raw >= MIN_WORD_MISSES ? raw : 0 };
+  });
+  return { sessions, tokens };
+}
+
 /** Finish and retry rate for each class. A class below the minimum has no numbers: the screen says "not enough sessions yet". */
 export function classComparison(summaries, classes) {
   return classes.map((c) => {
