@@ -46,8 +46,11 @@ watch(
   quiz,
   (found) => {
     if (!found) return;
-    attempt.value = attemptFor(found.docId);
+    const ids = found.questions.map((q) => q.id);
     result.value = loadResult(found.docId);
+    attempt.value = attemptFor(found.docId, ids);
+    // a finished attempt with no recorded score cannot be shown as a score: start over
+    if (attempt.value.finished && !result.value) attempt.value = restartAttempt(found.docId, ids);
   },
   { immediate: true },
 );
@@ -75,7 +78,7 @@ function advance() {
 }
 
 function retry() {
-  attempt.value = restartAttempt(quiz.value.docId);
+  attempt.value = restartAttempt(quiz.value.docId, quiz.value.questions.map((q) => q.id));
   announce.value = "";
   refocus(heading);
 }
@@ -130,7 +133,7 @@ const optionOf = (item) => questions.value.find((q) => q.id === item.id);
           <p><button ref="next" type="button" class="btn primary" :disabled="!answered" @click="advance">{{ isLast ? "See my score" : "Next question" }}</button></p>
         </section>
 
-        <section v-else class="card" aria-labelledby="sh">
+        <section v-else-if="attempt.finished" class="card" aria-labelledby="sh">
           <h3 id="sh">Your score: {{ score.correct }} of {{ score.total }}</h3>
           <p v-if="result && result.attempts > 1" class="small muted">Best on this device: {{ result.best.correct }} of {{ result.best.total }}. Tries: {{ result.attempts }}.</p>
           <ol class="review">

@@ -5,16 +5,21 @@ import { reactive } from "vue";
 const attempts = new Map();
 let counter = 0;
 
-const fresh = (docId) => reactive({ seed: `${docId}:${Date.now()}:${(counter += 1)}`, answers: {}, index: 0, finished: false });
+/** Order does not matter (the choices are reshuffled anyway); the set of published question ids does. */
+export const signatureOf = (ids) => [...ids].sort().join("|");
 
-/** The attempt for these questions, started when there is none. */
-export function attemptFor(docId) {
-  if (!attempts.has(docId)) attempts.set(docId, fresh(docId));
+const fresh = (docId, ids) => reactive({ seed: `${docId}:${Date.now()}:${(counter += 1)}`, signature: signatureOf(ids), answers: {}, index: 0, finished: false });
+
+/** The attempt for these questions. Started when there is none, or when the published questions changed since it was saved. */
+export function attemptFor(docId, ids) {
+  const saved = attempts.get(docId);
+  const stale = !saved || saved.signature !== signatureOf(ids) || saved.index >= Math.max(ids.length, 1);
+  if (stale) attempts.set(docId, fresh(docId, ids));
   return attempts.get(docId);
 }
 
 /** Retry: a new attempt, with the choices shuffled again. */
-export function restartAttempt(docId) {
-  attempts.set(docId, fresh(docId));
+export function restartAttempt(docId, ids) {
+  attempts.set(docId, fresh(docId, ids));
   return attempts.get(docId);
 }
