@@ -241,3 +241,24 @@ test("bad input is tolerated", () => {
   assert.deepEqual(feed(s, null).events, []);
   assert.deepEqual(feed(s, { id: 0, transcript: 42, isFinal: true }).events, []);
 });
+
+test("a small word heard as another small word is not a mistake ('that' for 'the')", () => {
+  const w = "Ever since tea was first imported the English have enjoyed a nice hot cup".split(" ").map((text, i) => ({ i, text, sentence: 0 }));
+  const { state, events } = feed(createReadAlong(w, { language: "en" }), { id: 0, transcript: "ever since tea was first imported that english have enjoyed a nice hot cup", isFinal: true });
+  assert.equal(events.some((e) => e.type === "differs" || e.type === "skipped"), false);
+  assert.equal(Object.keys(state.read).length, w.length);
+});
+
+test("a dropped small word is not a skip, but a dropped content word still is", () => {
+  const w = "We went to the old market and bought apples".split(" ").map((text, i) => ({ i, text, sentence: 0 }));
+  const dropsThe = feed(createReadAlong(w, { language: "en" }), { id: 0, transcript: "we went to old market and bought apples", isFinal: true });
+  assert.equal(dropsThe.events.some((e) => e.type === "skipped"), false);
+  const dropsMarket = feed(createReadAlong(w, { language: "en" }), { id: 0, transcript: "we went to the old and bought apples", isFinal: true });
+  assert.ok(dropsMarket.events.some((e) => e.type === "skipped" && e.word === "market"));
+});
+
+test("a content word heard as a different content word is still reported", () => {
+  const w = "The dog chased the red ball across the yard".split(" ").map((text, i) => ({ i, text, sentence: 0 }));
+  const { events } = feed(createReadAlong(w, { language: "en" }), { id: 0, transcript: "the dog chased the blue ball across the yard", isFinal: true });
+  assert.ok(events.some((e) => e.type === "differs" && e.expected === "red"));
+});

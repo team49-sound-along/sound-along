@@ -22,6 +22,14 @@ const FILLERS = {
   es: new Set(["eh", "em", "mm", "mmm", "ah", "ehh", "hmm", "este"]),
 };
 
+// Small unstressed words. Speech recognizers often hear them as another small word ("that" for "the") or drop them, and a child who read the
+// sentence correctly should never be stopped for it. Such a word is never reported as skipped or heard differently on its own.
+const WEAK = {
+  en: new Set(["a", "an", "the", "of", "to", "in", "on", "at", "by", "for", "and", "or", "but", "is", "it", "its", "as", "he", "she", "we", "they", "i", "you", "was", "were", "be", "are", "am", "his", "her", "their", "them", "this", "that", "these", "those", "than", "then", "so", "if", "my", "me", "our", "your", "do", "did", "does", "not", "no", "with", "from", "had", "has", "have", "will", "can"]),
+  es: new Set(["el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "en", "y", "o", "que", "a", "al", "lo", "por", "con", "para", "se", "su", "sus", "es", "mi", "me", "te", "le", "les", "no", "si", "u", "e"]),
+};
+const isWeak = (target, language) => WEAK[language].has(target.norm);
+
 const lang = (language) => (language === "es" ? "es" : "en");
 
 /** Lower case, no punctuation, no apostrophes or hyphens, accents folded. Spanish keeps the tilde on n (año is not ano). */
@@ -152,6 +160,10 @@ function run(state, tokens, start, final) {
 
     if (FILLERS[state.language].has(heard)) { p += 1; continue; }
     const ahead = lookahead(tokens, p, targets, cursor);
+    if (ahead && targets.slice(cursor, cursor + ahead.k).every((t) => isWeak(t, state.language))) {
+      advance(ahead.k, "close"); // only small words were not heard: not worth stopping for
+      continue;
+    }
     if (ahead) {
       if (pending && ahead.k === 1) {
         differsEver.push(target.index);
@@ -172,6 +184,8 @@ function run(state, tokens, start, final) {
       p += 1;
     } else if (quality(next, target) > 0) {
       p += 1; // a false start: the right word follows
+    } else if (cursor + 1 < targets.length && quality(next, targets[cursor + 1]) > 0 && isWeak(target, state.language)) {
+      advance(1, "close"); p += 1; // a small word heard as another small word
     } else if (cursor + 1 < targets.length && quality(next, targets[cursor + 1]) > 0) {
       differsEver.push(target.index);
       stop({ type: "differs", index: target.index, heard, expected: target.text });
