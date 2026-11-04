@@ -77,7 +77,7 @@ function clearAll() {
         <h2>Practice: <span :lang="lang">{{ title }}</span></h2>
         <p class="small muted">Your saved words stay on this device only. Nothing is sent anywhere.
           <span v-if="!saved"> Your browser is not saving progress right now.</span></p>
-        <p class="small muted">The one exception is <strong>Read aloud with the mic</strong> in the reader. If you turn it on, your browser sends your voice to its speech service while you read, so it can follow along. That is the only way it can turn speech into words. Sound Along does not record or keep your voice, and only counts such as words read are saved on this device.</p>
+        <p class="small muted">The one exception is <strong>Read aloud with the mic</strong> in the reader, when your teacher has turned it on. While it is on, your browser&rsquo;s own speech service (for example Google in Chrome, or Apple in Safari) listens so it can follow along. Sound Along does not record or keep your voice or what you say. Your teacher may see anonymous word counts for the whole class, never your voice or your name.</p>
         <p class="sr-only" role="status" aria-live="polite">{{ announce }}</p>
 
         <section class="card" aria-labelledby="mw">

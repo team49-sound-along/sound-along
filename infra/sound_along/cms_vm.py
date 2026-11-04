@@ -33,6 +33,7 @@ class CmsVmProps:
     bucket: s3.IBucket
     table: dynamodb.ITable
     state_machine: sfn.IStateMachine
+    reader_insights: bool = False
 
 
 def _unit_file(env: dict[str, str]) -> list[str]:
@@ -99,6 +100,7 @@ class CmsVm(Construct):
             "TABLE_NAME": props.table.table_name,
             "STATE_MACHINE_ARN": props.state_machine.state_machine_arn,
             **API_ENV_DEFAULTS,
+            "READER_INSIGHTS": "true" if props.reader_insights else "false",
             "PORT": str(API_PORT),
             "AWS_REGION": REGION,
         }

@@ -67,3 +67,26 @@ def test_the_generator_can_read_data_so_translation_linking_and_the_unchanged_ch
     deletes = [s for s in grants if "s3:DeleteObject" in _actions(s)]
     assert deletes and all("/raw/work/*" in json.dumps(s["Resource"]) and "/data/" not in json.dumps(s["Resource"]) for s in deletes), "it can only delete from the work folder it cleans up"
     assert "raw/work/*" in json.dumps(lists[0]["Condition"]["StringLike"]["s3:prefix"]), "and list that folder to clean it"
+
+
+@pytest.mark.parametrize("mode", ["lambda", "ec2"])
+def test_api_reads_only_timing_files_under_data_so_a_read_aloud_word_is_looked_up_on_the_server(mode: str) -> None:
+    """Read-aloud results name a word by position; the API resolves the text from data/<id>.timing.json. That is the ONLY data/ file it may read:
+    audio, cards and questions stay unreadable, and it still cannot write anything under data/ except the questions file."""
+    from sound_along.iam_util import API_QUESTIONS_KEY, API_TIMING_KEY
+
+    template = synth(mode)
+    role_prefix = "ApiFunctionServiceRole" if mode == "lambda" else "CmsVmInstanceRole"
+    policies = [
+        p for p in template.find_resources("AWS::IAM::Policy").values()
+        if any(str(r.get("Ref", "")).startswith(role_prefix) for r in p["Properties"]["Roles"])
+    ]
+    grants = [s for p in policies for s in p["Properties"]["PolicyDocument"]["Statement"]]
+    data_reads = [s for s in grants if "s3:GetObject" in _actions(s) and "/data/" in json.dumps(s["Resource"], default=str)]
+    assert data_reads, "the API must be able to read timing files"
+    for s in data_reads:
+        assert _actions(s) == ["s3:GetObject"]
+        assert API_TIMING_KEY in json.dumps(s["Resource"], default=str)
+    data_writes = [s for s in grants if "s3:PutObject" in _actions(s) and "/data/" in json.dumps(s["Resource"], default=str)]
+    assert all(API_QUESTIONS_KEY in json.dumps(s["Resource"], default=str) for s in data_writes)
+    assert not any("s3:DeleteObject" in _actions(s) for s in grants)

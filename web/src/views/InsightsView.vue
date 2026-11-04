@@ -6,6 +6,7 @@ import KpiCard from "../components/KpiCard.vue";
 import CostChart from "../components/CostChart.vue";
 import BlindRating from "../components/BlindRating.vue";
 import Icon from "../components/Icon.vue";
+import ReadAloudInsights from "../components/ReadAloudInsights.vue";
 import { api } from "../api.js";
 import { useResource } from "../useResource.js";
 import { formatCount, formatMinutes, formatMos, formatMs, formatPercent, formatRtf, formatShare, percentOf } from "../format.js";
@@ -103,6 +104,8 @@ const naturalness = computed(() => {
             <CostChart title="Projected ReadWorks catalog" :subtitle="`${formatCount(projChars)} characters (projection)`" :rows="projected" />
           </div>
         </section>
+
+        <ReadAloudInsights />
 
         <section class="card stack" aria-labelledby="adopt-h">
           <div>

@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from aws_cdk.assertions import Template
 
-from sound_along.iam_util import API_QUESTIONS_KEY
+from sound_along.iam_util import API_QUESTIONS_KEY, API_TIMING_KEY
 from tests.helpers import synth
 
 ROLE_PREFIX = {"lambda": "ApiFunctionServiceRole", "ec2": "CmsVmInstanceRole"}
@@ -33,7 +33,7 @@ def _text(value: Any) -> str:
 @pytest.mark.parametrize("mode", ["lambda", "ec2"])
 def test_api_can_write_only_the_approved_questions_file_under_data(mode: str) -> None:
     statements = _api_statements(synth(mode), mode)
-    data_writes = [s for s in statements if "/data/" in _text(s["Resource"])]
+    data_writes = [s for s in statements if "/data/" in _text(s["Resource"]) and "s3:PutObject" in _actions(s)]
     assert len(data_writes) == 1
     assert _actions(data_writes[0]) == ["s3:PutObject"]
     assert "/" + API_QUESTIONS_KEY in _text(data_writes[0]["Resource"])
@@ -41,7 +41,10 @@ def test_api_can_write_only_the_approved_questions_file_under_data(mode: str) ->
 
 
 @pytest.mark.parametrize("mode", ["lambda", "ec2"])
-def test_api_cannot_read_or_delete_anything_under_data(mode: str) -> None:
+def test_api_cannot_read_or_delete_anything_under_data_except_timing_files(mode: str) -> None:
+    """The one read under data/ is data/*.timing.json (word lookup for anonymous read-aloud results); see test_iam_s3.py."""
     for s in _api_statements(synth(mode), mode):
         if "/data/" in _text(s.get("Resource")):
-            assert set(_actions(s)) == {"s3:PutObject"}, s
+            assert set(_actions(s)) in ({"s3:PutObject"}, {"s3:GetObject"}), s
+            if "s3:GetObject" in _actions(s):
+                assert "/" + API_TIMING_KEY in _text(s["Resource"]), s

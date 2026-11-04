@@ -12,6 +12,9 @@ API_MANIFEST_KEY = "raw/ab/manifest.json"
 #  data/*.questions.json  the approved practice questions (write only). A teacher publishes them from the app; drafts stay under raw/questions/*
 #                         (covered by raw/*) and are never written to data/. It cannot overwrite audio, timing or any other data file.
 API_QUESTIONS_KEY = "data/*.questions.json"
+#  data/*.timing.json     the passages' word lists (read only). The anonymous read-aloud results name a word by its position; the API looks the
+#                         word up here, so word text is never taken from a browser. Audio, cards and every other data file stay unreadable.
+API_TIMING_KEY = "data/*.timing.json"
 
 
 def list_bucket(bucket: s3.IBucket, prefixes: list[str]) -> iam.PolicyStatement:
@@ -30,7 +33,8 @@ def api_s3_policies(bucket: s3.IBucket) -> list[iam.PolicyStatement]:
         object_access(bucket, ["s3:PutObject", "s3:GetObject"], API_RAW_PREFIX),
         object_access(bucket, ["s3:GetObject"], API_MANIFEST_KEY),
         object_access(bucket, ["s3:PutObject"], API_QUESTIONS_KEY),
-        list_bucket(bucket, [API_RAW_PREFIX, API_MANIFEST_KEY]),
+        object_access(bucket, ["s3:GetObject"], API_TIMING_KEY),
+        list_bucket(bucket, [API_RAW_PREFIX, API_MANIFEST_KEY, API_TIMING_KEY]),
     ]
 
 

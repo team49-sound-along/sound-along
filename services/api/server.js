@@ -25,6 +25,7 @@ const config = {
   maxConcurrentJobs: Number(env.MAX_CONCURRENT_JOBS ?? 1),
   questionDraftsDir: path.resolve(env.QUESTION_DRAFTS_DIR ?? path.join(dataDir, "question-drafts")),
   trustProxy: false,
+  readerInsights: (env.READER_INSIGHTS ?? "true") === "true", // on for local development and the demo scripts; off by default on AWS
 };
 const python = env.PYTHON ?? path.join(root, ".venv", "bin", "python");
 const script = path.join(root, "services", "synth", "run_local.py");

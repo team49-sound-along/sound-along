@@ -45,6 +45,7 @@ class SoundAlongStackProps:
     tts: TtsConfig = TtsConfig()
     questions_model: str | None = None  # "bedrock:<modelId>"; no default. None means no Bedrock permission and the function stays off
     questions_enabled: bool = False
+    reader_insights: bool = False  # -c readerInsights=true; default OFF (needs teacher sign-in first)
     translate_model: str | None = None  # "bedrock:<modelId>", "amazon" or "amazon:informal"; no default. None means Opus-MT only and no extra permission for the generator
 
 
@@ -96,6 +97,7 @@ class SoundAlongStack(Stack):
                     bucket=bucket,
                     table=table,
                     state_machine=state_machine,
+                    reader_insights=props.reader_insights,
                 ),
             )
             api_origin = vm_api_origin(vm.public_dns_name)
@@ -103,7 +105,7 @@ class SoundAlongStack(Stack):
             api = create_api_function(
                 self,
                 ApiFunctionProps(
-                    code_dir=require_bundle(sources.lambda_dir, "Lambda API bundle"), bucket=bucket, table=table
+                    code_dir=require_bundle(sources.lambda_dir, "Lambda API bundle"), bucket=bucket, table=table, reader_insights=props.reader_insights
                 ),
             )
             api.add_environment("STATE_MACHINE_ARN", state_machine.state_machine_arn)

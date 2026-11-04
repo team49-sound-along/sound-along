@@ -40,6 +40,11 @@ async function request(method, path, body, signal) {
   return envelope.data;
 }
 
+const queryOf = (params) => {
+  const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v));
+  return q.size ? `?${q}` : "";
+};
+
 export const api = {
   health: () => request("GET", "/api/health"),
   passages: () => request("GET", "/api/passages"),
@@ -68,6 +73,16 @@ export const api = {
   questionDrafts: () => request("GET", "/api/questions/drafts"),
   questionDraft: (id) => request("GET", `/api/questions/drafts/${encodeURIComponent(id)}`),
   publishQuestions: (id, body) => request("POST", `/api/questions/drafts/${encodeURIComponent(id)}/publish`, body),
+  /** The teacher's read-aloud switches: { defaults, classes: [{ id, name, mic, share, readers }] }. */
+  readAloudSettings: () => request("GET", "/api/read-aloud/settings"),
+  saveReadAloudSettings: (body) => request("PUT", "/api/read-aloud/settings", body),
+  /** The teacher's "Reading aloud" view. Filters: { passageId?, classId? }. */
+  readAloudInsights: (filters = {}) => request("GET", `/api/insights/read-aloud${queryOf(filters)}`),
+  readAloudReaders: (filters) => request("GET", `/api/insights/read-aloud/readers${queryOf(filters)}`),
+  /** Fire and forget, like event: the end-of-session word counts (see readAloudShare.js). A failure never interrupts reading. */
+  shareReadAloud: (body) => {
+    request("POST", "/api/read-aloud/results", body).catch(() => {});
+  },
   /** Fire and forget: analytics must never break reading. */
   event: (body) => {
     request("POST", "/api/events", body).catch(() => {});
