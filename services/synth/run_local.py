@@ -27,7 +27,12 @@ from mp3 import encode_mp3, resolve_kbps
 from stitch import Chunk, Stitched, link_translation, retarget_ids, stitch
 
 
+_STEPS_QUIET = False  # while the chunks of a long document run, only chunk progress is reported: the five steps would run once per chunk and look like restarts
+
+
 def _emit_step(step: str) -> None:
+    if _STEPS_QUIET:
+        return
     sys.stdout.write(json.dumps({"step": step}) + "\n")
     sys.stdout.flush()
 
@@ -181,13 +186,16 @@ def run_document(passage: dict[str, Any], data_dir: Path, on_chunk: Callable[[in
     work.mkdir(parents=True)
     ids = [chunk_id(final_id, k) for k in range(len(chunks_html))]
     translating = should_translate(passage)
+    global _STEPS_QUIET
     try:
+        _STEPS_QUIET = True
         for k, (cid, html) in enumerate(zip(ids, chunks_html)):
             job = {**passage, "uuid": cid, "content": html, "chunks": None, "series": None, "keepPcm": True, "force": True}
             summary = run_fn(job, work, on_step=lambda step: None)
             if translating:
                 translate_fn(job, work, summary)
             on_chunk(k + 1, len(chunks_html))
+        _STEPS_QUIET = False
         on_step("publish")
         kbps = resolve_kbps((passage.get("settings") or {}).get("mp3Kbps"))
         source_lang = passage.get("language") or "en"
@@ -208,6 +216,7 @@ def run_document(passage: dict[str, Any], data_dir: Path, on_chunk: Callable[[in
         release(data_dir, [tid, final_id])  # both languages appear together
         return {"id": final_id, "humanPassageId": None, "title": passage.get("title"), **en.timing["metrics"]}
     finally:
+        _STEPS_QUIET = False
         shutil.rmtree(work, ignore_errors=True)
 
 

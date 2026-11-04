@@ -97,7 +97,7 @@ export function createLocalRunner({ jobs, dataDir, python, script, logger = cons
       return; // library chatter on stdout is ignored
     }
     if (message.step && STEPS.has(message.step)) jobs.update(jobId, { step: message.step });
-    if (message.chunk) jobs.update(jobId, { step: "synthesize", chunksDone: message.chunk.done, chunksTotal: message.chunk.total });
+    if (message.chunk) jobs.update(jobId, { step: "synthesize", chunksDone: message.chunk.done, chunksTotal: message.chunk.total, chunkAt: new Date().toISOString() });
     if (message.result) {
       jobs.update(jobId, { status: "done", step: "done", metrics: message.result, finishedAt: new Date().toISOString() });
     }

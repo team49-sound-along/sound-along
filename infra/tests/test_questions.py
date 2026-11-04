@@ -205,7 +205,7 @@ def test_a_long_document_is_narrated_chunk_by_chunk_then_joined_into_one_passage
     assert inner["InvokeChunk"]["Next"] == "InvokeChunkTranslation" and inner["InvokeChunkTranslation"]["Next"] == "ChunkDone" and inner["ChunkDone"].get("End") is True
     assert inner["InvokeChunk"]["Catch"][0]["Next"] == "ChunkSkipped" and inner["ChunkSkipped"]["Next"] == "ChunkDone", "a crashed chunk does not stop the next one"
     params = json.dumps(inner["ChunkDone"]["Parameters"])
-    assert "ADD chunksDone" in params and "attribute_exists(pk)" in params and "$.jobId" in params, "progress is counted on the person's own job"
+    assert "ADD chunksDone" in params and "chunkAt" in params and "attribute_exists(pk)" in params and "$.jobId" in params, "progress is counted on the person's own job"
     assert "workFor" in json.dumps(inner["InvokeChunk"]["Parameters"]) and '"translate"' in json.dumps(inner["InvokeChunkTranslation"]["Parameters"])
     stitch = top["InvokeStitch"]
     assert '"stitch"' in json.dumps(stitch["Parameters"]) and "chunkIds" in json.dumps(stitch["Parameters"]) and stitch["Catch"][0]["Next"] == "DocumentFailed"

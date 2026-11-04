@@ -102,9 +102,10 @@ def create_state_machine(scope: Construct, generator: lambda_.IFunction, questio
             scope, "ChunkDone", table=table,
             key={"pk": attr.from_string("JOB"), "sk": attr.from_string(jp.string_at("$.jobId"))},
             condition_expression="attribute_exists(pk)",
-            update_expression="SET #s = :running, #p = :step ADD chunksDone :one",
+            update_expression="SET #s = :running, #p = :step, chunkAt = :at ADD chunksDone :one",
             expression_attribute_names={"#s": "status", "#p": "step"},
-            expression_attribute_values={":running": attr.from_string("running"), ":step": attr.from_string("synthesize"), ":one": attr.from_number(1)},
+            expression_attribute_values={":running": attr.from_string("running"), ":step": attr.from_string("synthesize"), ":one": attr.from_number(1),
+                                       ":at": attr.from_string(jp.string_at("$$.State.EnteredTime"))},
             result_path=sfn.JsonPath.DISCARD,
         )
         chunk_progress.add_catch(sfn.Pass(scope, "ChunkProgressUnrecorded"), errors=["States.ALL"], result_path="$.recordError")  # type: ignore[attr-defined]

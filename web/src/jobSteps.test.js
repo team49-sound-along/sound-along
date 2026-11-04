@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { stepStates, isFinished, elapsedSeconds, longProgress, timeLeftText } from "./jobSteps.js";
+import { stepStates, isFinished, elapsedSeconds, longProgress, longStatusText, timeLeftText } from "./jobSteps.js";
 
 const states = (job) => stepStates(job).map((s) => s.state);
 
@@ -56,11 +56,24 @@ test("a long text shows progress and the time left from the stretches already fi
   const at = (s) => Date.parse("2026-11-04T10:00:00Z") + s * 1000;
   assert.equal(longProgress({ status: "running", startedAt: "2026-11-04T10:00:00Z" }, at(60)), null);  // an ordinary job has no chunks
   assert.deepEqual(longProgress(job(), at(30)), { done: 0, total: 5, percent: 0, remainingSeconds: null });  // nothing finished yet: no estimate
-  assert.deepEqual(longProgress(job({ chunksDone: 2 }), at(240)), { done: 2, total: 5, percent: 40, remainingSeconds: 360 });  // 120 s per stretch, 3 left
+  assert.deepEqual(longProgress(job({ chunksDone: 2 }), at(240)), { done: 2, total: 5, percent: 40, remainingSeconds: 360 });  // 120 s per stretch, 3 left (no finish time known: elapsed / done)
+  const known = job({ chunksDone: 2, chunkAt: "2026-11-04T10:04:00Z" });  // the second stretch finished at 240 s: 120 s per stretch
+  assert.equal(longProgress(known, at(240)).remainingSeconds, 360);
+  assert.equal(longProgress(known, at(300)).remainingSeconds, 300, "while the next stretch runs, the time left counts DOWN, it never grows");
+  assert.equal(longProgress(known, at(1000)).remainingSeconds, 5, "and never goes below a few seconds while it is still working");
   assert.deepEqual(longProgress(job({ chunksDone: 5, status: "done", finishedAt: "2026-11-04T10:09:00Z" }), at(600)), { done: 5, total: 5, percent: 100, remainingSeconds: 0 });
   assert.equal(longProgress(job({ chunksDone: 5 }), at(600)).percent, 99, "100% only when the job is really done (the stretches are still being joined)");
   assert.equal(timeLeftText(null), "");
   assert.equal(timeLeftText(20), "less than a minute left");
   assert.equal(timeLeftText(360), "about 6 minutes left");
   assert.equal(timeLeftText(60), "about 1 minute left");
+});
+
+test("a long text shows one status line instead of steps that would restart for every stretch", () => {
+  const job = (extra) => ({ status: "running", startedAt: "2026-11-04T10:00:00Z", chunksTotal: 3, chunksDone: 1, ...extra });
+  assert.equal(longStatusText({ status: "running" }), "");
+  assert.equal(longStatusText(job()), "Creating the narration and its translation...");
+  assert.equal(longStatusText(job({ chunksDone: 3 })), "Putting everything together into one passage...");
+  assert.equal(longStatusText(job({ chunksDone: 3, status: "done" })), "Everything is ready.");
+  assert.equal(/part/i.test([job(), job({ chunksDone: 3 })].map(longStatusText).join(" ")), false);
 });

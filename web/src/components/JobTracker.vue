@@ -1,7 +1,7 @@
 <script setup>
 import { computed, useId } from "vue";
 import Icon from "./Icon.vue";
-import { elapsedSeconds, friendlyJobError, longProgress, stepStates, timeLeftText } from "../jobSteps.js";
+import { elapsedSeconds, friendlyJobError, longProgress, longStatusText, stepStates, timeLeftText } from "../jobSteps.js";
 import { formatCount, formatMinutes, formatSeconds } from "../format.js";
 
 const props = defineProps({ job: { type: Object, required: true }, now: { type: Number, required: true } });
@@ -17,6 +17,7 @@ const summary = computed(() => [
 const errorText = computed(() => friendlyJobError(props.job.error));
 const long = computed(() => longProgress(props.job, props.now));
 const timeLeft = computed(() => timeLeftText(long.value?.remainingSeconds));
+const statusLine = computed(() => longStatusText(props.job));
 </script>
 
 <template>
@@ -30,7 +31,8 @@ const timeLeft = computed(() => timeLeftText(long.value?.remainingSeconds));
       <span class="num">{{ long.percent }}% done<template v-if="timeLeft && job.status !== 'done'"> &middot; {{ timeLeft }}</template></span>
       <span v-if="!timeLeft && job.status !== 'done'" class="small muted">The time left appears once it is under way. A long text takes a few minutes; you can leave this page open.</span>
     </div>
-    <ol class="steps">
+    <p v-if="long && job.status !== 'failed' && job.status !== 'done'" class="small">{{ statusLine }}</p>
+    <ol v-if="!long" class="steps">
       <li v-for="(s, n) in steps" :key="s.key" :class="s.state" :aria-current="s.state === 'current' ? 'step' : undefined">
         <span class="dot" aria-hidden="true">
           <Icon v-if="s.state === 'done'" name="check" :size="16" />

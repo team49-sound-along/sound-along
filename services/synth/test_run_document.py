@@ -107,3 +107,15 @@ def test_a_passage_that_will_not_be_translated_is_published_alone(tmp_path):
 def test_chunk_ids_are_stable_distinct_and_never_the_documents_own_id():
     ids = [rl.chunk_id(PASSAGE["uuid"], k) for k in range(5)]
     assert ids == [rl.chunk_id(PASSAGE["uuid"], k) for k in range(5)] and len(set(ids)) == 5 and PASSAGE["uuid"] not in ids
+
+
+def test_no_step_lines_are_printed_while_the_chunks_run_only_chunk_progress_and_then_the_join(tmp_path, capsys):
+    def noisy_run(job, work, on_step=None):
+        rl._emit_step("synthesize")  # what the ordinary run and the translation print for every chunk
+        return fake_run(job, work, on_step)
+
+    rl.run_document(PASSAGE, tmp_path, run_fn=noisy_run, translate_fn=fake_translate)
+    lines = [json.loads(line) for line in capsys.readouterr().out.splitlines() if line.strip()]
+    assert [l for l in lines if "step" in l] == [{"step": "publish"}], "the five steps never restart: only the final join reports a step"
+    assert [l["chunk"] for l in lines if "chunk" in l] == [{"done": 1, "total": 3}, {"done": 2, "total": 3}, {"done": 3, "total": 3}]
+    assert rl._STEPS_QUIET is False

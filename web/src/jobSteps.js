@@ -39,8 +39,22 @@ export function longProgress(job, now = Date.now()) {
   const done = Math.min(Number(job.chunksDone) || 0, total);
   const finished = job.status === "done";
   const elapsed = elapsedSeconds(job.startedAt, job.finishedAt, now) ?? 0;
-  const remainingSeconds = finished ? 0 : done > 0 ? Math.max(5, Math.round((elapsed / done) * (total - done))) : null;
+  // Time left = the average time of a finished stretch times the stretches that remain, minus what the current one has already used, so the number counts DOWN
+  // while a stretch runs (it only changes its mind when a stretch finishes faster or slower than the average).
+  const lastDone = Date.parse(job.chunkAt);
+  const startedMs = Date.parse(job.startedAt);
+  const known = done > 0 && Number.isFinite(lastDone) && Number.isFinite(startedMs);
+  const perStretch = known ? (lastDone - startedMs) / 1000 / done : done > 0 ? elapsed / done : null;
+  const used = known ? Math.max(0, (now - lastDone) / 1000) : 0;
+  const remainingSeconds = finished ? 0 : perStretch === null ? null : Math.max(5, Math.round(perStretch * (total - done) - used));
   return { done: finished ? total : done, total, percent: finished ? 100 : Math.min(99, Math.round((done / total) * 100)), remainingSeconds };
+}
+
+/** One line saying what a long text is doing now (its five steps would run once per stretch and look like restarts, so they are not shown for it). */
+export function longStatusText(job) {
+  const p = longProgress(job);
+  if (!p) return "";
+  return job.status === "done" ? "Everything is ready." : p.percent >= 99 ? "Putting everything together into one passage..." : "Creating the narration and its translation...";
 }
 
 /** "about 4 minutes left", "less than a minute left", or "" when the time is not known yet. */
