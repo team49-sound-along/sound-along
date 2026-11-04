@@ -15,6 +15,16 @@ CMS_HOST_LAMBDA = "lambda"
 CMS_HOSTS: tuple[str, ...] = (CMS_HOST_EC2, CMS_HOST_LAMBDA)
 DEFAULT_CMS_HOST = CMS_HOST_EC2
 
+# TTS engine the Generator Lambda runs. kokoro (default) is baked into the image; polly calls Amazon Polly Neural
+# (needs the polly:SynthesizeSpeech permission). The synth library reads these from TTS_ENGINE / POLLY_VOICE /
+# POLLY_VOICE_ES; the infra only provisions them. Kokoro is the default and needs no environment at all.
+TTS_ENGINE_KOKORO = "kokoro"
+TTS_ENGINE_POLLY = "polly"
+TTS_ENGINES: tuple[str, ...] = (TTS_ENGINE_KOKORO, TTS_ENGINE_POLLY)
+DEFAULT_TTS_ENGINE = TTS_ENGINE_KOKORO
+DEFAULT_POLLY_VOICE = "Joanna"
+DEFAULT_POLLY_VOICE_ES = "Lupe"
+
 # The CMS API listens here on the VM; CloudFront reaches it over plain HTTP (the security group only admits CloudFront).
 API_PORT = 8080
 
@@ -49,6 +59,40 @@ def default_source_paths() -> SourcePaths:
         web_dist=REPO_ROOT / "web" / "dist",
         questions_dir=REPO_ROOT / "services" / "questions",
     )
+
+
+@dataclass(frozen=True)
+class TtsConfig:
+    """TTS engine and voices for the Generator Lambda. Voices only matter when engine == polly."""
+
+    engine: str = DEFAULT_TTS_ENGINE
+    polly_voice: str = DEFAULT_POLLY_VOICE
+    polly_voice_es: str = DEFAULT_POLLY_VOICE_ES
+
+    @property
+    def is_polly(self) -> bool:
+        return self.engine == TTS_ENGINE_POLLY
+
+    def env(self) -> dict[str, str]:
+        """Environment for the generator. Kokoro is the synth default, so it needs no variables."""
+        if not self.is_polly:
+            return {}
+        return {
+            "TTS_ENGINE": TTS_ENGINE_POLLY,
+            "POLLY_VOICE": self.polly_voice,
+            "POLLY_VOICE_ES": self.polly_voice_es,
+        }
+
+
+def parse_tts_engine(value: object) -> str:
+    """Validate the `ttsEngine` CDK context value. None means the default (kokoro)."""
+    if value is None:
+        return DEFAULT_TTS_ENGINE
+    if not isinstance(value, str) or value not in TTS_ENGINES:
+        raise ValueError(
+            f'Invalid CDK context "ttsEngine": {value!r}. Use -c ttsEngine=kokoro (default) or -c ttsEngine=polly.'
+        )
+    return value
 
 
 def parse_cms_host(value: object) -> str:

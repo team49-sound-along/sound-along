@@ -1,0 +1,27 @@
+# Build context for the generator image is the repo root (see infra/sound_along/functions.py).
+# CDK's asset staging and docker build both read this file. Keep the context tiny: only
+# services/parse, services/synth, services/generator are needed by services/generator/Dockerfile.
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+.git
+.venv
+**/.venv
+node_modules
+**/node_modules
+web
+infra
+data
+eval
+samples
+docs
+ReadWorks
+requirements
+*.log
+services/api
+services/align
+services/publish
+services/eval
+services/questions
+services/generator/tests
+**/test_*.py
