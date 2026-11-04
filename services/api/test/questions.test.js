@@ -142,6 +142,22 @@ describe("local store", () => {
     for (const id of ["../state", "x", `${ID}/../../y`, `${ID}.json`, ""]) await assert.rejects(store.publish(id, {}), /Invalid passage id/);
     assert.deepEqual((await readdir(dir)).sort(), before);
   });
+  test("two concurrent publishes of the same id leave one valid file and no temp files", async () => {
+    const out = await mkdtemp(path.join(tmpdir(), "sa-pub-"));
+    const store = createLocalQuestions({ draftsDir: path.join(dir, "question-drafts"), dataDir: out });
+    const doc = (n) => ({ version: 1, passageId: ID, questions: Array.from({ length: 200 }, (_, i) => ({ id: `q${i}`, question: `Q${n} ${"x".repeat(200)}` })) });
+    await Promise.all([store.publish(ID, doc(1)), store.publish(ID, doc(2)), store.publish(ID, doc(3))]);
+    assert.deepEqual(await readdir(out), [`${ID}.questions.json`]);
+    const saved = JSON.parse(await readFile(path.join(out, `${ID}.questions.json`), "utf8"));
+    assert.equal(saved.questions.length, 200);
+  });
+  test("a failed publish removes its temp file", async () => {
+    const out = await mkdtemp(path.join(tmpdir(), "sa-pubfail-"));
+    await mkdir(path.join(out, `${ID}.questions.json`)); // a directory in the way makes the final rename fail
+    const store = createLocalQuestions({ draftsDir: path.join(dir, "question-drafts"), dataDir: out });
+    await assert.rejects(store.publish(ID, { a: 1 }));
+    assert.deepEqual(await readdir(out), [`${ID}.questions.json`]);
+  });
   test("the seed shape (review reset) loads as an unreviewed draft", async () => {
     const reset = resetReview(draft);
     assert.ok(reset.questions.every((x) => x.review === undefined));

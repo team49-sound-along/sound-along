@@ -1,4 +1,5 @@
-import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { UUID } from "../recordings/rules.js";
 
@@ -33,9 +34,14 @@ export function createLocalQuestions({ draftsDir, dataDir }) {
       if (!UUID.test(id)) throw new Error("Invalid passage id.");
       await mkdir(dataDir, { recursive: true });
       const target = path.join(dataDir, `${id}.questions.json`);
-      const temp = `${target}.${process.pid}.tmp`;
-      await writeFile(temp, `${JSON.stringify(doc, null, 2)}\n`);
-      await rename(temp, target); // readers see the old file or the new one, never half of one
+      const temp = `${target}.${process.pid}.${randomUUID()}.tmp`; // unique per write, so two publishes of one id never share a temp file
+      try {
+        await writeFile(temp, `${JSON.stringify(doc, null, 2)}\n`);
+        await rename(temp, target); // readers see the old file or the new one, never half of one
+      } catch (err) {
+        await rm(temp, { force: true }).catch(() => {});
+        throw err;
+      }
     },
   };
 }
