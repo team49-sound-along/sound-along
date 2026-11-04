@@ -67,7 +67,13 @@ export function createSfnRunner({ jobs, s3, sfn, bucket, stateMachineArn, logger
   /** A long document: every part's job exists now, and the parts are generated one after another by one execution. */
   async function startSeries(specs) {
     const prepared = [];
-    for (const spec of specs) prepared.push(await prepare(spec));
+    try {
+      for (const spec of specs) prepared.push(await prepare(spec));
+    } catch (err) {
+      // Jobs already created for earlier parts would stay "queued" for ever and count as active: fail them all before giving up.
+      await Promise.all(prepared.map((p) => jobs.update(p.job.id, { status: "failed", error: FRIENDLY_FAILURE, finishedAt: new Date().toISOString() })));
+      throw err;
+    }
     return execute(prepared, specs[0].series.id);
   }
 

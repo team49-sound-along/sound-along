@@ -3,6 +3,7 @@ import { DeleteCommand, GetCommand, PutCommand, UpdateCommand } from "@aws-sdk/l
 import { buildSet, isConditionalFailure, queryPartition, stripKeys } from "./dynamo.js";
 
 const TTL_SECONDS = 7 * 24 * 60 * 60;
+const ACTIVE_JOB_MAX_AGE_MS = 9 * 60 * 60 * 1000;
 const LOCK_KEY = { pk: "LOCK", sk: "GENERATE_START" };
 // Long enough to cover S3 put + StartExecution, short enough that a crashed request frees the lock quickly.
 const LOCK_LEASE_MS = 15_000;
@@ -87,10 +88,12 @@ export function createDynamoJobs({ client, tableName, now = Date.now }) {
       };
     },
     async activeCount() {
+      // A job that has not finished after 9 hours (longer than the state machine's timeout) is stuck, for example after a crash: it must not block new work.
+      const cutoff = new Date(now() - ACTIVE_JOB_MAX_AGE_MS).toISOString();
       const pages = await queryPartition(client, tableName, "JOB", {
-        filter: "#s IN (:queued, :running)",
+        filter: "#s IN (:queued, :running) AND startedAt > :cutoff",
         names: { "#s": "status" },
-        values: { ":queued": "queued", ":running": "running" },
+        values: { ":queued": "queued", ":running": "running", ":cutoff": cutoff },
         select: "COUNT",
       });
       return pages.reduce((total, page) => total + (page.Count ?? 0), 0);

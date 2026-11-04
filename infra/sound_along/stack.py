@@ -79,7 +79,7 @@ class SoundAlongStack(Stack):
         questions = create_questions_function(
             self, QuestionsFunctionProps(code_dir=sources.questions_dir, bucket=bucket, model=props.questions_model, enabled=props.questions_enabled)
         )
-        state_machine = create_state_machine(self, generator, questions)
+        state_machine = create_state_machine(self, generator, questions, table)
 
         if cms_host == CMS_HOST_EC2:
             vm = CmsVm(

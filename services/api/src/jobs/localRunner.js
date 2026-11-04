@@ -89,7 +89,12 @@ export function createLocalRunner({ jobs, dataDir, python, script, logger = cons
   /** A long document: all jobs are created now (so the page can show every part), then the parts are generated one after another. A failed part does not stop the next. */
   async function startSeries(specs) {
     const prepared = [];
-    for (const spec of specs) prepared.push(await prepare(spec));
+    try {
+      for (const spec of specs) prepared.push(await prepare(spec));
+    } catch (err) {
+      for (const p of prepared) finishFailed(p.job.id, "We could not start the audio generator. Please try again in a moment.");
+      throw err;
+    }
     (async () => {
       for (const p of prepared) await p.run();
     })();

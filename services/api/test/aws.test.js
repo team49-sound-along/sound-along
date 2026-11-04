@@ -151,6 +151,15 @@ describe("dynamoJobs", () => {
     assert.equal(input.ExpressionAttributeValues[":pk"], "JOB");
     assert.deepEqual([input.ExpressionAttributeValues[":queued"], input.ExpressionAttributeValues[":running"]], ["queued", "running"]);
   });
+
+  test("a job that has been queued or running for more than 9 hours is stuck and does not count as active", async () => {
+    const client = fakeClient(() => ({ Count: 0 }));
+    const now = Date.parse("2026-11-04T12:00:00Z");
+    await createDynamoJobs({ client, tableName: "T", now: () => now }).activeCount();
+    const { input } = client.calls[0];
+    assert.match(input.FilterExpression, /startedAt > :cutoff/);
+    assert.equal(input.ExpressionAttributeValues[":cutoff"], "2026-11-04T03:00:00.000Z");
+  });
 });
 
 describe("sfnRunner", () => {
@@ -201,6 +210,20 @@ describe("sfnRunner", () => {
     const raws = s3.calls.map((c) => JSON.parse(c.input.Body));
     assert.deepEqual(raws.map((r) => r.series.index), [1, 2]);
     assert.deepEqual(raws[0].series.partIds, ids);
+  });
+
+  test("if one part of a document cannot be prepared, the parts already created are marked failed so they never block new work", async () => {
+    const jobs = makeJobs();
+    let puts = 0;
+    const s3 = fakeClient(() => { puts += 1; if (puts === 3) throw new Error("denied"); return {}; });
+    const sfn = fakeClient();
+    const runner = createSfnRunner({ jobs, s3, sfn, bucket: "B", stateMachineArn: "arn:sm", logger: quiet });
+    const ids = ["2b781dab-4521-40d2-a9b6-ad5f2bb0ba90", "2b781dab-4521-40d2-a9b6-ad5f2bb0ba91", "2b781dab-4521-40d2-a9b6-ad5f2bb0ba92"];
+    const series = { id: "5af24980-4d6d-41c1-87fa-4f21cb2d169d", title: "T", total: 3, partIds: ids };
+    await assert.rejects(() => runner.startSeries(ids.map((passageId, i) => ({ title: `T${i}`, text: "One.", passageId, series: { ...series, index: i + 1 } }))), /could not start/i);
+    assert.equal(sfn.calls.length, 0, "no execution is started");
+    const failed = jobs.updates.filter((u) => u.status === "failed");
+    assert.equal(failed.length, 3, "all three jobs (two earlier parts and the one that failed) end up failed");
   });
 
   test("marks the job failed and throws 503 when StartExecution fails", async () => {

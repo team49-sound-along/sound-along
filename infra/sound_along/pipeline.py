@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from aws_cdk import Duration
+from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_stepfunctions as sfn
 from aws_cdk import aws_stepfunctions_tasks as tasks
@@ -15,7 +16,7 @@ LAMBDA_RETRY_ERRORS: tuple[str, ...] = (
 )
 
 
-def create_state_machine(scope: Construct, generator: lambda_.IFunction, questions: lambda_.IFunction | None = None) -> sfn.StateMachine:
+def create_state_machine(scope: Construct, generator: lambda_.IFunction, questions: lambda_.IFunction | None = None, table: dynamodb.ITable | None = None) -> sfn.StateMachine:
     """For each part (one for an ordinary passage): generator -> (only if it reported done) -> questions for ENGLISH passages -> translation. Questions and translation are best effort: each has
     its own Catch, so neither can ever fail an audio job, and only a throttled translation is retried (twice)."""
     invoke = tasks.LambdaInvoke(
@@ -61,7 +62,26 @@ def create_state_machine(scope: Construct, generator: lambda_.IFunction, questio
     # The generator reports failure by RETURNING a status, not by throwing, so only a job that is done gets follow-up steps.
     gate = sfn.Choice(scope, "ShouldFollowUp").when(sfn.Condition.string_equals("$.status", "done"), follow_up).otherwise(sfn.Succeed(scope, "NothingToFollowUp"))
     # A part that crashes (a Lambda timeout, say) must not stop the parts after it: the generator reports ordinary failures by returning a status.
-    invoke.add_catch(sfn.Pass(scope, "PartFailed"), errors=["States.ALL"], result_path="$.partError")
+    # A crash (a Lambda timeout, an out-of-memory kill) leaves the part's JOB item "running"; record the failure so the page shows it and the slot is freed.
+    if table is not None:
+        attr = tasks.DynamoAttributeValue
+        part_failed: sfn.IChainable = tasks.DynamoUpdateItem(
+            scope, "PartFailed", table=table,
+            key={"pk": attr.from_string("JOB"), "sk": attr.from_string(sfn.JsonPath.string_at("$.jobId"))},
+            condition_expression="attribute_exists(pk)",
+            update_expression="SET #s = :failed, #e = :msg, finishedAt = :now",
+            expression_attribute_names={"#s": "status", "#e": "error"},
+            expression_attribute_values={
+                ":failed": attr.from_string("failed"),
+                ":msg": attr.from_string("We could not finish creating the audio for this part. Please try again in a moment."),
+                ":now": attr.from_string(sfn.JsonPath.string_at("$$.State.EnteredTime")),
+            },
+            result_path=sfn.JsonPath.DISCARD,
+        )
+        part_failed.add_catch(sfn.Pass(scope, "PartFailedUnrecorded"), errors=["States.ALL"], result_path="$.recordError")
+    else:
+        part_failed = sfn.Pass(scope, "PartFailed")
+    invoke.add_catch(part_failed, errors=["States.ALL"], result_path="$.partError")
     one_part = invoke.next(gate)
 
     # One execution per submitted document. The input is {"parts": [{jobId, passageId, title, rawKey, humanPassageId}, ...]} (one entry for an ordinary
@@ -75,5 +95,5 @@ def create_state_machine(scope: Construct, generator: lambda_.IFunction, questio
         state_machine_name="GenerateStateMachine",
         state_machine_type=sfn.StateMachineType.STANDARD,
         definition_body=sfn.DefinitionBody.from_chainable(definition),
-        timeout=Duration.hours(3),  # up to 12 parts of about 10 minutes each (generation, questions, translation) with room to spare
+        timeout=Duration.hours(8),  # worst case: 12 parts x (900 s generator + 120 s questions + 900 s translation) is 6.4 hours; a typical part takes about 10 minutes
     )

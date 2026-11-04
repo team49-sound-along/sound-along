@@ -156,9 +156,9 @@ def test_the_generator_step_is_unchanged_and_still_retries_throttling() -> None:
     assert gen["Retry"][0]["MaxAttempts"] == 1 and "Lambda.TooManyRequestsException" in gen["Retry"][0]["ErrorEquals"]
 
 
-def test_the_whole_execution_is_given_three_hours_for_a_document_of_up_to_twelve_parts() -> None:
+def test_the_whole_execution_is_given_eight_hours_which_covers_twelve_parts_that_each_take_the_worst_case() -> None:
     machine = next(iter(synth().find_resources("AWS::StepFunctions::StateMachine").values()))
-    assert json.loads("".join(p if isinstance(p, str) else "REF" for p in machine["Properties"]["DefinitionString"]["Fn::Join"][1]))["TimeoutSeconds"] == 10800
+    assert json.loads("".join(p if isinstance(p, str) else "REF" for p in machine["Properties"]["DefinitionString"]["Fn::Join"][1]))["TimeoutSeconds"] == 28800
 
 
 # ---- context values --------------------------------------------------------------------------------------------------------------
@@ -180,4 +180,15 @@ def test_the_parts_of_a_document_run_one_at_a_time_from_a_list_of_keys_and_a_cra
     assert top[definition(synth())["StartAt"]]["Type"] == "Map" and each.get("End") is True
     inner = (each.get("ItemProcessor") or each.get("Iterator"))["States"]
     catch = inner["InvokeGenerator"]["Catch"][0]
-    assert catch["ErrorEquals"] == ["States.ALL"] and inner[catch["Next"]]["Type"] == "Pass"
+    assert catch["ErrorEquals"] == ["States.ALL"] and inner[catch["Next"]]["Type"] == "Task"  # records the failure, then the next part runs
+
+
+def test_a_crashed_part_has_its_job_marked_failed_so_it_never_stays_running_or_blocks_new_work() -> None:
+    template = synth()
+    inner = states_of(template)
+    catch = inner["InvokeGenerator"]["Catch"][0]
+    step = inner[catch["Next"]]
+    assert catch["Next"] == "PartFailed" and step["Type"] == "Task" and "updateItem" in json.dumps(step["Resource"])
+    params = json.dumps(step["Parameters"])
+    assert '"failed"' in params and "$.jobId" in params and "attribute_exists(pk)" in params
+    assert inner[step["Catch"][0]["Next"]]["Type"] == "Pass", "recording the failure is best effort"

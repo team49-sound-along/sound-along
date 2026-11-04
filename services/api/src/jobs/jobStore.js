@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 const MAX_KEPT = 200;
+export const ACTIVE_JOB_MAX_AGE_MS = 9 * 60 * 60 * 1000; // longer than the longest document (see the state machine timeout)
 
 /** In-memory job registry. Jobs are short-lived; in AWS this is a Step Functions execution. */
 export function createJobStore() {
@@ -47,7 +48,8 @@ export function createJobStore() {
       };
     },
     activeCount() {
-      return [...jobs.values()].filter((j) => j.status === "queued" || j.status === "running").length;
+      const cutoff = Date.now() - ACTIVE_JOB_MAX_AGE_MS; // a job that has not finished after this long is stuck, not working
+      return [...jobs.values()].filter((j) => (j.status === "queued" || j.status === "running") && Date.parse(j.startedAt) > cutoff).length;
     },
   };
 }
