@@ -2,7 +2,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createReadAlong, cursorIndex, editDistance, feed, normalizeWord, restartFrom, similarity, summarize } from "./readAloud.js";
 
-const words = (text) => text.split(/\s+/).map((t, i) => ({ i, text: t }));
+test("restartFrom with no spoken words does not throw and keeps a sensible state", () => {
+  const empty = createReadAlong([], { language: "en" });
+  const next = restartFrom(empty, 3);
+  assert.equal(next.cursor, 0);
+  assert.deepEqual(next.read, {});
+  assert.equal(next.targets.length, 0);
+  assert.equal(next.retries, empty.retries);
+  assert.doesNotThrow(() => restartFrom(empty, 0, { retry: false }));
+});
+
+const words = (text) =>text.split(/\s+/).map((t, i) => ({ i, text: t }));
 
 /** Feed scripted results [id, transcript, isFinal] and collect every event. */
 function run(text, script, language = "en", start) {
