@@ -14,7 +14,7 @@ export const snapSpeed = (v) => Math.min(SPEED_MAX, Math.max(SPEED_MIN, Math.rou
 
 /** Narration engines (mirror services/api/src/settings.js TTS_ENGINES). */
 export const TTS_ENGINE_OPTIONS = [
-  { id: "kokoro", label: "Open-source voices (Kokoro and Phonon)", hint: "Runs inside Sound Along. Uses the English and Spanish voices chosen below." },
+  { id: "kokoro", label: "Built-in voices", hint: "Runs inside Sound Along. Uses the English and Spanish voices chosen below." },
   { id: "polly", label: "Amazon Polly", hint: "AWS text-to-speech, billed per character. Uses Polly's own voices (Joanna for English, Lupe for Spanish); the voice choices below do not apply." },
 ];
 export const DEFAULT_TTS_ENGINE = "kokoro";
