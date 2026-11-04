@@ -137,7 +137,7 @@ class PipelineStack(Stack):
         github_connection = codestar.CfnConnection(
             self,
             "GitHubConnection",
-            connection_name=f"{PROJECT_TAG}-{props.github_owner}-r{_CONNECTION_REVISION}"[:32],
+            connection_name=f"{props.github_owner}-r{_CONNECTION_REVISION}"[:32],
             provider_type="GitHub",
         )
 
