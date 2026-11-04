@@ -19,7 +19,7 @@ export function validateGenerate({ title = "", text = "" } = {}) {
 
 /** Friendly message for generate failures by HTTP status. */
 export function generateErrorMessage(status, fallback) {
-  if (status === 429) return "Too many requests right now. Wait a minute, then try again.";
+  if (status === 429) return /being generated/i.test(fallback || "") ? fallback : "Too many requests right now. Wait a minute, then try again.";  // "Another passage is being generated. Try again in a moment."
   if (status === 503) return "Creating new audio is turned off right now. You can still read the passages in the Library.";
   return fallback || "Something went wrong starting generation. Please try again.";
 }

@@ -21,3 +21,9 @@ test("friendly messages for 429 and 503", () => {
   assert.match(generateErrorMessage(503), /turned off/);
   assert.equal(generateErrorMessage(400, "Bad title"), "Bad title");
 });
+
+test("a busy generator is explained in the server's own words; a rate limit gets the generic message", async () => {
+  const { generateErrorMessage } = await import("./validation.js");
+  assert.equal(generateErrorMessage(429, "Another passage is being generated. Try again in a moment."), "Another passage is being generated. Try again in a moment.");
+  assert.match(generateErrorMessage(429, "Slow down."), /Too many requests/);
+});

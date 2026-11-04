@@ -227,3 +227,10 @@ test("hostile text cannot stall the cleaning (many unclosed script tags, one eno
     assert.ok(performance.now() - t0 < 500, `took ${Math.round(performance.now() - t0)} ms for ${text.slice(0, 12)}`);
   }
 });
+
+import { parseGenerateInput } from "../src/validate.js";
+test("a title with HTML in it is stored as plain text", () => {
+  const r = parseGenerateInput({ title: "<img src=x onerror=alert(1)>Safe  <b>title</b>", text: "The robot waved to the children and they waved back all afternoon long." });
+  assert.equal(r.title, "Safe title");
+  assert.throws(() => parseGenerateInput({ title: "<b></b>", text: "The robot waved to the children and they waved back all afternoon long." }), /Title/);
+});

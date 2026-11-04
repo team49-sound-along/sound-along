@@ -48,7 +48,7 @@ export function partTitle(title, index, total) {
 
 export function parseGenerateInput(body) {
   if (!isObject(body)) bad("Send a JSON object.");
-  const title = typeof body.title === "string" ? body.title.trim() : "";
+  const title = typeof body.title === "string" ? stripHtml(body.title).replace(/\s+/g, " ").trim() : "";
   const text = typeof body.text === "string" ? body.text.replace(/\r\n/g, "\n").trim() : "";
   if (title.length < 1 || title.length > LIMITS.titleMax) bad(`Title must be 1 to ${LIMITS.titleMax} characters.`);
   if (text.length < LIMITS.textMin) bad(`Add at least ${LIMITS.textMin} characters of text.`);
