@@ -7,11 +7,15 @@ test("title comes from the filename without extension", () => {
   assert.equal(titleFromFilename("noext"), "noext");
   assert.equal(titleFromFilename("x".repeat(200) + ".txt").length, 120);
 });
-test("text file accepts .txt/.md within 100 KB only", () => {
+test("text file accepts .txt/.md within 100 KB, .docx within 15 MB and .pdf within 25 MB", () => {
   assert.equal(validateTextFile({ name: "a.TXT", size: 10 }).ok, true);
   assert.equal(validateTextFile({ name: "a.md", size: 102400 }).ok, true);
   assert.match(validateTextFile({ name: "a.md", size: 102401 }).error, /100 KB/);
-  assert.match(validateTextFile({ name: "a.pdf", size: 10 }).error, /\.txt and \.md/);
+  assert.equal(validateTextFile({ name: "a.docx", size: 15 * 1024 * 1024 }).ok, true);
+  assert.match(validateTextFile({ name: "a.docx", size: 15 * 1024 * 1024 + 1 }).error, /15 MB/);
+  assert.equal(validateTextFile({ name: "a.pdf", size: 25 * 1024 * 1024 }).ok, true);
+  assert.match(validateTextFile({ name: "a.pdf", size: 26 * 1024 * 1024 }).error, /25 MB/);
+  assert.match(validateTextFile({ name: "a.exe", size: 10 }).error, /\.txt, \.md, \.docx or \.pdf/);
   assert.equal(validateTextFile(null).ok, false);
 });
 test("recording validates type, size, name", () => {

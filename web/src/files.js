@@ -15,11 +15,15 @@ export function titleFromFilename(name, max = 120) {
 
 export const formatBytes = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
-/** {ok:true} or {ok:false, error}. Accepts .txt and .md up to 100 KB. */
+const FILE_LIMITS = { txt: TEXT_FILE_MAX_BYTES, md: TEXT_FILE_MAX_BYTES, docx: 15 * 1024 * 1024, pdf: 25 * 1024 * 1024 };
+const LIMIT_TEXT = { txt: "100 KB", md: "100 KB", docx: "15 MB", pdf: "25 MB" };
+
+/** {ok:true} or {ok:false, error}. Accepts .txt and .md up to 100 KB, .docx up to 15 MB and .pdf up to 25 MB. */
 export function validateTextFile(file) {
   if (!file) return { ok: false, error: "Choose a file." };
-  if (!["txt", "md"].includes(extensionOf(file.name))) return { ok: false, error: "Only .txt and .md text files can be added. Paste other text into the box instead." };
-  if (file.size > TEXT_FILE_MAX_BYTES) return { ok: false, error: `That file is ${formatBytes(file.size)}. Text files can be up to 100 KB.` };
+  const kind = extensionOf(file.name);
+  if (!(kind in FILE_LIMITS)) return { ok: false, error: "Choose a .txt, .md, .docx or .pdf file, or paste the text into the box." };
+  if (file.size > FILE_LIMITS[kind]) return { ok: false, error: `That file is ${formatBytes(file.size)}. Files of this kind can be up to ${LIMIT_TEXT[kind]}.` };
   return { ok: true };
 }
 
