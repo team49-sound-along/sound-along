@@ -28,7 +28,7 @@ export async function uploadRecording(file, upload, onProgress = () => {}) {
     xhr.onerror = () => reject(Object.assign(new Error("Cannot reach the server to upload the recording. Check your connection and try again."), { status: 0 }));
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) return resolve();
-      let message = `The recording upload failed (HTTP ${xhr.status}).`;
+      let message = "The recording upload failed. Please try again.";
       try {
         message = JSON.parse(xhr.responseText).error || message;
       } catch {

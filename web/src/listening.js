@@ -57,14 +57,14 @@ export const isUsableTrial = (t) => Boolean(t?.trialId && t.a?.token && t.a?.url
 
 export function ratingErrorMessage(status, fallback) {
   if (status === 429) return "You are going a little fast. Wait a minute, then submit again.";
-  if (status === 503) return "Rating is turned off on this server right now. Please try again later.";
+  if (status === 503) return "Rating is turned off right now. Please try again later.";
   if (status === 400) return fallback || "That rating could not be saved. Load the next clip and try again.";
   return fallback || "Something went wrong saving your rating. Please try again.";
 }
 
 export function trialLoadMessage(status, fallback) {
   if (status === 429) return "Too many requests right now. Wait a minute, then try again.";
-  if (status === 503) return "The listening test is turned off on this server right now.";
+  if (status === 503) return "The listening test is turned off right now.";
   return fallback || "We could not load a listening clip. Please try again.";
 }
 

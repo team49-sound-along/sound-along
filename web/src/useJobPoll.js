@@ -38,7 +38,7 @@ export function useJobPoll() {
       if (!alive || mine !== run) return;
       if (failures + 1 >= MAX_POLL_FAILURES) {
         clearInterval(clock);
-        pollError.value = `Lost contact with the server while checking progress. ${e.message}`;
+        pollError.value = "We lost the connection while checking progress. Your audio may still be on its way: check your connection, then refresh this page.";
         return;
       }
       timer = setTimeout(() => poll(jobId, mine, failures + 1), POLL_MS);

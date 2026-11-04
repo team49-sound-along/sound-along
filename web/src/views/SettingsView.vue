@@ -59,7 +59,7 @@ async function save() {
           <label for="s-speed">Speaking speed: <span class="num value">{{ formatSpeed(form.speed) }}</span></label>
           <input id="s-speed" v-model.number="form.speed" class="range" type="range" :min="SPEED_MIN" :max="SPEED_MAX" :step="SPEED_STEP" aria-describedby="s-speed-help" :aria-valuetext="formatSpeed(form.speed)" />
           <div class="ends small muted" aria-hidden="true"><span>{{ SPEED_MIN }}x slower</span><span>{{ SPEED_MAX }}x faster</span></div>
-          <p id="s-speed-help" class="small muted">Slower speech helps younger readers follow each word. Faster speech suits confident readers. Voices are computer-generated. The Phonon voices ignore this speed setting.</p>
+          <p id="s-speed-help" class="small muted">Slower speech helps younger readers follow each word. Faster speech suits confident readers. Voices are computer-generated. Hadley and Everly ignore this speed setting.</p>
         </div>
         <div class="field">
           <label for="s-kbps">MP3 quality</label>

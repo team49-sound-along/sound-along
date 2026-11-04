@@ -1,9 +1,9 @@
 // Maps a backend Job to the 4-step progress tracker.
 export const STEPS = [
-  { key: "parse", label: "Parse", hint: "Split text into words and sentences" },
-  { key: "synthesize", label: "Synthesize", hint: "Generate the narration audio" },
-  { key: "align", label: "Align", hint: "Verify word-level timing" },
-  { key: "publish", label: "Publish", hint: "Make it available in the reader" },
+  { key: "parse", label: "Read", hint: "Split the text into words and sentences" },
+  { key: "synthesize", label: "Voice", hint: "Create the narration audio" },
+  { key: "align", label: "Match", hint: "Match each word to its sound" },
+  { key: "publish", label: "Ready", hint: "Add it to the library" },
 ];
 
 /** Returns [{key,label,hint,state}] where state is done | current | pending | failed. */
@@ -26,4 +26,14 @@ export function elapsedSeconds(startedAt, finishedAt, now = Date.now()) {
   if (Number.isNaN(start)) return null;
   const end = finishedAt ? Date.parse(finishedAt) : now;
   return Math.max(0, Math.round(((Number.isNaN(end) ? now : end) - start) / 1000));
+}
+
+const GENERIC_FAILURE = "We could not finish creating the audio. Please try again in a moment.";
+// Anything that looks like an internal detail (file paths, error codes, stack traces, URLs, endpoints) is never shown to a person.
+const INTERNAL = /(\/api\/|https?:\/\/|\bE[A-Z]{3,}\b|errno|Traceback|\bat [\w$.<>]+ \(|\.(py|js|mjs|json)\b|\bHTTP \d{3}\b|\b(Lambda|DynamoDB|S3|Bedrock|Step Functions|stderr|stdout|exit code)\b|[A-Za-z]:\\|\/(usr|var|opt|tmp|home)\/)/i;
+
+/** The failure message for a job, or a generic one when the server's text could reveal how the service works. */
+export function friendlyJobError(error) {
+  const text = typeof error === "string" ? error.trim() : "";
+  return text && text.length <= 240 && !INTERNAL.test(text) ? text : GENERIC_FAILURE;
 }

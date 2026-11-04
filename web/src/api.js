@@ -35,7 +35,7 @@ async function request(method, path, body, signal) {
     /* non-JSON body handled below */
   }
   if (!res.ok || !envelope || envelope.success !== true) {
-    throw new ApiError(envelope?.error || `The server returned an unexpected response (HTTP ${res.status}).`, res.status);
+    throw new ApiError(envelope?.error || "Something went wrong. Please try again in a moment.", res.status);
   }
   return envelope.data;
 }
@@ -110,7 +110,7 @@ export async function fetchTiming(id) {
     throw new ApiError(NETWORK, 0);
   }
   if (res.status === 404) throw new ApiError("This passage could not be found.", 404);
-  if (!res.ok) throw new ApiError(`Could not load this passage (HTTP ${res.status}).`, res.status);
+  if (!res.ok) throw new ApiError("Could not load this passage. Please try again.", res.status);
   try {
     return await res.json();
   } catch {

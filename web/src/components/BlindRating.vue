@@ -14,7 +14,7 @@ const hasData = computed(() => Boolean(props.summary) && props.summary.ratings >
   <section class="card stack" aria-labelledby="blind-h">
     <div>
       <h3 id="blind-h">Blind listening test</h3>
-      <p class="small muted">Listeners rate two unlabelled readings of the same text. Source: ratings recorded by this server.</p>
+      <p class="small muted">Listeners rate two unlabelled readings of the same text. Ratings are recorded in this app.</p>
     </div>
     <div v-if="!hasData" class="empty">
       <strong>No ratings yet.</strong>

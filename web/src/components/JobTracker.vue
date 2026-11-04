@@ -1,8 +1,8 @@
 <script setup>
 import { computed, useId } from "vue";
 import Icon from "./Icon.vue";
-import { elapsedSeconds, stepStates } from "../jobSteps.js";
-import { formatCount, formatMinutes, formatRtf, formatSeconds } from "../format.js";
+import { elapsedSeconds, friendlyJobError, stepStates } from "../jobSteps.js";
+import { formatCount, formatMinutes, formatSeconds } from "../format.js";
 
 const props = defineProps({ job: { type: Object, required: true }, now: { type: Number, required: true } });
 const headId = useId();
@@ -12,10 +12,9 @@ const m = computed(() => props.job.metrics ?? {});
 const summary = computed(() => [
   { label: "Words", value: formatCount(m.value.words) },
   { label: "Audio length", value: formatMinutes(typeof m.value.audioSeconds === "number" ? m.value.audioSeconds / 60 : null) },
-  { label: "Generation time", value: formatSeconds(m.value.generateSeconds) },
-  { label: "Real-time factor", value: formatRtf(m.value.realTimeFactor) },
-  { label: "Unaligned words", value: formatCount(m.value.unalignedWords) },
+  { label: "Time to create", value: formatSeconds(m.value.generateSeconds) },
 ]);
+const errorText = computed(() => friendlyJobError(props.job.error));
 </script>
 
 <template>
@@ -40,14 +39,13 @@ const summary = computed(() => [
     </ol>
 
     <div v-if="job.status === 'failed'" class="notice error" role="alert">
-      <p>{{ job.error || "Generation failed. Please try again." }}</p>
+      <p>{{ errorText }}</p>
     </div>
     <div v-else-if="job.status === 'done'" class="result" role="status">
       <p class="notice ok"><strong>Ready.</strong> Audio and word timing were generated from your text.</p>
       <dl class="metrics">
         <div v-for="x in summary" :key="x.label"><dt>{{ x.label }}</dt><dd class="num">{{ x.value }}</dd></div>
       </dl>
-      <p class="small muted">Source: job metrics from GET /api/jobs/{{ job.id }}.</p>
       <div v-if="job.humanPassageId && job.passageId" class="open-row">
         <a class="btn primary" :href="`#/read/${encodeURIComponent(job.humanPassageId)}`">Open with human narrator</a>
         <a class="btn" :href="`#/read/${encodeURIComponent(job.passageId)}`">Open with read-aloud voice</a>

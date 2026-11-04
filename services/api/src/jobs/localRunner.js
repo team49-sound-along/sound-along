@@ -56,7 +56,7 @@ export function createLocalRunner({ jobs, dataDir, python, script, logger = cons
     child.stderr.on("data", (chunk) => {
       stderrTail = (stderrTail + chunk.toString()).slice(-2000);
     });
-    child.on("error", (err) => finishFailed(job.id, `Could not start the voice engine (${err.code ?? err.message}).`));
+    child.on("error", (err) => finishFailed(job.id, "We could not start the audio generator. Please try again in a moment."));
     child.on("close", (code) => {
       clearTimeout(timer);
       if (buffer) handleLine(job.id, buffer);

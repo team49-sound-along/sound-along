@@ -14,7 +14,7 @@ const { data, loading, error, reload } = useResource(api.insights);
 const rowsFor = (c) => [
   { key: "neural", label: "Amazon Polly Neural", value: c?.pollyNeuralUsd },
   { key: "standard", label: "Amazon Polly Standard", value: c?.pollyStandardUsd },
-  { key: "lambda", label: "Estimated Lambda (self-hosted)", value: c?.estimatedLambdaUsd, estimated: true },
+  { key: "lambda", label: "Estimated cost, our approach (self-hosted)", value: c?.estimatedLambdaUsd, estimated: true },
 ];
 const current = computed(() => rowsFor(data.value?.cost));
 const projected = computed(() => rowsFor(data.value?.cost?.projectedCatalog));
@@ -25,7 +25,7 @@ const agreement = computed(() => data.value?.quality?.timingAgreement ?? null);
 const agreementSource = computed(() => {
   const a = agreement.value;
   if (!a) return "Not measured yet. Run scripts/build_samples.py.";
-  return `Whisper small.en vs our timing on ${formatCount(a.wordsChecked)} words: p95 ${formatMs(a.p95ErrorMs)}, ${formatShare(a.within100ms)} within 100 ms, word error ${formatPercent(a.wer * 100)}. Agreement between two systems, not ground truth.`;
+  return `Independent speech check vs our timing on ${formatCount(a.wordsChecked)} words: p95 ${formatMs(a.p95ErrorMs)}, ${formatShare(a.within100ms)} within 100 ms, word error ${formatPercent(a.wer * 100)}. Agreement between two systems, not ground truth.`;
 });
 const naturalness = computed(() => {
   const scores = data.value?.quality?.naturalness?.scores ?? {};
@@ -56,8 +56,8 @@ const naturalness = computed(() => {
             <KpiCard label="Passages" :value="formatCount(data.catalog?.passages)" source="Measured: count of published passages" />
             <KpiCard label="Audio minutes" :value="formatMinutes(data.catalog?.audioMinutes)" source="Measured: total generated audio length" />
             <KpiCard label="Timing vs independent check" :value="formatMs(agreement?.medianErrorMs)" :source="agreementSource" emphasis />
-            <KpiCard label="Words mapped" :value="formatPercent(data.quality?.alignedPercent)" :source="`Engine word tokens mapped to displayed words (${formatCount(data.quality?.unalignedWords)} not exact). This is not a sync measure.`" />
-            <KpiCard label="Avg real-time factor" :value="formatRtf(data.speed?.avgRealTimeFactor)" source="Measured on the generating machine, not on Lambda: generation seconds per audio second" />
+            <KpiCard label="Words mapped" :value="formatPercent(data.quality?.alignedPercent)" :source="`Voice word timings mapped to displayed words (${formatCount(data.quality?.unalignedWords)} not exact). This is not a sync measure.`" />
+            <KpiCard label="Avg real-time factor" :value="formatRtf(data.speed?.avgRealTimeFactor)" source="Measured while generating on a development computer; speed in production will differ" />
           </div>
         </section>
 
@@ -89,7 +89,7 @@ const naturalness = computed(() => {
             <div>
               <strong>Estimate, not a measured bill.</strong>
               <p class="small">{{ data.cost?.basis || "—" }}</p>
-              <p class="small muted">Source: cost block of GET /api/insights.</p>
+              <p class="small muted">Estimates from the passages generated so far.</p>
             </div>
           </div>
           <div class="charts">
@@ -101,7 +101,7 @@ const naturalness = computed(() => {
         <section class="card stack" aria-labelledby="adopt-h">
           <div>
             <h3 id="adopt-h">Classroom adoption</h3>
-            <p class="small muted">Source: reader events (play, word tap, complete) and assignments recorded by this server.</p>
+            <p class="small muted">Based on reading activity (plays, word taps, completions) and assignments recorded in this app.</p>
           </div>
           <dl class="adopt">
             <div><dt>Plays</dt><dd class="num">{{ formatCount(adoption.plays) }}</dd></div>
