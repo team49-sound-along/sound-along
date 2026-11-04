@@ -77,11 +77,24 @@ export const reviewKey = (passageId) => `soundalong.questionReview.v1.${passageI
 
 const validEdit = (e) => e && typeof e.question === "string" && Array.isArray(e.choices) && e.choices.length >= 2 && e.choices.every((c) => typeof c === "string");
 
-/** Saved choices for this draft. Anything for a question that is not in the draft, or malformed, is dropped. Never throws. */
+/** A short stable hash of what the teacher actually judged: the question text, the choices and the marked answer. Synchronous, not for security. */
+export function fingerprintQuestion(q) {
+  const text = JSON.stringify([q?.question ?? "", Array.isArray(q?.choices) ? q.choices : [], q?.answerIndex ?? null]);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193) >>> 0;
+  return `${text.length.toString(36)}-${h.toString(36)}`;
+}
+
+const fingerprintsOf = (view) => Object.fromEntries(view.questions.map((q) => [q.id, fingerprintQuestion(q)]));
+
+/** Saved choices for this draft. Anything for a question that is not in the draft, was changed since, or is malformed, is dropped. Never throws. */
 export function loadReview(passageId, storage = safeStorage(), view) {
   try {
     const parsed = JSON.parse(storage?.getItem(reviewKey(passageId)) ?? "null");
-    const ids = new Set(view.questions.map((q) => q.id));
+    const saved = parsed?.fingerprints && typeof parsed.fingerprints === "object" ? parsed.fingerprints : {};
+    const current = fingerprintsOf(view);
+    // a choice stays only while the question it was made for is unchanged; a regenerated question starts pending again
+    const ids = new Set(Object.keys(current).filter((id) => saved[id] === current[id]));
     const status = Object.fromEntries(Object.entries(parsed?.status ?? {}).filter(([id, s]) => ids.has(id) && STATUSES.has(s)));
     const edits = Object.fromEntries(Object.entries(parsed?.edits ?? {}).filter(([id, e]) => ids.has(id) && validEdit(e)).map(([id, e]) => [id, { question: e.question, choices: [...e.choices] }]));
     return { status, edits };
@@ -90,10 +103,10 @@ export function loadReview(passageId, storage = safeStorage(), view) {
   }
 }
 
-export function saveReview(passageId, review, storage = safeStorage()) {
+export function saveReview(passageId, review, storage = safeStorage(), view) {
   try {
     if (!storage) return false;
-    storage.setItem(reviewKey(passageId), JSON.stringify(review));
+    storage.setItem(reviewKey(passageId), JSON.stringify({ ...review, fingerprints: fingerprintsOf(view) }));
     return true;
   } catch {
     return false;
