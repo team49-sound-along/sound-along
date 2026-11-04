@@ -15,7 +15,10 @@ class CostBudget(Construct):
             self,
             "Budget",
             budget=budgets.CfnBudget.BudgetDataProperty(
-                budget_name="sound-along-monthly",
+                # No budget_name: let CloudFormation assign a unique physical name. A hardcoded name makes changing the
+                # budget (e.g. the alert email) a replace that collides with the still-existing budget of the same name
+                # ("A budget ... with the same name but a different internalId already exists"). An auto-generated name
+                # lets the replacement create the new budget and then delete the old one cleanly.
                 budget_type="COST",
                 time_unit="MONTHLY",
                 budget_limit=budgets.CfnBudget.SpendProperty(amount=BUDGET_LIMIT_USD, unit="USD"),
