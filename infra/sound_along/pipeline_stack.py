@@ -185,7 +185,9 @@ class PipelineStack(Stack):
             branch=props.github_branch,
             connection_arn=github_connection.attr_connection_arn,
             output=source_output,
-            trigger_on_push=True,
+            # V2 pipelines start from an explicit trigger (below), not from the action's DetectChanges flag.
+            # DetectChanges alone never started a run here: every execution was a manual StartPipelineExecution.
+            trigger_on_push=False,
         )
         build_action = cpactions.CodeBuildAction(
             action_name="BuildAndDeploy",
@@ -198,6 +200,18 @@ class PipelineStack(Stack):
             self,
             "Pipeline",
             pipeline_name=f"{PROJECT_TAG}-pipeline",
+            pipeline_type=codepipeline.PipelineType.V2,
+            triggers=[
+                codepipeline.TriggerProps(
+                    provider_type=codepipeline.ProviderType.CODE_STAR_SOURCE_CONNECTION,
+                    git_configuration=codepipeline.GitConfiguration(
+                        source_action=source_action,
+                        push_filter=[
+                            codepipeline.GitPushFilter(branches_includes=[props.github_branch]),
+                        ],
+                    ),
+                )
+            ],
             artifact_bucket=artifact_bucket,
             stages=[
                 codepipeline.StageProps(stage_name="Source", actions=[source_action]),
