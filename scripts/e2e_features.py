@@ -46,17 +46,13 @@ with sync_playwright() as pw:
         return (n >= 10 and len(t) > 10) or f"{n} defined words, definition '{t[:30]}'"
     step("vocabulary words are underlined and show a definition", defcards)
 
-    # ---- quiz
-    def quiz():
-        go(f"#/practice/{PARK}"); pg.wait_for_selector("text=Practice questions", timeout=8000)
-        ch = pg.locator(".qchoices button"); n = ch.count()
-        if n < 2: return f"{n} choices"
-        ch.first.click(); pg.wait_for_timeout(300)
-        if not re.search(r"correct|your choice", pg.inner_text(".qchoices")): return "no feedback"
-        if any(not x.is_disabled() for x in ch.all()): return "choices still enabled after answering"
-        pg.get_by_role("button", name="Next question").click(); pg.wait_for_timeout(300)
-        return pg.locator(".qchoices button:not([disabled])").count() >= 2 or "next question did not reset"
-    step("practice questions: answer, feedback, next question", quiz)
+    # ---- quiz (the full question review and quiz flow is covered by scripts/e2e_quiz.py)
+    def no_unapproved_quiz():
+        reader(PARK)
+        if pg.get_by_role("link", name="Quiz").count() or pg.get_by_role("button", name="Quiz").count(): return "Quiz offered without approved questions"
+        go(f"#/practice/{PARK}"); pg.wait_for_selector("h2", timeout=8000)
+        return pg.locator("text=Practice questions").count() == 0 or "old questions box still shown"
+    step("no approved questions: no Quiz button and no questions box", no_unapproved_quiz)
     step("passages with no approved questions show no quiz", lambda: (go(f"#/practice/{TEA}"), pg.locator("text=Practice questions").count() == 0 or "quiz shown without approval")[1])
 
     # ---- keyboard, highlight modes, phrase breaks
