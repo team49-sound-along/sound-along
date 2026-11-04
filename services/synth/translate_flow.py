@@ -55,6 +55,7 @@ def build_translated_passage(passage: dict[str, Any], lang: str, translated: Tra
         "uuid": translated_id(passage["uuid"], lang), "title": translated.title or passage.get("title"), "content": translated.content_html,
         "language": lang, "source": passage.get("source") or "generated", "settings": dict(passage.get("settings") or {}), "pronunciations": {},
         "noTranslate": True,  # a translation is never translated again
+        **({"series": passage["series"]} if passage.get("series") else {}),  # a translated part is still part n of the same document
     }
 
 

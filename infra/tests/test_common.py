@@ -88,7 +88,7 @@ def test_standard_state_machine_with_one_retrying_task(template: Template) -> No
     assert re.search(r"MaxAttempts\D+1\b", definition)
     assert "States.TaskFailed" not in definition
     assert "Payload.$" in definition
-    assert re.search(r"TimeoutSeconds\D+2700\b", definition)
+    assert re.search(r"TimeoutSeconds\D+10800\b", definition)
 
 
 def test_on_demand_table_with_ttl(template: Template) -> None:

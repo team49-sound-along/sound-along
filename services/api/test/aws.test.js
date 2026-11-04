@@ -179,8 +179,28 @@ describe("sfnRunner", () => {
     const exec = sfn.calls[0];
     assert.equal(exec.name, "StartExecutionCommand");
     assert.equal(exec.input.stateMachineArn, "arn:sm");
-    assert.deepEqual(JSON.parse(exec.input.input), { jobId: "job-1", passageId: raw.uuid, title: "T", rawKey: put.input.Key, humanPassageId: null });
+    assert.deepEqual(JSON.parse(exec.input.input), { parts: [{ jobId: "job-1", passageId: raw.uuid, title: "T", rawKey: put.input.Key, humanPassageId: null }] });
     assert.equal(job.passageId, raw.uuid);
+  });
+
+  test("a long document is one execution with every part, and each part's input names its series", async () => {
+    const jobs = makeJobs();
+    const s3 = fakeClient();
+    const sfn = fakeClient();
+    const runner = createSfnRunner({ jobs, s3, sfn, bucket: "B", stateMachineArn: "arn:sm", logger: quiet });
+    const ids = ["2b781dab-4521-40d2-a9b6-ad5f2bb0ba90", "2b781dab-4521-40d2-a9b6-ad5f2bb0ba91"];
+    const series = { id: "5af24980-4d6d-41c1-87fa-4f21cb2d169d", title: "T", total: 2, partIds: ids };
+    const out = await runner.startSeries(ids.map((passageId, i) => ({ title: `T (Part ${i + 1} of 2)`, text: "One. Two.", passageId, series: { ...series, index: i + 1 } })));
+    assert.equal(out.length, 2);
+    assert.equal(sfn.calls.length, 1, "one execution for the whole document");
+    const exec = sfn.calls[0].input;
+    assert.equal(exec.name, series.id);
+    const { parts } = JSON.parse(exec.input);
+    assert.deepEqual(parts.map((p) => p.passageId), ids);
+    assert.deepEqual(parts.map((p) => p.rawKey), ids.map((i) => `raw/${i}.json`));
+    const raws = s3.calls.map((c) => JSON.parse(c.input.Body));
+    assert.deepEqual(raws.map((r) => r.series.index), [1, 2]);
+    assert.deepEqual(raws[0].series.partIds, ids);
   });
 
   test("marks the job failed and throws 503 when StartExecution fails", async () => {

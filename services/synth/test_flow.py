@@ -103,3 +103,12 @@ def test_soundalong_block_for_an_ai_only_passage_defaults_to_the_ai_voice():
     block = run_flow({k: v for k, v in PASSAGE.items() if k != "humanPassageId"}, FakeEngine()).soundalong
     assert block["features"] == ["sa"] and block["soundAlong"]["defaultVoice"] == "ai"
     assert [v["kind"] for v in block["soundAlong"]["voices"]] == ["ai"]
+
+
+def test_a_part_of_a_long_document_carries_its_series_in_the_timing_and_a_malformed_one_is_ignored():
+    ids = [f"2b781dab-4521-40d2-a9b6-ad5f2bb0ba9{i}" for i in range(2)]
+    series = {"id": "5af24980-4d6d-41c1-87fa-4f21cb2d169d", "index": 1, "total": 2, "title": "The Story", "partIds": ids}
+    base = {k: v for k, v in PASSAGE.items() if k != "humanPassageId"}
+    assert run_flow({**base, "series": series}, FakeEngine()).ai.timing["series"] == series
+    assert "series" not in run_flow({**base, "series": {"id": "x"}}, FakeEngine()).ai.timing
+    assert "series" not in run_flow(base, FakeEngine()).ai.timing

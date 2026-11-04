@@ -140,3 +140,9 @@ def test_localiser_keeps_the_original_when_the_article_title_is_much_longer_than
     reply = {"query": {"pages": {"1": {"title": "China", "langlinks": [{"lang": "es", "*": "República Popular China"}]},
                                  "2": {"title": "United States", "langlinks": [{"lang": "es", "*": "Estados Unidos"}]}}}}
     assert tf.localize_with_wikipedia(["China", "United States"], "en", "es", http_get=lambda url, binary=False: reply) == {"United States": "Estados Unidos"}
+
+
+def test_a_translated_part_stays_part_n_of_the_same_document():
+    series = {"id": "5af24980-4d6d-41c1-87fa-4f21cb2d169d", "index": 2, "total": 3, "title": "T", "partIds": [f"2b781dab-4521-40d2-a9b6-ad5f2bb0ba9{i}" for i in range(3)]}
+    assert tf.build_translated_passage({**PASSAGE, "series": series}, "es", TRANSLATED)["series"] == series
+    assert "series" not in tf.build_translated_passage(PASSAGE, "es", TRANSLATED)

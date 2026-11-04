@@ -50,7 +50,7 @@ def test_passage_summary_matches_catalog_contract(world):
     h.process(EVENT, make_deps(s3, table))
     item = table.items[("PASSAGE", PASSAGE_ID)]
     timing = json.loads(gzip.decompress(s3.objects[f"data/{PASSAGE_ID}.timing.json"]))
-    expected_keys = {"pk", "sk", "id", "title", "words", "durationMs", "engine", "voice", "createdAt", "source", "vocabCount", "language", "translations", "translationOf", "metrics"}
+    expected_keys = {"pk", "sk", "id", "title", "words", "durationMs", "engine", "voice", "createdAt", "source", "vocabCount", "language", "translations", "translationOf", "series", "metrics"}
     assert set(item) == expected_keys
     assert item["id"] == PASSAGE_ID and item["title"] == "The Park"
     assert item["words"] == timing["metrics"]["words"] == 8
@@ -222,3 +222,14 @@ def test_the_index_document_is_published_gzipped_and_lists_public_fields_only():
     entry = index[0]
     assert set(entry) >= {"id", "title", "words", "durationMs", "engine", "voice", "createdAt", "source", "vocabCount", "language", "pairId"}
     assert not ({"pk", "sk", "metrics", "review"} & set(entry))  # internal fields never leave the table
+
+
+def test_a_part_of_a_long_document_keeps_its_series_in_the_timing_and_the_summary(world):
+    s3, table = world
+    ids = [f"2b781dab-4521-40d2-a9b6-ad5f2bb0ba9{i}" for i in range(2)]
+    series = {"id": "5af24980-4d6d-41c1-87fa-4f21cb2d169d", "index": 1, "total": 2, "title": "The Park", "partIds": ids}
+    raw = json.loads(s3.objects[EVENT["rawKey"]])
+    s3.objects[EVENT["rawKey"]] = json.dumps({**raw, "series": series}).encode()
+    h.process(EVENT, make_deps(s3, table))
+    timing = json.loads(gzip.decompress(s3.objects[f"data/{PASSAGE_ID}.timing.json"]))
+    assert timing["series"] == series and table.items[("PASSAGE", PASSAGE_ID)]["series"] == series

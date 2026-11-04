@@ -1,11 +1,15 @@
 import { HttpError } from "./http.js";
+import { splitIntoParts } from "./splitDocument.js";
+import { countWords } from "./wordCount.js";
 import { languageMismatch } from "./languageGuess.js";
 import { UUID } from "./recordings/rules.js";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const EVENT_TYPES = new Set(["play", "word_tap", "complete"]);
 
-export const LIMITS = { titleMax: 120, textMin: 20, textMax: 12000, wordsMax: 1400 }; // wordsMax: measured ~0.5 s of narration + timing per word, so 1,400 words stays well inside the 900 s Lambda limit
+// singleWordsMax: one passage; measured about 0.45 s of narration per word in the generator, so a part of up to 1,000 words stays well inside one 900 s Lambda run together with its translation.
+// Longer text becomes a series of parts (see splitDocument.js) up to documentWordsMax words, which bounds the cost of one submission.
+export const LIMITS = { titleMax: 120, textMin: 20, textMax: 100000, singleWordsMax: 1000, documentWordsMax: 12000 };
 
 const bad = (message) => {
   throw new HttpError(400, message);
@@ -36,6 +40,12 @@ export function parseLanguage(value) {
   return value;
 }
 
+/** "The Story (Part 2 of 5)", shortened so the whole title still fits. */
+export function partTitle(title, index, total) {
+  const suffix = ` (Part ${index} of ${total})`;
+  return title.slice(0, LIMITS.titleMax - suffix.length).trimEnd() + suffix;
+}
+
 export function parseGenerateInput(body) {
   if (!isObject(body)) bad("Send a JSON object.");
   const title = typeof body.title === "string" ? body.title.trim() : "";
@@ -43,9 +53,12 @@ export function parseGenerateInput(body) {
   if (title.length < 1 || title.length > LIMITS.titleMax) bad(`Title must be 1 to ${LIMITS.titleMax} characters.`);
   if (text.length < LIMITS.textMin) bad(`Add at least ${LIMITS.textMin} characters of text.`);
   if (text.length > LIMITS.textMax) bad(`Text can be at most ${LIMITS.textMax.toLocaleString("en-US")} characters.`);
-  // Count like the pipeline tokenizer: whitespace (Python also treats \x1c-\x1f and \x85 as space) and a split after each em/en dash. Slightly over-counts, never under.
-  const words = text.split(/[\s\x1c-\x1f\x85]+/).length + (text.match(/[\u2013\u2014]/g) ?? []).length;
-  if (words > LIMITS.wordsMax) bad(`This passage is ${words.toLocaleString("en-US")} words, which is too long to read aloud in one go. Split it into parts of up to ${LIMITS.wordsMax.toLocaleString("en-US")} words.`);
+  // Text is cleaned first (wrapped lines joined, markup removed) so the count and the split see what the pipeline will see.
+  const cleaned = stripMarkup(unwrapLines(text));
+  const words = countWords(cleaned);
+  if (words > LIMITS.documentWordsMax) {
+    bad(`This document is ${words.toLocaleString("en-US")} words. The most that can be turned into audio at once is ${LIMITS.documentWordsMax.toLocaleString("en-US")} words (about 40 pages). Split it into volumes and add them one at a time.`);
+  }
   let recordingId = null;
   if (body.recordingId != null) {
     if (typeof body.recordingId !== "string" || !UUID.test(body.recordingId)) bad("That recording id is not valid. Upload the recording again.");
@@ -54,7 +67,13 @@ export function parseGenerateInput(body) {
   const language = parseLanguage(body.language);
   const mismatch = languageMismatch(text, language);
   if (mismatch) bad(mismatch);
-  return { title, text, recordingId, language };
+  let parts = null;
+  if (words > LIMITS.singleWordsMax) {
+    if (recordingId) bad(`A recording can only be added to a passage of up to ${LIMITS.singleWordsMax.toLocaleString("en-US")} words. Add this document without a recording, or split it.`);
+    const pieces = splitIntoParts(cleaned);
+    parts = pieces.map((piece, i) => ({ title: partTitle(title, i + 1, pieces.length), text: piece }));
+  }
+  return { title, text, recordingId, language, parts };
 }
 
 export function parseEvent(body, passageIds) {

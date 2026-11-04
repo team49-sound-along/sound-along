@@ -20,7 +20,7 @@ test("textToHtml escapes markup and splits paragraphs", () => {
 });
 
 import { buildInsights } from "../src/insights.js";
-import { summarizePassage } from "../src/passageSummary.js";
+import { seriesOf, summarizePassage } from "../src/passageSummary.js";
 
 test("human-narrated variants count for quality but never double-count text, cost or speed", () => {
   const ai = { engine: "kokoro", metrics: { characters: 1000, words: 200, audioSeconds: 60, generateSeconds: 6, unalignedWords: 0, estimatedLambdaUsd: 0.01 } };
@@ -78,23 +78,8 @@ test("summaries carry the translation links so the reader can offer a language s
   assert.deepEqual(summarizePassage({ id: "z", timing: { title: "T", translations: { es: {}, fr: null } }, mtimeMs: 0 }).translations, {});
 });
 
-test("a passage over the word limit is refused with advice to split it", async () => {
-  const { parseGenerateInput, LIMITS } = await import("../src/validate.js");
-  const ok = parseGenerateInput({ title: "T", text: "go ".repeat(LIMITS.wordsMax).trim() });
-  assert.equal(ok.title, "T");
-  assert.throws(() => parseGenerateInput({ title: "T", text: "go ".repeat(LIMITS.wordsMax + 1).trim() }), (err) => err.status === 400 && /Split it into parts/.test(err.message));
-});
 
-test("the word limit counts dash-joined words the way the tokenizer does", async () => {
-  const { parseGenerateInput, LIMITS } = await import("../src/validate.js");
-  const dashed = "a—b ".repeat(Math.floor(LIMITS.wordsMax / 2) + 1); // few spaces, but each chunk becomes two spoken words
-  assert.throws(() => parseGenerateInput({ title: "T", text: dashed }), (err) => err.status === 400);
-});
 
-test("the word limit also splits on U+0085, which Python treats as a space", async () => {
-  const { parseGenerateInput, LIMITS } = await import("../src/validate.js");
-  assert.throws(() => parseGenerateInput({ title: "T", text: "go\u0085".repeat(LIMITS.wordsMax + 1) }), (err) => err.status === 400);
-});
 
 
 test("a hard-wrapped paste (PDF, Word, email) becomes whole paragraphs, not one paragraph per line", () => {
@@ -170,4 +155,49 @@ test("an italic phrase that wraps across lines is cleaned too", () => {
   assert.ok(!html.includes("_"));
   const wrapped = textToHtml("She saw the Rabbit actually _took a watch out\nof its waistcoat-pocket_, and looked at it, and then hurried on.");
   assert.ok(!wrapped.includes("_") && wrapped.includes("watch out of its waistcoat-pocket"), wrapped);
+});
+
+
+const words = (n) => Array.from({ length: n }, (_, i) => `w${i}`).join(" ");
+const longEnglish = (n) => Array.from({ length: Math.ceil(n / 9) }, (_, i) => `The red fox ran across the green field number ${i}.`).join(" ");
+
+test("up to 1,000 words is a single passage; more becomes parts that each carry their own title", async () => {
+  const { parseGenerateInput, LIMITS, partTitle } = await import("../src/validate.js");
+  const single = parseGenerateInput({ title: "T", text: longEnglish(900) });
+  assert.equal(single.parts, null);
+  const long = parseGenerateInput({ title: "The Story", text: longEnglish(2500) });
+  assert.ok(long.parts.length >= 3);
+  assert.equal(long.parts[0].title, `The Story (Part 1 of ${long.parts.length})`);
+  assert.equal(partTitle("x".repeat(200), 2, 10).length <= LIMITS.titleMax, true);
+});
+
+test("a document over the overall cap is refused with a friendly message", async () => {
+  const { parseGenerateInput, LIMITS } = await import("../src/validate.js");
+  assert.throws(() => parseGenerateInput({ title: "T", text: longEnglish(LIMITS.documentWordsMax + 500) }), (err) => err.status === 400 && /most that can be turned into audio at once/.test(err.message));
+});
+
+test("the cap counts dash-joined words and U+0085 separators the way the tokenizer does", async () => {
+  const { parseGenerateInput, LIMITS } = await import("../src/validate.js");
+  const dashed = "a\u2014b ".repeat(Math.floor(LIMITS.documentWordsMax / 2) + 1); // few spaces, but each chunk is two spoken words
+  assert.throws(() => parseGenerateInput({ title: "T", text: `The red fox ran across the field and the children watched it. ${dashed}` }), (err) => err.status === 400);
+  assert.throws(() => parseGenerateInput({ title: "T", text: "go\u0085".repeat(LIMITS.documentWordsMax + 1) }), (err) => err.status === 400);
+});
+
+test("a recording cannot be attached to a document that is split into parts", async () => {
+  const { parseGenerateInput } = await import("../src/validate.js");
+  assert.throws(() => parseGenerateInput({ title: "T", text: longEnglish(2500), recordingId: "123e4567-e89b-42d3-a456-426614174000" }), (err) => err.status === 400 && /recording can only be added/.test(err.message));
+});
+
+
+const SERIES = { id: "5af24980-4d6d-41c1-87fa-4f21cb2d169d", index: 2, total: 3, title: "The Story", partIds: ["2b781dab-4521-40d2-a9b6-ad5f2bb0ba90", "2b781dab-4521-40d2-a9b6-ad5f2bb0ba91", "2b781dab-4521-40d2-a9b6-ad5f2bb0ba92"] };
+
+test("a part of a long document exposes its series in the passage summary; anything malformed is dropped", () => {
+  assert.deepEqual(seriesOf(SERIES), SERIES);
+  assert.equal(seriesOf({ ...SERIES, total: 2 }), null);
+  assert.equal(seriesOf({ ...SERIES, index: 4 }), null);
+  assert.equal(seriesOf({ ...SERIES, partIds: ["nope", "nope"] }), null);
+  assert.equal(seriesOf(null), null);
+  const s = summarizePassage({ id: "x", timing: { title: "T", words: [], series: SERIES }, mtimeMs: 0, source: "generated" });
+  assert.deepEqual(s.series, SERIES);
+  assert.equal(summarizePassage({ id: "x", timing: { title: "T", words: [] }, mtimeMs: 0 }).series, null);
 });

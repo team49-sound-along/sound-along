@@ -98,7 +98,13 @@ def test_reserved_concurrency_is_totalled_so_a_small_account_quota_is_visible() 
 
 # ---- the state machine -----------------------------------------------------------------------------------------------------------
 def states_of(template: Template) -> dict[str, Any]:
-    return definition(template)["States"]
+    """Every state: the top-level ones plus those inside the Map that runs the parts."""
+    top = definition(template)["States"]
+    states = dict(top)
+    for state in top.values():
+        if state.get("Type") == "Map":
+            states.update((state.get("ItemProcessor") or state.get("Iterator"))["States"])
+    return states
 
 
 def test_follow_up_steps_run_only_after_a_generator_that_reported_done() -> None:
@@ -150,9 +156,9 @@ def test_the_generator_step_is_unchanged_and_still_retries_throttling() -> None:
     assert gen["Retry"][0]["MaxAttempts"] == 1 and "Lambda.TooManyRequestsException" in gen["Retry"][0]["ErrorEquals"]
 
 
-def test_the_whole_execution_is_given_time_for_generation_questions_and_translation() -> None:
+def test_the_whole_execution_is_given_three_hours_for_a_document_of_up_to_twelve_parts() -> None:
     machine = next(iter(synth().find_resources("AWS::StepFunctions::StateMachine").values()))
-    assert json.loads("".join(p if isinstance(p, str) else "REF" for p in machine["Properties"]["DefinitionString"]["Fn::Join"][1]))["TimeoutSeconds"] == 2700
+    assert json.loads("".join(p if isinstance(p, str) else "REF" for p in machine["Properties"]["DefinitionString"]["Fn::Join"][1]))["TimeoutSeconds"] == 10800
 
 
 # ---- context values --------------------------------------------------------------------------------------------------------------
@@ -165,3 +171,13 @@ def test_the_model_context_must_be_a_bedrock_model_id_or_absent() -> None:
 
 def test_the_switch_context_is_true_only_for_true() -> None:
     assert [parse_questions_enabled(v) for v in (None, "false", "no", "1", "TRUE ", "true", True)] == [False, False, False, False, False, True, True]
+
+
+def test_the_parts_of_a_document_run_one_at_a_time_from_a_list_of_keys_and_a_crashed_part_does_not_stop_the_next() -> None:
+    top = definition(synth())["States"]
+    each = top["EachPart"]
+    assert each["Type"] == "Map" and each["ItemsPath"] == "$.parts" and each["MaxConcurrency"] == 1 and each["ResultPath"] is None
+    assert top[definition(synth())["StartAt"]]["Type"] == "Map" and each.get("End") is True
+    inner = (each.get("ItemProcessor") or each.get("Iterator"))["States"]
+    catch = inner["InvokeGenerator"]["Catch"][0]
+    assert catch["ErrorEquals"] == ["States.ALL"] and inner[catch["Next"]]["Type"] == "Pass"

@@ -2,6 +2,16 @@
 const distinctVocabWords = (vocab) =>
   new Set(Object.values(vocab ?? {}).map((entry) => String(entry?.word ?? "").trim().toLowerCase()).filter(Boolean)).size;
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** {id, index, total, title, partIds} for a passage that is one part of a longer document; null when absent or malformed (same rules as services/synth/series.py). */
+export function seriesOf(series) {
+  const ids = series?.partIds;
+  if (!Array.isArray(ids) || ids.length < 2 || ids.length > 40 || !ids.every((i) => typeof i === "string" && UUID.test(i))) return null;
+  if (typeof series.id !== "string" || !UUID.test(series.id) || series.total !== ids.length || !Number.isInteger(series.index) || series.index < 1 || series.index > series.total) return null;
+  return { id: series.id, index: series.index, total: series.total, title: typeof series.title === "string" ? series.title.slice(0, 120) : "", partIds: [...ids] };
+}
+
 /** Passage summary derived from a timing document. `source` is the raw/<id>.json `source` field ("sample" when absent). Shared by the file catalog and the DynamoDB seed script. */
 export function summarizePassage({ id, timing, mtimeMs, source }) {
   return {
@@ -17,6 +27,7 @@ export function summarizePassage({ id, timing, mtimeMs, source }) {
     pairId: timing.pairId ?? null,
     translations: Object.fromEntries(Object.entries(timing.translations ?? {}).filter(([, t]) => t?.id).map(([lang, t]) => [lang, t.id])),
     translationOf: timing.translationOf?.id ?? null,
+    series: seriesOf(timing.series),
     language: timing.language === "es" ? "es" : "en",
   };
 }

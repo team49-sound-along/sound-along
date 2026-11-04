@@ -158,7 +158,7 @@ describe("aws runner and sources", () => {
     const raw = JSON.parse(s3.calls[0].input.Body);
     assert.deepEqual(raw.recording, { key: `raw/${PID}.audio` });
     assert.deepEqual([raw.humanPassageId, raw.qualityCheck, raw.settings], ["h-1", true, settings]);
-    assert.equal(JSON.parse(sfn.calls[0].input.input).humanPassageId, "h-1");
+    assert.equal(JSON.parse(sfn.calls[0].input.input).parts[0].humanPassageId, "h-1");
     await runner.start({ title: "T", content: "<p>x</p>", passageId: PID, settings, pronunciations: {} });
     assert.equal(s3.calls[1].input.Key, `raw/${PID}.json`);
   });

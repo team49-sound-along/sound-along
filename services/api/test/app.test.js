@@ -48,7 +48,10 @@ before(async () => {
   await writeFile(path.join(dir, "state.json"), '{"secret":true}');
   await writeFile(path.join(dir, "quality-report.json"), JSON.stringify({ generatedAt: "t", asr: { method: "m", pooled: { wer: 0.02, medianErrorMs: 40, p95ErrorMs: 190 } } }));
   const jobs = createJobStore();
-  const runner = { start: async (input) => { started = [...started, input]; return jobs.create(input.title); } };
+  const runner = {
+    start: async (input) => { started = [...started, input]; return jobs.create(input.title); },
+    startSeries: async (specs) => { started = [...started, ...specs]; return Promise.all(specs.map(async (s) => { const j = await jobs.create(s.title); return (await jobs.update(j.id, { status: "done" })) ?? j; })); }, // finished at once, so later tests see a free slot
+  };
   const app = createApp({
     store: createFileStore(path.join(dir, "state.json.test")),
     catalog: createFileCatalog(dir),
@@ -179,7 +182,27 @@ describe("generate", () => {
   test("validates title and text", async () => {
     assert.equal((await call("POST", "/api/generate", { title: "", text })).status, 400);
     assert.equal((await call("POST", "/api/generate", { title: "T", text: "short" })).status, 400);
-    assert.equal((await call("POST", "/api/generate", { title: "T", text: "x".repeat(12001) })).status, 400);
+    assert.equal((await call("POST", "/api/generate", { title: "T", text: "x".repeat(100001) })).status, 400);
+  });
+  test("a long document starts every part at once, with linked part ids", async () => {
+    const long = Array.from({ length: 110 }, (_, i) => `The red fox ran across the green field number ${i}.`).join(" "); // about 990 words, so make it longer
+    const text = `${long} ${long} ${long}`;
+    const before = started.length;
+    const r = await call("POST", "/api/generate", { title: "The Story", text });
+    assert.equal(r.status, 202, JSON.stringify(r.json));
+    const { jobId, jobIds, parts, seriesId } = r.json.data;
+    assert.ok(parts >= 3 && jobIds.length === parts && jobIds[0] === jobId && seriesId);
+    const specs = started.slice(before);
+    assert.equal(specs.length, parts);
+    assert.equal(specs[0].title, `The Story (Part 1 of ${parts})`);
+    const ids = specs.map((s) => s.passageId);
+    assert.equal(new Set(ids).size, parts);
+    specs.forEach((s, i) => {
+      assert.deepEqual(s.series.partIds, ids);
+      assert.equal(s.series.index, i + 1);
+      assert.equal(s.series.total, parts);
+      assert.equal(s.series.id, seriesId);
+    });
   });
   test("accepts valid input and exposes the job", async () => {
     const r = await call("POST", "/api/generate", { title: "My passage", text });

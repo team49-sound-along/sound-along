@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from series import clean_series
+
 
 INDEX_HIDDEN = ("pk", "sk", "metrics", "review")
 
@@ -10,7 +12,7 @@ INDEX_HIDDEN = ("pk", "sk", "metrics", "review")
 def index_entry(item: dict[str, Any]) -> dict[str, Any]:
     """One entry of data/index.json: the public Passage fields only (same as GET /api/passages)."""
     entry = {k: v for k, v in item.items() if k not in INDEX_HIDDEN}
-    return {**entry, "pairId": entry.get("pairId"), "language": entry.get("language") or "en", "translations": entry.get("translations") or {}, "translationOf": entry.get("translationOf")}
+    return {**entry, "pairId": entry.get("pairId"), "language": entry.get("language") or "en", "translations": entry.get("translations") or {}, "translationOf": entry.get("translationOf"), "series": entry.get("series")}
 
 
 def distinct_vocab_words(vocab: dict[str, Any] | None) -> int:
@@ -36,6 +38,7 @@ def passage_summary(timing: dict[str, Any], created_at: str, source: str = "gene
         "language": timing.get("language") or "en",
         "translations": {lang: t["id"] for lang, t in (timing.get("translations") or {}).items() if isinstance(t, dict) and t.get("id")},
         "translationOf": (timing.get("translationOf") or {}).get("id") if isinstance(timing.get("translationOf"), dict) else None,
+        "series": clean_series(timing.get("series")),
         "metrics": metrics,
         **extra,
     }

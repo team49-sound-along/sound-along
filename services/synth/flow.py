@@ -13,6 +13,7 @@ import numpy as np
 from artifacts import generate_artifacts
 from asr_words import Heard, decode_audio, resample_to_16k, transcribe
 from engine import SAMPLE_RATE, Engine
+from series import clean_series
 from fingerprint import fingerprint
 from human_alignment import align_words
 from pipeline import StepCallback, _noop
@@ -119,6 +120,10 @@ def run_flow(
             "hash": fingerprint(passage, recording_path),
         },
     }
+
+    series = clean_series(passage.get("series"))
+    if series:
+        timing = {**timing, "series": series}  # this passage is one part of a longer document
 
     heard_ai: Optional[list[Heard]] = None
     if not getattr(engine, "native_timing", True):

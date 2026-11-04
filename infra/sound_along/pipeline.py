@@ -16,7 +16,7 @@ LAMBDA_RETRY_ERRORS: tuple[str, ...] = (
 
 
 def create_state_machine(scope: Construct, generator: lambda_.IFunction, questions: lambda_.IFunction | None = None) -> sfn.StateMachine:
-    """generator -> (only if it reported done) -> questions for ENGLISH passages -> translation. Questions and translation are best effort: each has
+    """For each part (one for an ordinary passage): generator -> (only if it reported done) -> questions for ENGLISH passages -> translation. Questions and translation are best effort: each has
     its own Catch, so neither can ever fail an audio job, and only a throttled translation is retried (twice)."""
     invoke = tasks.LambdaInvoke(
         scope,
@@ -60,7 +60,14 @@ def create_state_machine(scope: Construct, generator: lambda_.IFunction, questio
 
     # The generator reports failure by RETURNING a status, not by throwing, so only a job that is done gets follow-up steps.
     gate = sfn.Choice(scope, "ShouldFollowUp").when(sfn.Condition.string_equals("$.status", "done"), follow_up).otherwise(sfn.Succeed(scope, "NothingToFollowUp"))
-    definition = invoke.next(gate)
+    # A part that crashes (a Lambda timeout, say) must not stop the parts after it: the generator reports ordinary failures by returning a status.
+    invoke.add_catch(sfn.Pass(scope, "PartFailed"), errors=["States.ALL"], result_path="$.partError")
+    one_part = invoke.next(gate)
+
+    # One execution per submitted document. The input is {"parts": [{jobId, passageId, title, rawKey, humanPassageId}, ...]} (one entry for an ordinary
+    # passage). The parts run ONE AT A TIME: the generator has only 2 reserved slots and a part is 5 to 10 minutes of work, so queueing on Lambda throttles
+    # would burn the execution's time. Only keys travel between states (the 256 KB state limit); the text is in S3.
+    definition = sfn.Map(scope, "EachPart", items_path="$.parts", max_concurrency=1, result_path=sfn.JsonPath.DISCARD).item_processor(one_part)
 
     return sfn.StateMachine(
         scope,
@@ -68,5 +75,5 @@ def create_state_machine(scope: Construct, generator: lambda_.IFunction, questio
         state_machine_name="GenerateStateMachine",
         state_machine_type=sfn.StateMachineType.STANDARD,
         definition_body=sfn.DefinitionBody.from_chainable(definition),
-        timeout=Duration.minutes(45),
+        timeout=Duration.hours(3),  # up to 12 parts of about 10 minutes each (generation, questions, translation) with room to spare
     )

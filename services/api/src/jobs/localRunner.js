@@ -19,7 +19,8 @@ const TIMEOUT_MS = 10 * 60 * 1000;
 export function createLocalRunner({ jobs, dataDir, python, script, logger = console }) {
   const recordings = createLocalRecordings({ dataDir });
 
-  async function start(spec) {
+  /** Creates the job and writes its input file. Returns { job, run } where run() does the work and resolves when it ends (it never rejects). */
+  async function prepare(spec) {
     const { title } = spec;
     const passageId = spec.passageId ?? randomUUID();
     const recording = spec.recording ?? (spec.recordingId ? recordings.ref(spec.recordingId) : null);
@@ -33,13 +34,19 @@ export function createLocalRunner({ jobs, dataDir, python, script, logger = cons
       pronunciations: spec.pronunciations,
       recording,
       humanPassageId: spec.humanPassageId,
+      series: spec.series,
     });
     const job = await jobs.create(title, { humanPassageId: input.humanPassageId });
     const rawDir = path.join(dataDir, "raw");
     await mkdir(rawDir, { recursive: true });
     const rawFile = path.join(rawDir, `${passageId}.json`);
     await writeFile(rawFile, JSON.stringify(input));
+    jobs.update(job.id, { passageId });
+    return { job: { ...job, passageId }, run: () => execute(job, rawFile, passageId) };
+  }
 
+  function execute(job, rawFile, passageId) {
+    return new Promise((resolve) => {
     const child = spawn(python, [script, rawFile, dataDir], { stdio: ["ignore", "pipe", "pipe"] });
     jobs.update(job.id, { status: "running", passageId });
 
@@ -56,7 +63,10 @@ export function createLocalRunner({ jobs, dataDir, python, script, logger = cons
     child.stderr.on("data", (chunk) => {
       stderrTail = (stderrTail + chunk.toString()).slice(-2000);
     });
-    child.on("error", (err) => finishFailed(job.id, "We could not start the audio generator. Please try again in a moment."));
+    child.on("error", () => {
+      finishFailed(job.id, "We could not start the audio generator. Please try again in a moment.");
+      resolve();
+    });
     child.on("close", (code) => {
       clearTimeout(timer);
       if (buffer) handleLine(job.id, buffer);
@@ -65,8 +75,25 @@ export function createLocalRunner({ jobs, dataDir, python, script, logger = cons
         logger.error("generation failed", { jobId: job.id, code, stderr: stderrTail.split("\n").slice(-3).join(" | ") });
         finishFailed(job.id, "We could not generate audio for this text. Try shorter text or remove unusual symbols.");
       }
+      resolve();
     });
+    });
+  }
+
+  async function start(spec) {
+    const { job, run } = await prepare(spec);
+    run();
     return job;
+  }
+
+  /** A long document: all jobs are created now (so the page can show every part), then the parts are generated one after another. A failed part does not stop the next. */
+  async function startSeries(specs) {
+    const prepared = [];
+    for (const spec of specs) prepared.push(await prepare(spec));
+    (async () => {
+      for (const p of prepared) await p.run();
+    })();
+    return prepared.map((p) => p.job);
   }
 
   function handleLine(jobId, line) {
@@ -87,5 +114,5 @@ export function createLocalRunner({ jobs, dataDir, python, script, logger = cons
     jobs.update(jobId, { status: "failed", error, finishedAt: new Date().toISOString() });
   }
 
-  return { start };
+  return { start, startSeries };
 }

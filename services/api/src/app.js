@@ -46,6 +46,7 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
 
   // The raw audio upload streams its own body, so it is mounted before the JSON parser.
   mountLocalRecordingUpload(app, { recordings, config, writeLimiter });
+  app.use("/api/generate", express.json({ limit: "512kb" })); // a long document is sent as one request (up to about 12,000 words)
   app.use(express.json({ limit: "64kb" }));
 
   const passageIds = async () => new Set((await catalog.list()).map((p) => p.id));
