@@ -67,7 +67,7 @@ with sync_playwright() as pw:
 
     # ---------- every nav link, both roles
     def nav_all():
-        for role, expect in (("Teacher", ["library","assignments","generate","insights","settings"]), ("Student", ["library","assignments","words"])):
+        for role, expect in (("Teacher", ["library","assignments","generate","questions","insights","settings"]), ("Student", ["library","assignments","words"])):
             go("#/library"); pg.get_by_role("radio", name=role).click(); pg.wait_for_timeout(300)
             hrefs = pg.locator("nav[aria-label=Main] a").evaluate_all("e=>e.map(x=>x.getAttribute('href').slice(2))")
             if hrefs != expect: return f"{role} nav {hrefs}"
