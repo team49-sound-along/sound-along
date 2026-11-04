@@ -56,7 +56,8 @@ def pick_sense(senses: list[list[str]], context: frozenset[str]) -> list[str]:
     def score(item: tuple[int, list[str]]) -> tuple[float, int]:
         n, sense = item
         overlap = len(context & {w for w in re.findall(r"[a-z]+", (sense[0] + " " + (sense[1] if len(sense) > 1 else "")).lower()) if w not in STOP and len(w) > 2})
-        return (overlap - 0.5 * n, -n)
+        niche = 1.0 if re.match(r"^\((?!of\b)[a-z .]{3,25}\)", sense[0]) else 0.0  # "(biology) ...", "(law) ...": a field sense, rarely what a child needs
+        return (overlap - 0.5 * n - niche, -n)
     return max(enumerate(senses), key=score)[1]
 
 

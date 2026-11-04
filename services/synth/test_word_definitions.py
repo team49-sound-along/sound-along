@@ -72,3 +72,9 @@ def test_long_glosses_are_cut_at_a_clause_not_mid_word():
     assert wd.short_gloss("a very long explanation that goes on; and then some other sense", 200) == "a very long explanation that goes on"
     g = wd.short_gloss("word " * 60, 60)
     assert len(g) <= 61 and g.endswith("…")
+
+
+def test_a_field_specific_sense_loses_to_an_ordinary_one_unless_the_passage_is_about_that_field():
+    senses = [["(biology) a taxonomic group", "", ""], ["a kind of animal", "", ""]]
+    assert wd.pick_sense(senses, frozenset({"dog", "park"}))[0] == "a kind of animal"
+    assert wd.pick_sense(senses, frozenset({"biology", "taxonomic", "group", "cell"}))[0].startswith("(biology)")
