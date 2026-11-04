@@ -16,6 +16,7 @@ from typing import Any, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "parse"))  # repo layout and /var/task layout
 
 from tokenizer import tokenize_html  # noqa: E402
+from mixed import fingerprint_marker  # noqa: E402
 
 PIPELINE_VERSION = "2026-11-03.4"
 _WORD = re.compile(r"^\W+|\W+$")
@@ -47,6 +48,8 @@ def fingerprint(passage: dict[str, Any], recording_path: Optional[str] = None) -
         "mp3Kbps": settings.get("mp3Kbps"),
         # Only when set, so passages made before the engine became a setting keep their hash. A new engine means new audio.
         **({"ttsEngine": settings["ttsEngine"]} if settings.get("ttsEngine") else {}),
+        # Only while mixed-language narration can change the audio (mixed.py): flipping the setting or switch regenerates.
+        **({"mixedLanguage": marker} if (marker := fingerprint_marker(passage)) else {}),
         "pronunciations": fixes,
         "qualityCheck": bool(passage.get("qualityCheck")),
         "humanPassageId": passage.get("humanPassageId") if recording_path else None,

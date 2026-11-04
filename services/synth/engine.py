@@ -14,6 +14,7 @@ from typing import Any, Mapping, Protocol, Sequence
 
 import numpy as np
 
+from mixed import ForeignSpan, kokoro_enabled
 from pronunciations import apply_overrides, build_phonemes, load_respellings
 from word_mapper import EngineToken
 
@@ -25,6 +26,7 @@ SAMPLE_RATE = 24_000
 class SentenceAudio:
     audio: np.ndarray  # float32 mono at SAMPLE_RATE
     tokens: tuple[EngineToken, ...]  # times are seconds from the start of THIS sentence's audio
+    spans_applied: int = 0  # foreign-language spans actually spoken in their own language (metric foreignSpans)
 
 
 class Engine(Protocol):
@@ -117,6 +119,7 @@ class KokoroEngine:
         speed: float = 0.95,
         respellings: Mapping[str, str] | None = None,
         language: str = "en",
+        foreign_voice: str | None = None,
     ) -> None:
         if language not in LANGUAGES:
             raise ValueError(f"Unsupported language {language!r}. Use 'en' or 'es'.")
@@ -129,8 +132,30 @@ class KokoroEngine:
         # Pronunciation fixes are respellings run through the ENGLISH grapheme-to-phoneme step, so English only.
         chosen = {} if language != "en" else (load_respellings() if respellings is None else respellings)
         self._phonemes = build_phonemes(chosen, lambda text: self._pipeline.g2p(text)[0])
+        # Mixed-language narration is opt-in for Kokoro (MIXED_LANGUAGE_KOKORO=on); Polly does it with SSML.
+        self.accepts_spans = kokoro_enabled()
+        self._foreign_voice = foreign_voice
+        self._foreign: dict[str, "KokoroEngine"] = {}
 
-    def synthesize(self, sentence: str) -> SentenceAudio:
+    def synthesize(self, sentence: str, spans: Sequence[ForeignSpan] = ()) -> SentenceAudio:
+        if not spans or not self.accepts_spans:
+            return self._synthesize_plain(sentence)
+        from mixed_kokoro import splice_sentence
+
+        try:
+            return splice_sentence(sentence, spans, self.language, self._speak_in, self.native_timing)
+        except Exception:  # noqa: BLE001 (a failed foreign pipeline must not lose the sentence)
+            LOG.warning("mixed-language splice failed; reading the sentence in one voice: %.60s", sentence, exc_info=True)
+            return self._synthesize_plain(sentence)
+
+    def _speak_in(self, language: str, text: str) -> SentenceAudio:
+        if language == self.language:
+            return self._synthesize_plain(text)
+        if language not in self._foreign:
+            self._foreign[language] = KokoroEngine(voice=self._foreign_voice, speed=self._speed, language=language)
+        return self._foreign[language]._synthesize_plain(text)
+
+    def _synthesize_plain(self, sentence: str) -> SentenceAudio:
         chunks: list[np.ndarray] = []
         tokens: list[EngineToken] = []
         offset = 0.0

@@ -32,7 +32,7 @@ KNOWN_TIMING_KEYS = frozenset({
     "id", "title", "engine", "voice", "duration_ms", "metrics", "vocab", "words", "language", "generatedWith", "series", "review",
     "translations", "translationOf", "machineTranslated", "held",
 })
-SUMMED_METRICS = ("characters", "words", "audioSeconds", "generateSeconds", "unalignedWords", "pollyNeuralUsd", "pollyStandardUsd", "estimatedLambdaUsd")
+SUMMED_METRICS = ("characters", "words", "audioSeconds", "generateSeconds", "unalignedWords", "foreignSpans", "pollyNeuralUsd", "pollyStandardUsd", "estimatedLambdaUsd")
 
 
 @dataclass(frozen=True)

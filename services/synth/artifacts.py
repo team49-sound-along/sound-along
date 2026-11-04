@@ -10,6 +10,7 @@ from typing import Any, Iterable, Mapping
 import numpy as np
 
 from engine import Engine
+from mixed import passage_enabled
 from phrases import phrase_ends
 from pipeline import Generated, StepCallback, _noop, generate
 
@@ -72,6 +73,7 @@ def build_metrics(result: Generated) -> dict[str, Any]:
         "generateSeconds": round(result.seconds_to_generate, 2),
         "realTimeFactor": round(result.seconds_to_generate / max(result.seconds_of_audio, 0.001), 3),
         "unalignedWords": result.unaligned_words,
+        "foreignSpans": result.foreign_spans,
         "pollyNeuralUsd": round(result.characters / 1e6 * POLLY_NEURAL_PER_M, 4),
         "pollyStandardUsd": round(result.characters / 1e6 * POLLY_STANDARD_PER_M, 4),
         "estimatedLambdaUsd": round(lambda_estimate(result.seconds_to_generate), 4),
@@ -94,6 +96,6 @@ def build_timing(passage: dict[str, Any], engine: Engine, result: Generated, met
 
 def generate_artifacts(passage: dict[str, Any], engine: Engine, on_step: StepCallback = _noop) -> Artifacts:
     """Run parse -> synthesize -> align. The caller encodes the audio and publishes (the "publish" step)."""
-    result = generate(passage["content"], engine, on_step)
+    result = generate(passage["content"], engine, on_step, language=passage.get("language") or "en", mixed_language=passage_enabled(passage))
     metrics = build_metrics(result)
     return Artifacts(audio=result.audio, timing=build_timing(passage, engine, result, metrics), metrics=metrics)
