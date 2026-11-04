@@ -7,6 +7,7 @@ import QuizButton from "./QuizButton.vue";
 import ReadingSettings from "./ReadingSettings.vue";
 import ReadAloudPanel from "./ReadAloudPanel.vue";
 import { recognitionSupported } from "../speechRecognizer.js";
+import { createSlowPlayer, slowWindow } from "../slowPlay.js";
 import { api, audioUrl, fetchCards } from "../api.js";
 import { findWordCard, placeAt, wordKey } from "../cards.js";
 import { loadState, saveState, toggleStar } from "../practice.js";
@@ -50,6 +51,12 @@ function closeReadAloud() {
 function hearAt(index) {
   selectedIndex.value = index;
   hearWord();
+}
+// "Hear it slowly" from the pronunciation help: the word's own narration slice at a slower speed, pitch kept (slowPlay.js).
+const slowPlayer = createSlowPlayer();
+function slowAt({ index, done }) {
+  stopAtSec = null;
+  slowPlayer.play(audio.value, slowWindow(words.value, index), done);
 }
 const dock = ref(null);
 const dockHeight = ref(0);
@@ -352,7 +359,7 @@ function onKey(event) {
     <ReadingSettings v-if="showSettings" :prefs="prefs" @change="prefs = $event" @close="closeSettings" />
     <ReadAloudPanel
       v-if="readAloudOn" :words="words" :language="timing.language || 'en'" :passage-id="practiceId"
-      @marks="raMarks = $event" @cursor="revealActive" @hear="hearAt" @listen="audio?.pause()" @close="closeReadAloud"
+      @marks="raMarks = $event" @cursor="revealActive" @hear="hearAt" @slow="slowAt" @practice="practiceState = loadState(practiceId)" @listen="audio?.pause()" @close="closeReadAloud"
     />
 
     <audio v-if="soundAlong" ref="audio" :src="audioUrl(passageId)" preload="auto" @play="onPlay" @pause="onPause" @ended="onEnded" @seeked="tick" @error="onAudioError"></audio>

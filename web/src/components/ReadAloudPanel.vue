@@ -12,13 +12,15 @@ import { giveMicConsent, hasMicConsent } from "../micConsent.js";
 import { addResult, clearResults, loadResults } from "../readAloudStore.js";
 import { langAttr } from "../language.js";
 import { wordSlice } from "../timing.js";
+import PronunciationHelp from "./PronunciationHelp.vue";
+import PracticeWords from "./PracticeWords.vue";
 
 const props = defineProps({
   words: { type: Array, required: true },
   language: { type: String, default: "en" },
   passageId: { type: String, required: true },
 });
-const emit = defineEmits(["marks", "cursor", "hear", "listen", "close"]);
+const emit = defineEmits(["marks", "cursor", "hear", "listen", "close", "slow", "practice"]);
 
 const phase = ref(hasMicConsent() ? "ready" : "consent"); // consent | ready | listening | paused | halted | done
 const follower = ref(createReadAlong(props.words, { language: props.language }));
@@ -185,6 +187,7 @@ onBeforeUnmount(() => {
             <button ref="calloutButton" type="button" class="btn primary" @click="readFromHere">Read from here</button>
             <button v-if="canHear" type="button" class="btn" @click="emit('hear', callout.index)">Hear it</button>
           </div>
+          <PronunciationHelp :key="callout.index" :words="words" :indexes="callout.indexes ?? [callout.index]" :language="language" :passage-id="passageId" @slow="emit('slow', $event)" @practice="emit('practice')" />
         </div>
       </template>
 
@@ -210,6 +213,8 @@ onBeforeUnmount(() => {
         <div><dt>Skipped</dt><dd>{{ summary.skipped }}</dd></div>
         <div><dt>Tried again</dt><dd>{{ summary.retried }}</dd></div>
       </dl>
+
+      <PracticeWords v-if="phase === 'done' || phase === 'paused'" :follower="follower" :words="words" :passage-id="passageId" :language="language" @practice="emit('practice')" />
 
       <p class="small muted">
         Results stay on this device only.
