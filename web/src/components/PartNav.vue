@@ -18,18 +18,23 @@ async function load() {
   [prev.value, next.value] = await Promise.all([neighborPart(props.timing, -1, fetchTiming), neighborPart(props.timing, 1, fetchTiming)]);
 }
 watch(() => props.timing?.id, load, { immediate: true });
+const TEXT = {
+  en: { part: "Part", of: "of", prev: "Previous part", next: "Next part", pending: "The next part is still being created.", check: "Check again" },
+  es: { part: "Parte", of: "de", prev: "Parte anterior", next: "Parte siguiente", pending: "La siguiente parte todavía se está creando.", check: "Comprobar de nuevo" },
+};
+const t = computed(() => TEXT[props.timing?.language === "es" ? "es" : "en"]);
 const href = (id) => `#/read/${encodeURIComponent(id)}`;
 </script>
 
 <template>
-  <nav v-if="info" class="parts" :aria-label="`Parts of ${info.title || 'this document'}`">
-    <p v-if="showLabel" class="where"><strong>Part {{ info.index }} of {{ info.total }}</strong><span v-if="info.title" class="muted"> &middot; {{ info.title }}</span></p>
+  <nav v-if="info" class="parts" :lang="timing.language === 'es' ? 'es' : 'en'" :aria-label="`Parts of ${info.title || 'this document'}`">
+    <p v-if="showLabel" class="where"><strong>{{ t.part }} {{ info.index }} {{ t.of }} {{ info.total }}</strong><span v-if="info.title" class="muted"> &middot; {{ info.title }}</span></p>
     <div class="links">
-      <a v-if="prev?.state === 'ready'" class="btn" :href="href(prev.id)">&larr; Previous part</a>
-      <a v-if="next?.state === 'ready'" class="btn primary" :href="href(next.id)">Next part &rarr;</a>
+      <a v-if="prev?.state === 'ready'" class="btn" :href="href(prev.id)">&larr; {{ t.prev }}</a>
+      <a v-if="next?.state === 'ready'" class="btn primary" :href="href(next.id)">{{ t.next }} &rarr;</a>
       <span v-else-if="next?.state === 'pending'" class="small muted" role="status">
-        The next part is still being created.
-        <button type="button" class="linklike" @click="load">Check again</button>
+        {{ t.pending }}
+        <button type="button" class="linklike" @click="load">{{ t.check }}</button>
       </span>
     </div>
   </nav>
