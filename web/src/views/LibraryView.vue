@@ -119,7 +119,8 @@ onBeforeUnmount(() => clearInterval(pendingTimer));
   .tools { width: 100%; }
   .search { flex: 1 1 100%; }
   .search, .search .input { width: 100%; }
-  .pick { flex: 1 1 0; min-width: 0; }
+  .pick { flex: 1 1 calc(50% - 8px); min-width: 0; }
   .pick .input { width: 100%; min-width: 0; }
+  .seg { margin-left: auto; }
 }
 </style>

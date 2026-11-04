@@ -43,6 +43,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .page > *, .card { min-width: 0; }
 .page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s2); }
 .page-head p { color: var(--muted); margin-top: 4px; max-width: 62ch; }
+/* Forms and test screens: the page keeps the same left edge as every other screen, and the content stays a readable width. */
+.page.narrow > :not(.page-head) { max-width: 760px; }
+input[type="file"] { font: inherit; color: var(--muted); }
+input[type="file"]::file-selector-button { font: inherit; font-weight: 600; min-height: 36px; margin-right: 12px; padding: 0 14px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text); cursor: pointer; }
+input[type="file"]::file-selector-button:hover { background: var(--surface-2); }
 
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s3); }
 .card.flush { padding: 0; overflow: hidden; }

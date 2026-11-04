@@ -46,9 +46,9 @@ const rows = computed(() => {
         <li v-for="r in rows" :key="r.id" class="card row">
           <div>
             <h3>{{ r.title }}</h3>
-            <p class="muted">{{ r.total }} saved {{ r.total === 1 ? "word" : "words" }} · {{ r.due }} ready to practise</p>
+            <p class="muted">{{ r.total }} saved {{ r.total === 1 ? "word" : "words" }} · {{ r.due }} ready to practice</p>
           </div>
-          <a class="btn primary" :href="`#/practice/${encodeURIComponent(r.id)}`" :aria-label="`Practise words from ${r.title}`">Practice</a>
+          <a class="btn primary" :href="`#/practice/${encodeURIComponent(r.id)}`" :aria-label="`Practice words from ${r.title}`">Practice</a>
         </li>
       </ul>
     </StateBlock>

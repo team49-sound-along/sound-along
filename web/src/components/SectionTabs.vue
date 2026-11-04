@@ -19,9 +19,10 @@ const active = computed(() => route.value.name);
 </template>
 
 <style scoped>
-.tabs { display: flex; gap: 4px; flex-wrap: wrap; padding: var(--s1) var(--s3) 0; max-width: 1100px; margin: 0 auto; border-bottom: 1px solid var(--border); }
-a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; color: var(--muted); font-weight: 600; font-size: 15px; text-decoration: none; border-radius: var(--r-sm) var(--r-sm) 0 0; }
+.tabs { display: flex; gap: 4px; padding: var(--s1) var(--s2) 0 calc(var(--s2) - 14px); max-width: 1120px; margin: 0 auto; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--border); }
+.tabs::-webkit-scrollbar { display: none; }
+a { flex: none; white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; color: var(--muted); font-weight: 600; font-size: 15px; text-decoration: none; border-radius: var(--r-sm) var(--r-sm) 0 0; }
 a:hover { color: var(--text); background: var(--surface-2); }
 a[aria-current="page"] { color: var(--primary); box-shadow: inset 0 -3px 0 var(--primary); }
-@media (max-width: 640px) { .tabs { padding: var(--s1) var(--s2) 0; } }
+
 </style>

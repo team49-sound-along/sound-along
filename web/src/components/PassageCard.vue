@@ -19,16 +19,16 @@ const created = computed(() => (props.passage.isSeries ? props.passage.parts.len
 <template>
   <article class="pcard" :class="{ list }" :aria-labelledby="`p-${passage.id}`" :aria-describedby="`s-${passage.id}`">
     <div class="text">
-      <h3 :id="`p-${passage.id}`">
-        {{ passage.title }}
+      <h3 :id="`p-${passage.id}`">{{ passage.title }}</h3>
+      <p v-if="isSpanish(passage) || passage.isSeries || passage.translationLangs?.length" class="badges">
         <span v-if="isSpanish(passage)" class="badge teal" lang="es" title="Spanish passage">Español</span>
         <span v-if="passage.isSeries" class="badge teal" title="A long document in linked parts">{{ passage.total }} parts</span>
         <span v-if="passage.translationLangs?.length" class="badge teal" title="Also available in another language">Also in {{ passage.translationLangs.map((l) => (l === "es" ? "Español" : "English")).join(", ") }}</span>
-      </h3>
+      </p>
       <p :id="`s-${passage.id}`" class="summary">{{ summary }}</p>
       <p v-if="passage.isSeries && created < passage.total" class="summary" role="status">{{ created }} of {{ passage.total }} parts are ready so far.</p>
       <details v-if="passage.isSeries" class="partlist">
-        <summary>Parts</summary>
+        <summary>Show all {{ passage.total }} parts</summary>
         <ol>
           <li v-for="(part, n) in passage.parts" :key="part.id">
             <a :href="`#/read/${encodeURIComponent(readTarget(part))}`">Part {{ part.series.index }}</a>
@@ -52,10 +52,10 @@ const created = computed(() => (props.passage.isSeries ? props.passage.parts.len
 .pcard { display: flex; flex-direction: column; gap: var(--s2); height: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s3); }
 .text { display: grid; gap: 4px; min-width: 0; }
 h3 { font-size: 20px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; }
-h3 .badge { vertical-align: middle; margin-left: 4px; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .summary { color: var(--muted); font-size: 14px; line-height: 1.5; }
 .partlist { font-size: 14px; }
-.partlist summary { cursor: pointer; color: var(--primary); min-height: 32px; display: flex; align-items: center; }
+.partlist summary { cursor: pointer; color: var(--primary); font-weight: 600; min-height: 32px; display: flex; align-items: center; }
 .partlist ol { margin: 4px 0 0; padding-left: 20px; display: grid; gap: 4px; }
 .partlist li { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .actions { display: flex; gap: var(--s1); flex-wrap: wrap; margin-top: auto; }

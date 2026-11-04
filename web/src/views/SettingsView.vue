@@ -95,7 +95,6 @@ async function save() {
 <style scoped>
 .pickrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .pickrow .input { flex: 1 1 260px; min-width: 0; }
-.narrow { max-width: 720px; }
 .form { display: grid; gap: var(--s3); }
 .value { font-weight: 700; color: var(--primary); }
 .range { width: 100%; min-height: 44px; accent-color: var(--primary); margin: 0; }

@@ -415,6 +415,12 @@ function onKey(event) {
 }
 @media (max-width: 520px) {
   .side { max-height: 22vh; }
+  .side:has(.card-body) { max-height: 40vh; } /* a tapped word's card needs room for its meaning and the Save and Hear buttons */
+  /* Two buttons per row instead of one button per row. */
+  .tools { gap: 8px; }
+  .tools .voice { flex: 1 1 100%; }
+  .tools .voice .btn { flex: 1; }
+  .tools > .btn { flex: 1 1 calc(50% - 8px); justify-content: center; }
 }
 @media (max-width: 640px) {
   .passage { font-size: calc(var(--read-size, 24px) * 0.8); }

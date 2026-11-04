@@ -78,7 +78,7 @@ async function remove(word) {
     <p v-if="flash" class="notice ok">{{ flash }}</p>
     <p v-if="actionError" class="notice error" role="alert">{{ actionError }}</p>
     <StateBlock :loading="loading" :error="error" :empty="!loading && !error && !items.length" empty-title="No pronunciation fixes yet" empty-text="Add one above, or open Pronunciation review to see words that may be mispronounced." loading-label="Loading pronunciations" @retry="reload">
-      <section aria-labelledby="pl-h" class="stack">
+      <section v-if="items.length" aria-labelledby="pl-h" class="stack">
         <h3 id="pl-h">Current fixes ({{ items.length }})</h3>
         <div class="card flush">
           <PronunciationsTable :items="items" :busy-word="busyWord" :error="rowError" :error-word="rowErrorWord" @save="saveRow" @remove="remove" />

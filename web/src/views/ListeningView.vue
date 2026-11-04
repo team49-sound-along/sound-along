@@ -79,7 +79,7 @@ loadTrial();
     <div class="page-head">
       <div>
         <h2 ref="heading" tabindex="-1">Listening test</h2>
-        <p>You will hear two short readings of the same text. Neither one is labelled. Rate how natural each sounds for reading along. There are no right answers, so go with what you hear.</p>
+        <p>You will hear two short readings of the same text. Neither one is labeled. Rate how natural each sounds for reading along. There are no right answers, so go with what you hear.</p>
       </div>
       <p class="badge teal num" role="status" aria-live="polite">{{ completedLabel(completed) }}</p>
     </div>
@@ -112,7 +112,6 @@ loadTrial();
 </template>
 
 <style scoped>
-.narrow { max-width: 900px; }
 .stack { display: grid; gap: var(--s2); min-width: 0; }
 .clips { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: var(--s2); }
 .clips > * { min-width: 0; }

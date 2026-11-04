@@ -36,7 +36,7 @@ async function regenerate() {
       <li v-for="s in item.suspects" :key="s.expected">
         <div class="said">
           <p><span class="label">Text says</span> <strong class="word">{{ s.expected }}</strong></p>
-          <p><span class="label">Check heard</span> <strong class="word">{{ s.heard }}</strong></p>
+          <p><span class="label">Voice said</span> <strong class="word">{{ s.heard }}</strong></p>
         </div>
         <div class="btns">
           <a class="btn" :href="fixHref(s.expected)" :aria-label="`Fix pronunciation of ${s.expected}`">Fix pronunciation</a>

@@ -102,9 +102,9 @@ function nextQ() {
 
         <section class="card" aria-labelledby="mw">
           <h3 id="mw">My words</h3>
-          <p v-if="starredCount === 0" class="muted">No saved words yet. While reading, tap a word and press <strong>Save word</strong>. Then come back to practise.</p>
+          <p v-if="starredCount === 0" class="muted">No saved words yet. While reading, tap a word and press <strong>Save word</strong>. Then come back to practice.</p>
           <template v-else>
-            <p class="small muted">{{ starredCount }} saved &middot; {{ queue.length }} to practise now</p>
+            <p class="small muted">{{ starredCount }} saved &middot; {{ queue.length }} to practice now</p>
             <div v-if="current" class="flash" aria-live="polite">
               <figure v-if="current.imageUrl" class="fpic"><img :src="current.imageUrl" alt="" :width="current.imageWidth || undefined" :height="current.imageHeight || undefined" /></figure>
               <p v-if="!revealed" class="prompt">{{ current.imageUrl ? "What is this? Say the word." : current.definition ? current.definition : audioIndex !== null ? "Listen, then say the word and what it means." : "Say what this word means." }}</p>
@@ -125,9 +125,9 @@ function nextQ() {
             </div>
             <div v-else>
               <p>Nothing is due right now. Well done!</p>
-              <button type="button" class="btn" @click="anyway = true">Practise now anyway</button>
+              <button type="button" class="btn" @click="anyway = true">Practice now anyway</button>
             </div>
-            <p v-if="anyway && current" class="small"><button type="button" class="btn" @click="anyway = false">Only practise what is due</button></p>
+            <p v-if="anyway && current" class="small"><button type="button" class="btn" @click="anyway = false">Only practice what is due</button></p>
           </template>
           <p class="small">
             <button v-if="!confirmClear" type="button" class="btn" :disabled="starredCount === 0" @click="confirmClear = true">Clear my words</button>
@@ -154,7 +154,8 @@ function nextQ() {
 </template>
 
 <style scoped>
-.practice { max-width: 760px; gap: var(--s2); }
+.practice { gap: var(--s2); }
+.practice > * { max-width: 760px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s3); display: grid; gap: var(--s2); }
 .flash { display: grid; gap: var(--s1); justify-items: start; }
 .fpic { margin: 0; }
@@ -162,6 +163,7 @@ function nextQ() {
 .prompt { font-size: 20px; }
 .answer { font-size: 28px; }
 .row { display: flex; flex-wrap: wrap; gap: var(--s1); }
-.qchoices { display: grid; gap: var(--s1); justify-items: start; }
+.qchoices { display: grid; gap: var(--s1); max-width: 520px; }
+.qchoices .btn { justify-content: flex-start; text-align: left; }
 .label { font-weight: 700; }
 </style>

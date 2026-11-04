@@ -24,7 +24,7 @@ defineExpose({ stop, audio });
   <section class="clip card" :aria-labelledby="`${id}-h`">
     <h3 :id="`${id}-h`">{{ label }}</h3>
     <audio ref="audio" :src="url" controls preload="metadata" :aria-label="label"></audio>
-    <RadioGroup :legend="`How natural does ${label} sound for reading along?`" :name="`${id}-rating`" :options="options" :model-value="rating" :hint="hint" :disabled="disabled" inline @update:model-value="emit('update:rating', $event)" />
+    <RadioGroup :legend="`How natural does ${label} sound for reading along?`" :name="`${id}-rating`" :options="options" :model-value="rating" :hint="hint" :disabled="disabled" inline scale @update:model-value="emit('update:rating', $event)" />
   </section>
 </template>
 
