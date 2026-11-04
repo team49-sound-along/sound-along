@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from sound_along.config import parse_polly_options, parse_translate_model, parse_tts_engine
+from sound_along.config import TtsConfig, parse_polly_engine, parse_polly_voice, parse_translate_model, parse_tts_engine
 from tests.helpers import actions_for_roles_starting_with, synth
 from tests.test_translate_model import generator
 
@@ -37,7 +37,7 @@ def test_amazon_translate_does_not_cap_the_generator_at_one_concurrent_run():
 
 
 def test_polly_narration_grants_synthesize_speech_only_and_sets_the_engine_and_voices():
-    t = synth(tts_engine="polly", polly_options=(("POLLY_VOICE_ES", "Lucia"), ("POLLY_ENGINE", "neural")))
+    t = synth(tts=TtsConfig(engine="polly", polly_voice_es="Lucia", polly_engine="neural"))
     acts = generator_actions(t)
     assert "polly:SynthesizeSpeech" in acts and not any(a.startswith(("translate:", "bedrock:")) for a in acts)
     e = env(t)
@@ -56,12 +56,18 @@ def test_translate_model_refuses_anything_else(value):
 
 
 def test_tts_engine_and_polly_options_are_validated():
-    assert parse_tts_engine(None) == "kokoro" and parse_tts_engine("Polly") == "polly"
+    assert parse_tts_engine(None) == "kokoro" and parse_tts_engine("polly") == "polly"
     with pytest.raises(ValueError, match="ttsEngine"):
         parse_tts_engine("eleven")
-    assert parse_polly_options("Joanna", "Lupe", "Generative") == {"POLLY_VOICE": "Joanna", "POLLY_VOICE_ES": "Lupe", "POLLY_ENGINE": "generative"}
-    assert parse_polly_options(None, None, None) == {}
-    with pytest.raises(ValueError):
-        parse_polly_options("Joanna; rm", None, None)
+    assert parse_polly_voice("Lupe", "pollyVoiceEs") == "Lupe" and parse_polly_voice(None, "pollyVoice") is None
+    assert parse_polly_engine("Generative") == "generative" and parse_polly_engine(None) is None
+    with pytest.raises(ValueError, match="pollyVoice"):
+        parse_polly_voice("Joanna; rm", "pollyVoice")
     with pytest.raises(ValueError, match="pollyEngine"):
-        parse_polly_options(None, None, "turbo")
+        parse_polly_engine("turbo")
+
+
+def test_the_polly_engine_is_only_set_when_chosen():
+    assert "POLLY_ENGINE" not in TtsConfig(engine="polly").env()
+    assert TtsConfig(engine="polly", polly_engine="long-form").env()["POLLY_ENGINE"] == "long-form"
+    assert TtsConfig(polly_engine="generative").env() == {}  # Kokoro needs no environment, whatever Polly options are given

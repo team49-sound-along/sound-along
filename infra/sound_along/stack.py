@@ -19,6 +19,7 @@ from .config import (
     DEFAULT_CMS_HOST,
     PROJECT_TAG,
     SourcePaths,
+    TtsConfig,
     default_source_paths,
     parse_cms_host,
     require_bundle,
@@ -41,11 +42,10 @@ class SoundAlongStackProps:
     alert_email: str | None = None
     cms_host: str = DEFAULT_CMS_HOST
     sources: SourcePaths | None = None
+    tts: TtsConfig = TtsConfig()
     questions_model: str | None = None  # "bedrock:<modelId>"; no default. None means no Bedrock permission and the function stays off
     questions_enabled: bool = False
     translate_model: str | None = None  # "bedrock:<modelId>", "amazon" or "amazon:informal"; no default. None means Opus-MT only and no extra permission for the generator
-    tts_engine: str = "kokoro"  # "polly" turns on Amazon Polly narration (see config.parse_tts_engine)
-    polly_options: tuple[tuple[str, str], ...] = ()
 
 
 class SoundAlongStack(Stack):
@@ -80,7 +80,7 @@ class SoundAlongStack(Stack):
         both_on = (props.translate_model or "").startswith("bedrock:") and bool(props.questions_model) and props.questions_enabled
         interval = 2.2 if both_on else 1.1
         generator = create_generator_function(
-            self, GeneratorFunctionProps(generator_dir=sources.generator_dir, bucket=bucket, table=table, translate_model=props.translate_model, bedrock_min_interval=interval, tts_engine=props.tts_engine, polly_options=props.polly_options)
+            self, GeneratorFunctionProps(generator_dir=sources.generator_dir, bucket=bucket, table=table, translate_model=props.translate_model, bedrock_min_interval=interval, tts=props.tts)
         )
         questions = create_questions_function(
             self, QuestionsFunctionProps(code_dir=sources.questions_dir, bucket=bucket, model=props.questions_model, enabled=props.questions_enabled, bedrock_min_interval=interval)
@@ -123,6 +123,7 @@ class SoundAlongStack(Stack):
         CfnOutput(self, "TableName", value=table.table_name)
         CfnOutput(self, "StateMachineArn", value=state_machine.state_machine_arn)
         CfnOutput(self, "CmsHost", value=cms_host)
+        CfnOutput(self, "TtsEngine", value=props.tts.engine)
 
     def _deploy_web_app(self, web_dist: Path, bucket: s3.IBucket, distribution: cloudfront.IDistribution) -> None:
         if not web_dist.exists():

@@ -33,3 +33,9 @@ def api_s3_policies(bucket: s3.IBucket) -> list[iam.PolicyStatement]:
 def object_access(bucket: s3.IBucket, actions: list[str], prefix: str) -> iam.PolicyStatement:
     """Object-level S3 access only; avoids the s3:Abort* / s3:PutObject* wildcards of bucket.grant_put."""
     return iam.PolicyStatement(actions=actions, resources=[bucket.arn_for_objects(prefix)])
+
+
+def polly_synthesize() -> iam.PolicyStatement:
+    """polly:SynthesizeSpeech only (no list/describe). Resource is * because Polly voices are not ARN-scoped.
+    Granted to the generator role only when ttsEngine=polly."""
+    return iam.PolicyStatement(actions=["polly:SynthesizeSpeech"], resources=["*"])

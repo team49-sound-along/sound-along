@@ -14,7 +14,8 @@ from constructs import Construct
 
 from .config import API_ENV_DEFAULTS
 from .config import REGION
-from .iam_util import api_s3_policies, list_bucket, object_access
+from .config import TtsConfig
+from .iam_util import api_s3_policies, list_bucket, object_access, polly_synthesize
 
 
 US_PROFILE_REGIONS = ("us-east-1", "us-east-2", "us-west-2")  # where a "us." cross-region inference profile may route a request
@@ -91,16 +92,54 @@ class GeneratorFunctionProps:
     table: dynamodb.ITable
     translate_model: str | None = None  # "bedrock:<modelId>": a context-aware LLM translator in front of Opus-MT; None = no Bedrock permission at all
     bedrock_min_interval: float = 1.1  # seconds between this function's Bedrock requests (the account allows about one per second in total)
-    tts_engine: str = "kokoro"  # "polly": narration with Amazon Polly (adds polly:SynthesizeSpeech); "kokoro" runs inside the image and needs no permission
-    polly_options: tuple[tuple[str, str], ...] = ()  # POLLY_VOICE, POLLY_VOICE_ES, POLLY_ENGINE
+    tts: TtsConfig = TtsConfig()  # "polly": narration with Amazon Polly (adds polly:SynthesizeSpeech); kokoro runs inside the image and needs no permission
 
 
 def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -> lambda_.DockerImageFunction:
+    # The real generator Dockerfile COPYs services/parse and services/synth (siblings of services/generator), so its
+    # build context must be the directory that holds `services/` (the repo root), not services/generator itself.
+    # When generator_dir lives under a `services/` folder (the real layout) use that parent as the context and point
+    # `file` at services/generator/Dockerfile; otherwise (the self-contained test fixtures) use generator_dir as the
+    # context with its own Dockerfile. `exclude` keeps the staged context (and the asset hash) small; the repo-root
+    # .dockerignore mirrors it for raw `docker build` runs.
+    if props.generator_dir.parent.name == "services":
+        context_root = props.generator_dir.parents[1]
+        dockerfile_rel = (props.generator_dir / "Dockerfile").relative_to(context_root).as_posix()
+    else:
+        context_root = props.generator_dir
+        dockerfile_rel = "Dockerfile"
     fn = lambda_.DockerImageFunction(
         scope,
         "GeneratorFunction",
         code=lambda_.DockerImageCode.from_image_asset(
-            str(props.generator_dir), platform=ecr_assets.Platform.LINUX_ARM64
+            str(context_root),
+            file=dockerfile_rel,
+            platform=ecr_assets.Platform.LINUX_ARM64,
+            exclude=[
+                "**/__pycache__",
+                "**/*.pyc",
+                "**/.pytest_cache",
+                ".git",
+                ".venv",
+                "**/.venv",
+                "**/node_modules",
+                "web",
+                "infra",
+                "data",
+                "eval",
+                "samples",
+                "docs",
+                "ReadWorks",
+                "requirements",
+                "*.log",
+                "services/api",
+                "services/align",
+                "services/publish",
+                "services/eval",
+                "services/questions",
+                "services/generator/tests",
+                "**/test_*.py",
+            ],
         ),
         architecture=lambda_.Architecture.ARM_64,
         memory_size=4096,
@@ -109,7 +148,7 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
         log_group=_log_group(scope, "GeneratorLogs"),
         environment={"BUCKET": props.bucket.bucket_name, "TABLE_NAME": props.table.table_name,
                      **({"TRANSLATE_MODEL": props.translate_model, "TRANSLATE_REGION": REGION, "TRANSLATE_MIN_INTERVAL": str(props.bedrock_min_interval)} if props.translate_model else {}),
-                     **({"TTS_ENGINE": "polly", **dict(props.polly_options)} if props.tts_engine == "polly" else {})},
+                     **props.tts.env()},
     )
     props.table.grant_read_write_data(fn)
     fn.add_to_role_policy(object_access(props.bucket, ["s3:GetObject"], "raw/*"))
@@ -118,8 +157,8 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
     fn.add_to_role_policy(object_access(props.bucket, ["s3:GetObject"], "data/*"))
     fn.add_to_role_policy(list_bucket(props.bucket, ["data/*"]))
     fn.add_to_role_policy(object_access(props.bucket, ["s3:PutObject"], "data/*"))
-    if props.tts_engine == "polly":  # SynthesizeSpeech has no resource-level permissions
-        fn.add_to_role_policy(iam.PolicyStatement(actions=["polly:SynthesizeSpeech"], resources=["*"]))
+    if props.tts.is_polly:
+        fn.add_to_role_policy(polly_synthesize())
     if props.translate_model and props.translate_model.startswith("amazon"):  # Amazon Translate has no resource-level permissions for plain text
         fn.add_to_role_policy(iam.PolicyStatement(actions=["translate:TranslateText"], resources=["*"]))
     elif props.translate_model:  # one model only, and only when the operator chose it

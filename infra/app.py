@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""CDK entry. Context: alertEmail (optional cost budget), cmsHost = ec2 (default) | lambda, questionsModel = bedrock:<modelId> (optional, no default), questionsEnabled = true, translateModel = bedrock:<modelId> | amazon | amazon:informal (optional, no default), ttsEngine = kokoro (default) | polly, pollyVoice, pollyVoiceEs, pollyEngine."""
+"""CDK entry. Context: alertEmail (optional cost budget), cmsHost = ec2 (default) | lambda,
+ttsEngine = kokoro (default) | polly, pollyVoice / pollyVoiceEs / pollyEngine = neural | generative | long-form | standard (only used when ttsEngine=polly),
+questionsModel = bedrock:<modelId> (optional, no default), questionsEnabled = true,
+translateModel = bedrock:<modelId> | amazon | amazon:informal (optional, no default)."""
 from __future__ import annotations
 
 import os
@@ -7,10 +10,28 @@ import re
 
 import aws_cdk as cdk
 
-from sound_along.config import REGION, parse_cms_host, parse_questions_enabled, parse_questions_model, parse_translate_model, parse_tts_engine, parse_polly_options
+from sound_along.config import (
+    DEFAULT_POLLY_VOICE,
+    DEFAULT_POLLY_VOICE_ES,
+    REGION,
+    TtsConfig,
+    parse_cms_host,
+    parse_polly_engine,
+    parse_polly_voice,
+    parse_questions_enabled,
+    parse_questions_model,
+    parse_translate_model,
+    parse_tts_engine,
+)
+from sound_along.pipeline_stack import PipelineStack, PipelineStackProps
 from sound_along.stack import SoundAlongStack, SoundAlongStackProps
 
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+
+# GitHub source for the CI/CD pipeline (PipelineStack). Override with -c githubOwner/-c githubRepo/-c githubBranch.
+DEFAULT_GITHUB_OWNER = "rohanreigns007"
+DEFAULT_GITHUB_REPO = "sound-along"
+DEFAULT_GITHUB_BRANCH = "main"
 
 
 def main() -> None:
@@ -21,20 +42,44 @@ def main() -> None:
     if alert_email is not None and not (isinstance(alert_email, str) and EMAIL_PATTERN.match(alert_email)):
         raise ValueError('Invalid CDK context "alertEmail". Use: cdk deploy -c alertEmail=you@example.com')
     cms_host = parse_cms_host(app.node.try_get_context("cmsHost"))
+    tts = TtsConfig(
+        engine=parse_tts_engine(app.node.try_get_context("ttsEngine")),
+        polly_voice=parse_polly_voice(app.node.try_get_context("pollyVoice"), "pollyVoice") or DEFAULT_POLLY_VOICE,
+        polly_voice_es=parse_polly_voice(app.node.try_get_context("pollyVoiceEs"), "pollyVoiceEs") or DEFAULT_POLLY_VOICE_ES,
+        polly_engine=parse_polly_engine(app.node.try_get_context("pollyEngine")),
+    )
+
+    env = cdk.Environment(account=os.environ.get("CDK_DEFAULT_ACCOUNT"), region=REGION)
 
     SoundAlongStack(
         app,
         "SoundAlongStack",
         props=SoundAlongStackProps(
-            alert_email=alert_email, cms_host=cms_host,
+            alert_email=alert_email, cms_host=cms_host, tts=tts,
             questions_model=parse_questions_model(app.node.try_get_context("questionsModel")),
             questions_enabled=parse_questions_enabled(app.node.try_get_context("questionsEnabled")),
             translate_model=parse_translate_model(app.node.try_get_context("translateModel")),
-            tts_engine=parse_tts_engine(app.node.try_get_context("ttsEngine")),
-            polly_options=tuple(parse_polly_options(app.node.try_get_context("pollyVoice"), app.node.try_get_context("pollyVoiceEs"), app.node.try_get_context("pollyEngine")).items()),
         ),
-        env=cdk.Environment(account=os.environ.get("CDK_DEFAULT_ACCOUNT"), region=REGION),
+        env=env,
     )
+
+    # CI/CD pipeline. The build+deploy runs on AWS CodeBuild (ARM, Docker), so the heavy generator image build no
+    # longer needs the local machine. tts_engine is only passed through to the pipeline's `cdk deploy` when it is
+    # not the default (kokoro), keeping Kokoro the default and Polly an explicit opt-in.
+    PipelineStack(
+        app,
+        "SoundAlongPipeline",
+        props=PipelineStackProps(
+            github_owner=app.node.try_get_context("githubOwner") or DEFAULT_GITHUB_OWNER,
+            github_repo=app.node.try_get_context("githubRepo") or DEFAULT_GITHUB_REPO,
+            github_branch=app.node.try_get_context("githubBranch") or DEFAULT_GITHUB_BRANCH,
+            tts_engine=tts.engine,
+            cms_host=cms_host,
+            alert_email=alert_email,
+        ),
+        env=env,
+    )
+
     app.synth()
 
 
