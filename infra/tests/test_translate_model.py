@@ -43,9 +43,14 @@ def test_with_a_translate_model_the_generator_may_invoke_exactly_that_model() ->
     assert statement["Action"] == "bedrock:InvokeModel" and statement["Resource"] == ARN and statement["Effect"] == "Allow"
 
 
-@pytest.mark.parametrize("value", [None, "bedrock:vendor.model-v1:0"])
+@pytest.mark.parametrize("value", ["bedrock:vendor.model-v1:0", "amazon", "amazon:formal"])
 def test_valid_values_parse(value) -> None:
     assert parse_translate_model(value) == value
+
+
+def test_amazon_translate_is_the_default_and_builtin_turns_it_off() -> None:
+    assert parse_translate_model(None) == "amazon:informal"
+    assert parse_translate_model("builtin") is None
 
 
 @pytest.mark.parametrize("value", ["", "model", "bedrock:", "bedrock:../x", "bedrock:a b", 5, "arn:aws:bedrock:us-west-2::foundation-model/x"])

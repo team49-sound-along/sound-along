@@ -435,6 +435,20 @@ def use_big(source: str, target: str, words: Optional[int]) -> bool:
             and os.environ.get("TRANSLATE_BIG", "on").strip().lower() not in ("off", "0", "false", "no"))
 
 
+def lazy_translator(load: Callable[[], TranslateFn]) -> TranslateFn:
+    """A translator that loads its model on the first call only, so a fallback nobody needs costs nothing (no model read, no PyTorch start)."""
+    holder: list[TranslateFn] = []
+    lock = threading.Lock()
+
+    def translate(texts: list[str]) -> list[str]:
+        with lock:
+            if not holder:
+                holder.append(load())
+        return holder[0](texts)
+
+    return translate
+
+
 def load_model(source: str, target: str, words: Optional[int] = None) -> TranslateFn:
     """The Opus-MT translator for a language pair. TRANSLATE_MODELS_DIR (baked into the Lambda image) is read with local_files_only, so nothing is
     downloaded at run time there; otherwise the pinned revision is fetched and cached. Loaded once per process.

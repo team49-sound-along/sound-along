@@ -357,11 +357,12 @@ def _mark_failed(tracker: JobTracker, job_id: str) -> None:
 def _load_translator(source: str, target: str, words: Optional[int] = None) -> Callable[[list[str]], list[str]]:
     from amazon_translate import from_environment as amazon
     from bedrock_translate import from_environment as bedrock
-    from translate import load_model
+    from translate import lazy_translator, load_model
 
     # Opus-MT always; in front of it Amazon Translate (TRANSLATE_MODEL=amazon[:informal]) or a Bedrock language model (TRANSLATE_MODEL=bedrock:<id>).
-    # Only one of the two is ever active, and each falls back to Opus-MT per sentence or batch.
-    return bedrock(source, target, amazon(source, target, load_model(source, target, words)))
+    # Only one of the two is ever active, and each falls back to Opus-MT per sentence or batch. Opus-MT is loaded only when something needs it: with a
+    # managed service in front, a passage the service translates never loads PyTorch (which cannot start on some Lambda hosts).
+    return bedrock(source, target, amazon(source, target, lazy_translator(lambda: load_model(source, target, words))))
 
 
 def _names_for(language: str) -> Callable[[str], list[str]]:

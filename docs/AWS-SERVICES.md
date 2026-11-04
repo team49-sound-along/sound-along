@@ -24,8 +24,8 @@ headless Edge or Chrome to render the PNG.
 | Flag (`-c`) | Default | Effect |
 |---|---|---|
 | `cmsHost` | `ec2` | `ec2` runs the CMS API on an EC2 instance in its own VPC. `lambda` runs it as a Lambda function with a Function URL instead. |
-| `ttsEngine` | `kokoro` | `polly` narrates with Amazon Polly. Kokoro runs inside the generator image and calls no AWS service. |
-| `translateModel` | none | `bedrock:<modelId>` uses Amazon Bedrock and `amazon[:formal\|informal]` uses Amazon Translate. With no value, only the built-in Opus-MT translator runs. |
+| `ttsEngine` | `polly` | Narration engine. `polly` (the default) uses Amazon Polly; `kokoro` runs inside the generator image and calls no AWS service. A teacher can still choose per job in Settings. |
+| `translateModel` | `amazon:informal` | `amazon[:formal\|informal]` uses Amazon Translate (the default), `bedrock:<modelId>` uses Amazon Bedrock, and `builtin` uses only the built-in Opus-MT translator. The built-in model stays in the image as the per-sentence fallback and is loaded only when needed. |
 | `questionsModel` + `questionsEnabled=true` | none / off | Turns on question drafting with Amazon Bedrock. |
 | `alertEmail` | none | Creates the AWS Budgets cost budget. |
 | `siteDomain` | none (optional) | A custom public hostname (for example `sound-along.online`). Adds an Amazon Route 53 hosted-zone lookup, alias records, and a us-east-1 ACM certificate (stack `SoundAlongCertificate`) on the CloudFront distribution. With no value, the site is served only on its `*.cloudfront.net` domain. |
@@ -59,7 +59,7 @@ headless Edge or Chrome to render the PNG.
 |---|---|---|
 | **Amazon Polly** | `ttsEngine=polly` | Neural narration with the Joanna (English) and Lupe (Spanish) voices by default. The only permission is `polly:SynthesizeSpeech`. |
 | **Amazon Bedrock** | `questionsModel` and/or `translateModel=bedrock:<id>` | LLM question drafting and context-aware translation. `bedrock:InvokeModel` is granted on one model only, or on its `us.` inference profile. Callers pace themselves to stay under about 1 request per second for the account. |
-| **Amazon Translate** | `translateModel=amazon[:formal\|informal]` | Machine translation of passages. The only permission is `translate:TranslateText`. |
+| **Amazon Translate** | `translateModel=amazon:informal` (default) | Machine translation of passages. The only permission is `translate:TranslateText`. |
 
 ### Data
 

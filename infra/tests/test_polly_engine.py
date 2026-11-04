@@ -28,13 +28,15 @@ def _generator_env(template: Template) -> dict[str, object]:
     raise AssertionError("no container (generator) Lambda found")
 
 
-def test_kokoro_default_adds_no_polly_env_but_still_allows_polly_per_job() -> None:
+def test_polly_is_the_default_and_kokoro_stays_a_choice() -> None:
     template = _synth(TtsConfig())
     env = _generator_env(template)
-    assert "TTS_ENGINE" not in env and "POLLY_VOICE" not in env
+    assert env["TTS_ENGINE"] == "polly" and env["POLLY_VOICE"] == "Joanna" and env["POLLY_VOICE_ES"] == "Lupe"
+    kokoro = _generator_env(_synth(TtsConfig(engine="kokoro")))
+    assert "TTS_ENGINE" not in kokoro and "POLLY_VOICE" not in kokoro  # kokoro is the synth library's own default
     actions = actions_for_roles_starting_with(template, "GeneratorFunctionServiceRole")
     assert [a for a in actions if a.startswith("polly:")] == ["polly:SynthesizeSpeech"]  # a teacher may pick Polly in Settings
-    assert template.to_json()["Outputs"]["TtsEngine"]["Value"] == "kokoro"
+    assert template.to_json()["Outputs"]["TtsEngine"]["Value"] == "polly"
 
 
 def test_polly_sets_engine_env_and_default_voices() -> None:

@@ -24,7 +24,8 @@ def test_by_default_the_generator_may_not_call_translate_or_bedrock_but_may_call
     assert not any(a.startswith(("translate:", "bedrock:")) for a in acts)
     assert "polly:SynthesizeSpeech" in acts, "teachers choose the narration engine per job, so Polly is always allowed (and only that one action)"
     assert [a for a in acts if a.startswith("polly:")] == ["polly:SynthesizeSpeech"]
-    assert "TTS_ENGINE" not in env(t) and "TRANSLATE_MODEL" not in env(t)
+    assert env(t)["TTS_ENGINE"] == "polly", "Polly is the default narration engine"
+    assert "TRANSLATE_MODEL" not in env(t), "a stack built without a translate model has none (the deployment default is applied by app.py through parse_translate_model)"
 
 
 @pytest.mark.parametrize("value", ["amazon", "amazon:informal", "amazon:formal"])
@@ -48,7 +49,7 @@ def test_polly_narration_grants_synthesize_speech_only_and_sets_the_engine_and_v
     assert e["TTS_ENGINE"] == "polly" and e["POLLY_VOICE_ES"] == "Lucia" and e["POLLY_ENGINE"] == "neural"
 
 
-@pytest.mark.parametrize("value,expect", [("amazon", "amazon"), ("amazon:informal", "amazon:informal"), ("bedrock:amazon.nova-lite-v1:0", "bedrock:amazon.nova-lite-v1:0"), (None, None)])
+@pytest.mark.parametrize("value,expect", [("amazon", "amazon"), ("amazon:informal", "amazon:informal"), ("bedrock:amazon.nova-lite-v1:0", "bedrock:amazon.nova-lite-v1:0"), (None, "amazon:informal"), ("builtin", None)])
 def test_translate_model_accepts_amazon_and_bedrock(value, expect):
     assert parse_translate_model(value) == expect
 
@@ -60,7 +61,7 @@ def test_translate_model_refuses_anything_else(value):
 
 
 def test_tts_engine_and_polly_options_are_validated():
-    assert parse_tts_engine(None) == "kokoro" and parse_tts_engine("polly") == "polly"
+    assert parse_tts_engine(None) == "polly" and parse_tts_engine("kokoro") == "kokoro" and parse_tts_engine("polly") == "polly"
     with pytest.raises(ValueError, match="ttsEngine"):
         parse_tts_engine("eleven")
     assert parse_polly_voice("Lupe", "pollyVoiceEs") == "Lupe" and parse_polly_voice(None, "pollyVoice") is None
@@ -72,9 +73,9 @@ def test_tts_engine_and_polly_options_are_validated():
 
 
 def test_the_polly_engine_is_only_set_when_chosen():
-    assert "POLLY_ENGINE" not in TtsConfig(engine="polly").env()
+    assert "POLLY_ENGINE" not in TtsConfig().env()  # the default engine is Polly; its neural engine is the generator's own default
     assert TtsConfig(engine="polly", polly_engine="long-form").env()["POLLY_ENGINE"] == "long-form"
-    assert TtsConfig(polly_engine="generative").env() == {}  # Kokoro needs no environment, whatever Polly options are given
+    assert TtsConfig(engine="kokoro", polly_engine="generative").env() == {}  # Kokoro needs no environment, whatever Polly options are given
 
 
 def test_the_pipeline_passes_the_optional_switches_to_the_deploy_and_only_those_that_were_set():

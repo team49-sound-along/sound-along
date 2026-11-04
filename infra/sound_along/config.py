@@ -15,13 +15,13 @@ CMS_HOST_LAMBDA = "lambda"
 CMS_HOSTS: tuple[str, ...] = (CMS_HOST_EC2, CMS_HOST_LAMBDA)
 DEFAULT_CMS_HOST = CMS_HOST_EC2
 
-# TTS engine the Generator Lambda runs. kokoro (default) is baked into the image; polly calls Amazon Polly Neural
-# (needs the polly:SynthesizeSpeech permission). The synth library reads these from TTS_ENGINE / POLLY_VOICE /
-# POLLY_VOICE_ES; the infra only provisions them. Kokoro is the default and needs no environment at all.
+# TTS engine the Generator Lambda runs. polly (the default) calls Amazon Polly (needs the polly:SynthesizeSpeech permission, always granted);
+# kokoro is baked into the image and stays available as a per-job choice and for offline development. The synth library reads these from
+# TTS_ENGINE / POLLY_VOICE / POLLY_VOICE_ES; the infra only provisions them.
 TTS_ENGINE_KOKORO = "kokoro"
 TTS_ENGINE_POLLY = "polly"
 TTS_ENGINES: tuple[str, ...] = (TTS_ENGINE_KOKORO, TTS_ENGINE_POLLY)
-DEFAULT_TTS_ENGINE = TTS_ENGINE_KOKORO
+DEFAULT_TTS_ENGINE = TTS_ENGINE_POLLY
 DEFAULT_POLLY_VOICE = "Joanna"
 DEFAULT_POLLY_VOICE_ES = "Lupe"
 
@@ -75,7 +75,7 @@ class TtsConfig:
         return self.engine == TTS_ENGINE_POLLY
 
     def env(self) -> dict[str, str]:
-        """Environment for the generator. Kokoro is the synth default, so it needs no variables."""
+        """Environment for the generator. Kokoro is the synth library's own default, so it needs no variables; Polly (the deployment default) does."""
         if not self.is_polly:
             return {}
         return {
@@ -87,12 +87,12 @@ class TtsConfig:
 
 
 def parse_tts_engine(value: object) -> str:
-    """Validate the `ttsEngine` CDK context value. None means the default (kokoro)."""
+    """Validate the `ttsEngine` CDK context value. None means the default (polly)."""
     if value is None:
         return DEFAULT_TTS_ENGINE
     if not isinstance(value, str) or value not in TTS_ENGINES:
         raise ValueError(
-            f'Invalid CDK context "ttsEngine": {value!r}. Use -c ttsEngine=kokoro (default) or -c ttsEngine=polly.'
+            f'Invalid CDK context "ttsEngine": {value!r}. Use -c ttsEngine=polly (default) or -c ttsEngine=kokoro.'
         )
     return value
 
@@ -130,14 +130,23 @@ def parse_questions_model(value: object) -> str | None:
     return value
 
 
+# Amazon Translate is the default: it is an AWS service with no model to host, so nothing depends on PyTorch running inside Lambda (the built-in model
+# failed there with "Failed to initialize cpuinfo!"). The built-in Opus-MT translator stays in the image as the per-sentence fallback.
+DEFAULT_TRANSLATE_MODEL = "amazon:informal"
+BUILTIN_TRANSLATOR = "builtin"  # -c translateModel=builtin turns Amazon Translate off: the built-in Opus-MT translator only
+
+
 def parse_translate_model(value: object) -> str | None:
-    """Validate the `translateModel` CDK context value: `bedrock:<modelId>`, `amazon`, `amazon:informal`, `amazon:formal`, or absent. Absent means the built-in Opus-MT translator only; there is no default model."""
+    """Validate the `translateModel` CDK context value: `bedrock:<modelId>`, `amazon`, `amazon:informal` (the default when absent), `amazon:formal`, or
+    `builtin` for the built-in Opus-MT translator only (returns None: no extra permission and no setting on the generator)."""
     if value is None:
+        return DEFAULT_TRANSLATE_MODEL
+    if value == BUILTIN_TRANSLATOR:
         return None
     if isinstance(value, str) and _AMAZON_TRANSLATE.match(value):
         return value  # Amazon Translate: amazon, amazon:informal or amazon:formal
     if not isinstance(value, str) or not _MODEL_ID.match(value) or ".." in value:
-        raise ValueError(f'Invalid CDK context "translateModel": {value!r}. Use -c translateModel=bedrock:<modelId>, amazon or amazon:informal (there is no default).')
+        raise ValueError(f'Invalid CDK context "translateModel": {value!r}. Use -c translateModel=bedrock:<modelId>, amazon, amazon:informal (the default) or builtin.')
     return value
 
 

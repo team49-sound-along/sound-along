@@ -34,6 +34,7 @@ class CmsVmProps:
     table: dynamodb.ITable
     state_machine: sfn.IStateMachine
     reader_insights: bool = False
+    default_tts_engine: str = "polly"  # the narration engine the Settings screen starts with
 
 
 def _unit_file(env: dict[str, str]) -> list[str]:
@@ -101,6 +102,7 @@ class CmsVm(Construct):
             "STATE_MACHINE_ARN": props.state_machine.state_machine_arn,
             **API_ENV_DEFAULTS,
             "READER_INSIGHTS": "true" if props.reader_insights else "false",
+            "DEFAULT_TTS_ENGINE": props.default_tts_engine,
             "PORT": str(API_PORT),
             "AWS_REGION": REGION,
         }

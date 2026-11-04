@@ -197,12 +197,19 @@ def test_spanish_names_are_not_masked_so_the_model_can_see_who_is_a_girl():
 def test_the_translator_is_opus_mt_unless_a_bedrock_model_is_configured(monkeypatch):
     import translate
 
-    sentinel = lambda texts: texts  # noqa: E731
-    monkeypatch.setattr(translate, "load_model", lambda source, target, words=None: sentinel)
+    loads = []
+
+    def load_model(source, target, words=None):
+        loads.append((source, target))
+        return lambda texts: [f"opus:{t}" for t in texts]
+
+    monkeypatch.setattr(translate, "load_model", load_model)
     monkeypatch.delenv("TRANSLATE_MODEL", raising=False)
-    assert h._load_translator("es", "en", 100) is sentinel
+    translator = h._load_translator("es", "en", 100)
+    assert loads == [], "the built-in model is loaded only when a sentence needs it"
+    assert translator(["Hola."]) == ["opus:Hola."] and loads == [("es", "en")]
     monkeypatch.setenv("TRANSLATE_MODEL", "bedrock:")
-    assert h._load_translator("es", "en", 100) is sentinel
+    assert h._load_translator("es", "en", 100)(["Hola."]) == ["opus:Hola."]
 
 
 def test_a_spanish_part_is_checked_for_possessives_and_an_english_one_never_is():

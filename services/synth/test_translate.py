@@ -359,3 +359,30 @@ def test_the_part_ending_of_a_title_is_built_in_the_target_language_and_never_se
     assert seen == ["The Lighthouse", "La hija del faro"]  # the model only ever saw the title itself
     assert t._translate_title("A day (in the park)", model, "en") == "ES A day (in the park)"  # other brackets are ordinary text
     assert t._translate_title("", model, "en") == "" and t._split_part_suffix("No ending") == ("No ending", None)
+
+
+def test_a_lazy_translator_loads_its_model_on_the_first_call_only_and_never_if_unused():
+    from translate import lazy_translator
+
+    loads = []
+
+    def load():
+        loads.append(1)
+        return lambda texts: [t.upper() for t in texts]
+
+    fn = lazy_translator(load)
+    assert loads == [], "nothing is loaded just by creating it"
+    assert fn(["a"]) == ["A"] and fn(["b"]) == ["B"]
+    assert loads == [1], "loaded once"
+
+
+def test_amazon_translate_in_front_of_a_lazy_fallback_never_loads_the_built_in_model_when_it_succeeds():
+    from amazon_translate import AmazonTranslator
+    from translate import lazy_translator
+
+    loads = []
+    client = type("C", (), {"translate_text": staticmethod(lambda **kw: {"TranslatedText": kw["Text"] + "!"})})()
+    t = AmazonTranslator(client, "en", "es", lazy_translator(lambda: loads.append(1) or (lambda texts: texts)), min_interval=0)
+    out = t(["Hola.", "Adios."])
+    assert len(out) == 2 and all("!" in o for o in out), out  # (Spanish output gets its opening marks added)
+    assert loads == [], "the built-in model (PyTorch) was not touched"

@@ -17,7 +17,7 @@ export const TTS_ENGINE_OPTIONS = [
   { id: "kokoro", label: "Built-in voices", hint: "Runs inside Sound Along. Uses the English and Spanish voices chosen below." },
   { id: "polly", label: "Amazon Polly", hint: "AWS text-to-speech, billed per character. Uses Polly's own voices (Joanna for English, Lupe for Spanish); the voice choices below do not apply." },
 ];
-export const DEFAULT_TTS_ENGINE = "kokoro";
+export const DEFAULT_TTS_ENGINE = "polly"; // what a deployment starts with; the server's own default (a laptop without AWS starts with kokoro) always arrives with the settings
 
 /** Body for PUT /api/settings from form state. */
 export const settingsPayload = ({ voice, voiceEs, speed, mp3Kbps, ttsEngine }) => ({

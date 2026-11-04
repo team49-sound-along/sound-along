@@ -95,3 +95,21 @@ def test_the_real_model_chooses_their_for_a_group_and_her_for_a_girl():
     assert "their house" in group[1]
     girl = ps.resolve_possessives(["Marta abrió la puerta.", "Ella sonrió a los visitantes.", "Su madre esperaba dentro."], ["Marta opened the door.", "She smiled at the visitors.", "His mother was waiting inside."], scorer)
     assert girl[2].startswith("Her mother")
+
+
+def test_a_scorer_whose_model_cannot_load_fails_at_once_afterwards_instead_of_loading_again():
+    scorer = ps.PronounScorer()
+    calls = []
+
+    def broken():
+        calls.append(1)
+        raise RuntimeError("Failed to initialize cpuinfo!")
+
+    scorer._load = broken  # type: ignore[method-assign]
+    for _ in range(3):
+        try:
+            scorer("context", "before")
+            raise AssertionError("expected a failure")
+        except RuntimeError as err:
+            assert "cpuinfo" in str(err) or "could not be loaded" in str(err)
+    assert calls == [1], "one load attempt, not one per word"

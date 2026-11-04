@@ -32,5 +32,5 @@ test("the narration engine is sent when chosen and counts for dirty", () => {
   assert.deepEqual(settingsPayload({ ...s, ttsEngine: "polly" }), { voice: "a", speed: 1, mp3Kbps: 48, ttsEngine: "polly" });
   assert.equal(isDirty(s, { ...s }), false);
   assert.equal(isDirty(s, { ...s, ttsEngine: "polly" }), true);
-  assert.equal(isDirty({ voice: "a", speed: 1, mp3Kbps: 48 }, { ...s }), false, "an older API without ttsEngine means kokoro");
+  assert.equal(isDirty({ voice: "a", speed: 1, mp3Kbps: 48 }, { ...s, ttsEngine: "polly" }), false, "an older API without ttsEngine means the deployment default, polly");
 });

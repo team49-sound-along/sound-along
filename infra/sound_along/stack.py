@@ -111,6 +111,7 @@ class SoundAlongStack(Stack):
                     table=table,
                     state_machine=state_machine,
                     reader_insights=props.reader_insights,
+                    default_tts_engine=props.tts.engine,
                 ),
             )
             api_origin = vm_api_origin(vm.public_dns_name)
@@ -118,7 +119,7 @@ class SoundAlongStack(Stack):
             api = create_api_function(
                 self,
                 ApiFunctionProps(
-                    code_dir=require_bundle(sources.lambda_dir, "Lambda API bundle"), bucket=bucket, table=table, reader_insights=props.reader_insights
+                    code_dir=require_bundle(sources.lambda_dir, "Lambda API bundle"), bucket=bucket, table=table, reader_insights=props.reader_insights, default_tts_engine=props.tts.engine
                 ),
             )
             api.add_environment("STATE_MACHINE_ARN", state_machine.state_machine_arn)

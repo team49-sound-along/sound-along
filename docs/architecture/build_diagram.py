@@ -218,7 +218,7 @@ def processing_layer() -> None:
         "container image, arm64",
         "parse \u2192 TTS \u2192 MP3",
         "+ word timing JSON",
-        "Kokoro TTS built in",
+        "Amazon Polly (default)",
     ], icon_size=34)
     card(760, 530, 180, 116, "lambda", "Questions", [
         "Python 3.14 \u2022 256 MB",
@@ -230,9 +230,9 @@ def processing_layer() -> None:
     card(960, 530, 180, 116, "lambda", "Translation", [
         "same Generator image",
         "mode=translate",
-        "Opus-MT built in, or",
-        "Bedrock / Amazon",
-        "Translate if configured",
+        "Amazon Translate (default)",
+        "built-in Opus-MT only",
+        "as the sentence fallback",
     ], icon_size=34)
     arrow([(740, 588), (760, 588)])
     arrow([(940, 588), (960, 588)])
@@ -273,7 +273,7 @@ def ai_layer() -> None:
     container(1185, 370, 345, 490, "AI Services", fill="#f4fbf8", stroke="#01A88D",
               sub="optional \u2022 enabled per deploy flag (-c ...)", label_color="#016b5a")
     card(1200, 418, 315, 95, "polly", "Amazon Polly", [
-        "ttsEngine=polly (default: Kokoro)",
+        "ttsEngine=polly (default; kokoro optional)",
         "Neural voices Joanna (en), Lupe (es)",
         "polly:SynthesizeSpeech only",
     ])
@@ -283,8 +283,8 @@ def ai_layer() -> None:
         "(or its us. inference profile)",
     ])
     card(1200, 642, 315, 95, "translate", "Amazon Translate", [
-        "translateModel=amazon",
-        "(formal / informal variants)",
+        "translateModel=amazon:informal (default)",
+        "no PyTorch involved; formal / informal",
         "translate:TranslateText only",
     ])
     arrow([(1142, 588), (1198, 588)])
@@ -429,7 +429,7 @@ def legend() -> None:
     rect(x, 1034, w, 232, fill="#f3f8fd", stroke="#d5dbe3", rx=10)
     text(x + 14, 1058, "Deploy defaults", size=14, weight="bold", color="#16325c")
     for i, line in enumerate((
-        "cmsHost=ec2, ttsEngine=kokoro",
+        "cmsHost=ec2, ttsEngine=polly",
         "readerInsights=false: per-reader",
         "codes are off when deployed",
         "(needs teacher sign-in first)",

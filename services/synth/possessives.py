@@ -80,6 +80,7 @@ class PronounScorer:
 
     def __init__(self) -> None:
         self._model = self._tok = None
+        self._unavailable: Optional[str] = None  # why loading failed, so every later check fails at once instead of loading again
 
     def _load(self) -> None:
         import torch
@@ -106,8 +107,14 @@ class PronounScorer:
         return float(lp.gather(1, ids[0, 1:, None])[start - 1:, 0].sum())
 
     def __call__(self, context: str, before: str) -> dict[str, float]:
+        if self._unavailable:
+            raise RuntimeError(self._unavailable)
         if self._model is None:
-            self._load()
+            try:
+                self._load()
+            except Exception as err:  # noqa: BLE001
+                self._unavailable = f"the possessive model could not be loaded: {err}"
+                raise
         at_start = not before.strip()
         scores = {}
         for option in OPTIONS:

@@ -3,9 +3,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { HttpError } from "./http.js";
 
-export const DEFAULT_SETTINGS = Object.freeze({ voice: "af_heart", voiceEs: "ef_dora", speed: 0.95, mp3Kbps: 48, ttsEngine: "kokoro" });
 /** Narration engines a teacher may choose. "kokoro" also covers the Phonon voices (chosen by voice id); "polly" is Amazon Polly. */
 export const TTS_ENGINES = Object.freeze(["kokoro", "polly"]);
+/** The engine Settings starts with: the deployment's (DEFAULT_TTS_ENGINE, "polly" on AWS), else "kokoro", which runs on a laptop with no AWS account. */
+const startingEngine = TTS_ENGINES.includes(process.env.DEFAULT_TTS_ENGINE) ? process.env.DEFAULT_TTS_ENGINE : "kokoro";
+export const DEFAULT_SETTINGS = Object.freeze({ voice: "af_heart", voiceEs: "ef_dora", speed: 0.95, mp3Kbps: 48, ttsEngine: startingEngine });
 const SPEED = { min: 0.7, max: 1.2 };
 const KBPS = { min: 24, max: 128 };
 const VOICES_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "config", "voices.json");

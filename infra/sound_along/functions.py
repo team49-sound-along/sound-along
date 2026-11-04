@@ -56,6 +56,7 @@ class ApiFunctionProps:
     bucket: s3.IBucket
     table: dynamodb.ITable
     reader_insights: bool = False
+    default_tts_engine: str = "polly"  # the narration engine the Settings screen starts with (a teacher can still choose per job)
 
 
 def create_api_function(scope: Construct, props: ApiFunctionProps) -> lambda_.Function:
@@ -79,6 +80,7 @@ def create_api_function(scope: Construct, props: ApiFunctionProps) -> lambda_.Fu
             "TABLE_NAME": props.table.table_name,
             **API_ENV_DEFAULTS,
             "READER_INSIGHTS": "true" if props.reader_insights else "false",
+            "DEFAULT_TTS_ENGINE": props.default_tts_engine,
         },
     )
     props.table.grant_read_write_data(fn)
