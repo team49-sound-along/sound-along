@@ -71,7 +71,7 @@ def job_input(sample: dict, recording: Path | None) -> dict:
     """The same job input file the API writes for a teacher's passage (docs/API.md), built from a bundled sample."""
     return {
         "uuid": sample["uuid"], "title": sample["title"], "content": sample["content"], "vocab": sample.get("vocab"),
-        "source": "sample", "language": sample.get("language", "en"),
+        "source": "generated" if sample.get("cards") == "automatic" else "sample", "language": sample.get("language", "en"),  # "cards": "automatic" = word and place cards are made like a teacher's upload; the older samples have curated cards in samples/cards
         "settings": {"voice": "af_heart", "voiceEs": "ef_dora", "speed": 0.95, "mp3Kbps": 48},
         "pronunciations": json.loads((ROOT / "services/synth/pronunciations.json").read_text()),
         "recording": {"path": str(recording)} if recording else None,
