@@ -58,3 +58,10 @@ test("a callout changes the fingerprint, and restarting changes it back", () => 
   const restarted = restartFrom(state, 2);
   assert.notEqual(marksSignature(state, stop), marksSignature(restarted, null));
 });
+
+test("a long skip is described as a count with where it starts and ends", () => {
+  const w = Array.from({ length: 30 }, (_, i) => ({ i, text: `word${i}`, sentence: Math.floor(i / 10) }));
+  const text = calloutText({ type: "skipped", index: 2, indexes: Array.from({ length: 20 }, (_, k) => k + 2) }, w);
+  assert.match(text, /skipped 20 words/);
+  assert.match(text, /“word2” to “word21”/);
+});

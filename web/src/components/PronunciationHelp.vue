@@ -42,7 +42,7 @@ const key = computed(() => wordKey(props.words[chosen.value]?.text));
 const canSlow = computed(() => slowWindow(props.words, chosen.value) !== null);
 const canSpeak = recognitionSupported();
 const starred = computed(() => Boolean(key.value && myWords.value.words[key.value]));
-const choices = computed(() => [...new Set(props.indexes)].filter((i) => displayWord(props.words[i]?.text)));
+const choices = computed(() => [...new Set(props.indexes)].filter((i) => displayWord(props.words[i]?.text)).slice(0, 6)); // a long skip offers only its first few words
 const oneBeat = computed(() => parts.value.length === 1);
 const phase = computed(() => machine.value.phase);
 const busy = computed(() => phase.value === "slow" || phase.value === "listening");

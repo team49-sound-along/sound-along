@@ -33,6 +33,11 @@ export function calloutText(callout, words) {
   if (!callout) return "";
   const said = (i) => words[i]?.text ?? "";
   if (callout.type === "skipped") {
+    if (callout.indexes.length > 6) {
+      const lines = new Set(callout.indexes.map((i) => words[i]?.sentence)).size;
+      const where = lines > 1 ? `${callout.indexes.length} words (${lines} sentences)` : `${callout.indexes.length} words`;
+      return `You skipped ${where}, from “${said(callout.indexes[0])}” to “${said(callout.indexes.at(-1))}”. Read from the start of that part again.`;
+    }
     const list = callout.indexes.map((i) => `“${said(i)}”`);
     const joined = list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list.at(-1)}` : list[0];
     return `You skipped ${joined}. Read from here again.`;

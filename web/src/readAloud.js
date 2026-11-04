@@ -12,6 +12,7 @@ import { digitsFor, spellNumber } from "./numberWords.js";
 
 export const LOOKAHEAD = 4; // how many words ahead a heard word may match when the current word was not heard
 export const STABLE_TAIL = 3; // an interim result's last words may still change: a mismatch is judged only with this many words after it
+export const MAX_JUMP = 3000; // how far ahead a heard run of words may match when a whole line, paragraph or page was skipped
 export const REPEAT_WINDOW = 3; // heard words matching one of this many words just read are repeats, not errors
 export const CLOSE = 0.6; // edit-distance similarity that counts as the same word (words of 4+ letters)
 export const MERGE = 0.85; // similarity for two heard words standing for one expected word, or the reverse
@@ -123,6 +124,25 @@ function lookahead(tokens, p, targets, cursor) {
   return null;
 }
 
+/**
+ * A longer skip: a line, a paragraph, even pages. The words just heard match the passage exactly several words in a row, far beyond the
+ * lookahead. Three exact words in a row (at least one of them a real word, not "of the"), so one stray word never moves the learner.
+ */
+function farJump(tokens, p, targets, cursor) {
+  for (let j = cursor + LOOKAHEAD + 1; j < targets.length && j <= cursor + MAX_JUMP; j += 1) {
+    const need = Math.min(3, targets.length - j);
+    if (p + need > tokens.length) continue;
+    let ok = true;
+    let longest = 0;
+    for (let r = 0; r < need && ok; r += 1) {
+      ok = quality(tokens[p + r], targets[j + r]) === 2;
+      longest = Math.max(longest, targets[j + r].norm.length);
+    }
+    if (ok && (longest >= 4 || need < 3)) return j - cursor;
+  }
+  return null;
+}
+
 function run(state, tokens, start, final) {
   const { targets } = state;
   const n = tokens.length;
@@ -173,6 +193,14 @@ function run(state, tokens, start, final) {
         skipped.forEach((t) => skippedEver.push(t.index));
         stop({ type: "skipped", index: target.index, indexes: skipped.map((t) => t.index), word: target.text, words: skipped.map((t) => t.text) });
       }
+      pending = null;
+      break;
+    }
+    const jump = farJump(tokens, p, targets, cursor);
+    if (jump) {
+      const skipped = targets.slice(cursor, cursor + jump);
+      skipped.forEach((t) => skippedEver.push(t.index));
+      stop({ type: "skipped", index: target.index, indexes: skipped.map((t) => t.index), word: target.text, words: skipped.map((t) => t.text) });
       pending = null;
       break;
     }

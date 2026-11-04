@@ -99,6 +99,9 @@ with sync_playwright() as pw:
 
     page.evaluate("window.__say([['I like', false]])")
     check("follows word by word", marks(page).startswith("read,read,next"), marks(page))
+    page.wait_for_timeout(300)  # the highlight fades in over a moment
+    bg = page.evaluate("getComputedStyle(document.querySelector('.passage .w[data-ra=read]')).backgroundColor")
+    check("words already read are highlighted in yellow", bg == "rgb(251, 231, 161)", bg)
     page.evaluate("window.__say([['I like it it is fun today', true]])")
     page.wait_for_selector(".callout")
     check("a skipped word stops with a plain message", "You skipped" in page.locator(".callout .msg").inner_text() and "because" in page.locator(".callout .msg").inner_text())

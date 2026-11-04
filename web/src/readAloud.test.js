@@ -262,3 +262,38 @@ test("a content word heard as a different content word is still reported", () =>
   const { events } = feed(createReadAlong(w, { language: "en" }), { id: 0, transcript: "the dog chased the blue ball across the yard", isFinal: true });
   assert.ok(events.some((e) => e.type === "differs" && e.expected === "red"));
 });
+
+const LONG = ("The old lighthouse stood on a rocky cliff above the grey sea. Every evening the keeper climbed the winding stairs to light the great lamp. "
+  + "Ships far away saw the beam and turned safely toward the harbor. One stormy night the lamp flickered and went out. "
+  + "The keeper's daughter ran upstairs with a lantern and a box of matches. She worked through the wind until the flame caught again. "
+  + "By morning every ship had reached the shore and the village cheered.").split(" ").map((text, i) => ({ i, text, sentence: 0 }));
+const readLong = (transcript) => feed(createReadAlong(LONG, { language: "en" }), { id: 0, transcript, isFinal: true });
+
+test("skipping a whole line is caught, not just the next word or two", () => {
+  // the learner reads the first sentence, then jumps to "One stormy night" (skipping two full sentences)
+  const { events } = readLong("the old lighthouse stood on a rocky cliff above the grey sea one stormy night the lamp flickered and went out");
+  const skipped = events.find((e) => e.type === "skipped");
+  assert.ok(skipped, "a long skip is reported");
+  assert.equal(skipped.word, "Every");
+  assert.ok(skipped.indexes.length >= 20, `${skipped.indexes.length} words skipped`);
+  assert.equal(LONG[skipped.indexes.at(-1) + 1].text, "One");
+});
+
+test("skipping a paragraph near the end of the passage is caught", () => {
+  const { events } = readLong("the old lighthouse stood on a rocky cliff above the grey sea by morning every ship had reached the shore and the village cheered");
+  const skipped = events.find((e) => e.type === "skipped");
+  assert.ok(skipped && skipped.indexes.length > 40, "most of the passage was skipped");
+});
+
+test("a few matching words far ahead do not count as a skip unless three in a row match", () => {
+  // "the" and "of" are heard once each in the wrong place; it is noise, not a jump
+  const { events } = readLong("the old lighthouse stood on a rocky cliff the sea of the");
+  assert.equal(events.some((e) => e.type === "skipped" && e.indexes.length > 4), false);
+});
+
+test("reading the whole passage straight through still finishes with no stop", () => {
+  const all = LONG.map((w) => w.text).join(" ");
+  const { events } = readLong(all);
+  assert.equal(events.some((e) => e.type === "skipped" || e.type === "differs"), false);
+  assert.ok(events.some((e) => e.type === "done"));
+});

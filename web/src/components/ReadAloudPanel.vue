@@ -273,8 +273,8 @@ onBeforeUnmount(() => {
 
 <style>
 /* Marks on the passage words while reading aloud. Each state has its own shape, so none relies on colour alone. */
-.passage .w[data-ra="read"] { box-shadow: inset 0 -2px 0 var(--primary); }
-.passage .w[data-ra="next"] { outline: 2px dashed var(--primary); outline-offset: 2px; font-weight: 700; }
+.passage .w[data-ra="read"] { background: var(--hl); color: var(--on-hl); box-shadow: inset 0 -2px 0 #8a6d00; }
+.passage .w[data-ra="next"] { outline: 2px dashed #8a6d00; outline-offset: 2px; font-weight: 700; }
 .passage .w[data-ra="skipped"] { background: var(--danger-soft); box-shadow: inset 0 -4px 0 var(--danger); }
 .passage .w[data-ra="differs"] { background: var(--warn-soft); box-shadow: inset 0 -4px 0 #8a6d00; }
 .passage .w[data-ra="skipped"]::before, .passage .w[data-ra="differs"]::before { font-size: 0.6em; font-weight: 700; vertical-align: super; margin-right: 2px; }
