@@ -162,8 +162,8 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
     # The chunks of a long document are narrated in a private work folder (raw/work/<document id>/, never served, and `raw/` expires after 7 days anyway),
     # then joined into one passage and the folder is deleted.
     fn.add_to_role_policy(object_access(props.bucket, ["s3:PutObject", "s3:DeleteObject"], "raw/work/*"))
-    if props.tts.is_polly:
-        fn.add_to_role_policy(polly_synthesize())
+    # Always granted: teachers choose the engine per job in Settings (settings.ttsEngine), so Polly must work even when the deployment default is kokoro.
+    fn.add_to_role_policy(polly_synthesize())
     if props.translate_model and props.translate_model.startswith("amazon"):  # Amazon Translate has no resource-level permissions for plain text
         fn.add_to_role_policy(iam.PolicyStatement(actions=["translate:TranslateText"], resources=["*"]))
     elif props.translate_model:  # one model only, and only when the operator chose it

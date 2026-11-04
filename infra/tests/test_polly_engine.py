@@ -1,5 +1,5 @@
-"""Provisioning for TTS_ENGINE=polly: the generator gets the env vars and the polly:SynthesizeSpeech permission,
-and kokoro (the default) provisions neither."""
+"""Provisioning for TTS_ENGINE=polly: the generator gets the env vars. polly:SynthesizeSpeech is granted for every deployment,
+because the engine is also a per-job teacher setting."""
 from __future__ import annotations
 
 import aws_cdk as cdk
@@ -28,12 +28,12 @@ def _generator_env(template: Template) -> dict[str, object]:
     raise AssertionError("no container (generator) Lambda found")
 
 
-def test_kokoro_default_adds_no_polly_env_and_no_polly_permission() -> None:
+def test_kokoro_default_adds_no_polly_env_but_still_allows_polly_per_job() -> None:
     template = _synth(TtsConfig())
     env = _generator_env(template)
     assert "TTS_ENGINE" not in env and "POLLY_VOICE" not in env
     actions = actions_for_roles_starting_with(template, "GeneratorFunctionServiceRole")
-    assert not [a for a in actions if a.startswith("polly:")]
+    assert [a for a in actions if a.startswith("polly:")] == ["polly:SynthesizeSpeech"]  # a teacher may pick Polly in Settings
     assert template.to_json()["Outputs"]["TtsEngine"]["Value"] == "kokoro"
 
 

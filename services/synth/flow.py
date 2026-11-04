@@ -97,6 +97,26 @@ def _human_variant(ai_timing: dict[str, Any], passage: dict[str, Any], recording
     return Variant(human_id, audio, timing)
 
 
+SILENCE_PEAK = 1e-3  # about -60 dBFS: real speech peaks far above this; an all-zero or all-NaN track does not
+
+
+class SilentAudioError(ValueError):
+    """The engine returned audio that cannot be published: NaN/inf samples, or no audible signal at all."""
+
+
+def check_audio(audio: np.ndarray, engine_name: str = "engine") -> None:
+    """Refuse to publish broken narration. A Kokoro run whose PyTorch kernels failed on Lambda returned NaN samples, which the MP3 encoder
+    turned into a well-formed but completely silent file, and the job still reported success."""
+    if audio.size == 0:
+        raise SilentAudioError(f"{engine_name} returned no audio")
+    finite = np.isfinite(audio)
+    if not finite.all():
+        raise SilentAudioError(f"{engine_name} returned {int((~finite).sum())} of {audio.size} samples that are not finite numbers (NaN or inf)")
+    peak = float(np.abs(audio).max())
+    if peak < SILENCE_PEAK:
+        raise SilentAudioError(f"{engine_name} returned silent audio (peak {peak:.2e})")
+
+
 def run_flow(
     passage: dict[str, Any],
     engine: Engine,
@@ -112,6 +132,7 @@ def run_flow(
 
     language = passage.get("language") or "en"
     artifacts = generate_artifacts(passage, engine, on_step)
+    check_audio(np.asarray(artifacts.audio), getattr(engine, "name", "engine"))
     timing = {
         **artifacts.timing, "language": language,
         "generatedWith": {

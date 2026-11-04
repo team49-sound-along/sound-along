@@ -81,6 +81,26 @@ def test_engine_failure_is_handled(world):
     assert table.job(JOB_ID)["error"] == h.FRIENDLY_ERROR
 
 
+class _BrokenAudioEngine(FakeEngine):
+    """What Kokoro did on Lambda on 2026-11-04: real word times, but NaN (or all-zero) samples."""
+
+    def __init__(self, fill: float) -> None:
+        self._fill = fill
+
+    def synthesize(self, sentence):
+        good = super().synthesize(sentence)
+        return type(good)(np.full_like(good.audio, self._fill), good.tokens)
+
+
+@pytest.mark.parametrize("fill", [float("nan"), 0.0])
+def test_nan_or_silent_audio_fails_the_job_and_publishes_nothing(world, fill):
+    s3, table = world
+    result = h.process(EVENT, make_deps(s3, table, lambda passage: _BrokenAudioEngine(fill)))
+    assert result["status"] == "failed"
+    assert table.job(JOB_ID)["error"] == h.FRIENDLY_ERROR
+    assert f"data/{PASSAGE_ID}.mp3" not in s3.objects and ("PASSAGE", PASSAGE_ID) not in table.items
+
+
 def test_empty_passage_fails_cleanly():
     s3, table = FakeS3({EVENT["rawKey"]: raw_passage(content="<p></p>")}), FakeTable()
     assert h.process(EVENT, make_deps(s3, table))["status"] == "failed"

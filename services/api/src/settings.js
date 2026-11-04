@@ -3,7 +3,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { HttpError } from "./http.js";
 
-export const DEFAULT_SETTINGS = Object.freeze({ voice: "af_heart", voiceEs: "ef_dora", speed: 0.95, mp3Kbps: 48 });
+export const DEFAULT_SETTINGS = Object.freeze({ voice: "af_heart", voiceEs: "ef_dora", speed: 0.95, mp3Kbps: 48, ttsEngine: "kokoro" });
+/** Narration engines a teacher may choose. "kokoro" also covers the Phonon voices (chosen by voice id); "polly" is Amazon Polly. */
+export const TTS_ENGINES = Object.freeze(["kokoro", "polly"]);
 const SPEED = { min: 0.7, max: 1.2 };
 const KBPS = { min: 24, max: 128 };
 const VOICES_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "config", "voices.json");
@@ -51,7 +53,11 @@ export function parseSettingsPatch(body, voices) {
     }
     patch.mp3Kbps = mp3Kbps;
   }
-  if (Object.keys(patch).length === 0) bad("Send at least one of voice, voiceEs, speed or mp3Kbps.");
+  if ("ttsEngine" in body) {
+    if (!TTS_ENGINES.includes(body.ttsEngine)) bad(`Narration engine must be one of: ${TTS_ENGINES.join(", ")}.`);
+    patch.ttsEngine = body.ttsEngine;
+  }
+  if (Object.keys(patch).length === 0) bad("Send at least one of voice, voiceEs, speed, mp3Kbps or ttsEngine.");
   return patch;
 }
 
@@ -63,6 +69,7 @@ export function effectiveSettings(stored, voices = loadVoices()) {
     voiceEs: offered(stored?.voiceEs, "es") ? stored.voiceEs : DEFAULT_SETTINGS.voiceEs,
     speed: stored?.speed ?? DEFAULT_SETTINGS.speed,
     mp3Kbps: stored?.mp3Kbps ?? DEFAULT_SETTINGS.mp3Kbps,
+    ttsEngine: TTS_ENGINES.includes(stored?.ttsEngine) ? stored.ttsEngine : DEFAULT_SETTINGS.ttsEngine,
   };
 }
 

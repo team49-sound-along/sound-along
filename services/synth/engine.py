@@ -6,6 +6,7 @@ Polly (speech marks) and others implement the same Protocol later.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import threading
 from dataclasses import dataclass
@@ -39,10 +40,40 @@ _PIPELINES: dict[str, Any] = {}
 _PIPELINE_LOCK = threading.Lock()
 
 
+_TORCH_CONFIGURED = False
+
+
+def configure_torch() -> None:
+    """Make PyTorch safe on Graviton Lambda before any model runs.
+
+    In the Lambda sandbox /sys/devices/system/cpu is unreadable, so PyTorch's cpuinfo cannot detect the CPU and NNPACK fails to initialize
+    ("Could not initialize NNPACK! Reason: Out of memory"). On 2026-11-04 a Kokoro job in that state produced NaN audio. NNPACK is switched
+    off (convolutions fall back to the default kernels) and the thread count is fixed instead of guessed from the unreadable CPU list.
+    TORCH_NNPACK=1 turns NNPACK back on; TORCH_THREADS sets the threads (default 2, a 4 GB Lambda has about 2 vCPUs)."""
+    global _TORCH_CONFIGURED
+    if _TORCH_CONFIGURED:
+        return
+    import torch
+
+    if os.environ.get("TORCH_NNPACK") != "1":
+        try:
+            torch.backends.nnpack.set_flags(False)
+        except Exception:  # noqa: BLE001 (older or newer builds without the switch: nothing to turn off)
+            LOG.info("NNPACK switch not available in this PyTorch build")
+    threads = int(os.environ.get("TORCH_THREADS") or 2)
+    torch.set_num_threads(threads)
+    try:
+        torch.set_num_interop_threads(1)
+    except RuntimeError:  # can only be set once per process, before parallel work starts
+        pass
+    _TORCH_CONFIGURED = True
+
+
 def _shared_pipeline(language: str = "en") -> Any:
     """Load each language's pipeline once per process (about 4 s); every job after that creates its engine instantly."""
     with _PIPELINE_LOCK:
         if language not in _PIPELINES:
+            configure_torch()
             from kokoro import KPipeline  # imported lazily so Lambda init stays small
 
             _PIPELINES[language] = KPipeline(lang_code=LANGUAGES[language], repo_id="hexgrad/Kokoro-82M")

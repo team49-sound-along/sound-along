@@ -45,6 +45,8 @@ def fingerprint(passage: dict[str, Any], recording_path: Optional[str] = None) -
         "voice": settings.get("voice" if language == "en" else "voiceEs"),
         "speed": settings.get("speed"),
         "mp3Kbps": settings.get("mp3Kbps"),
+        # Only when set, so passages made before the engine became a setting keep their hash. A new engine means new audio.
+        **({"ttsEngine": settings["ttsEngine"]} if settings.get("ttsEngine") else {}),
         "pronunciations": fixes,
         "qualityCheck": bool(passage.get("qualityCheck")),
         "humanPassageId": passage.get("humanPassageId") if recording_path else None,

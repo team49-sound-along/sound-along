@@ -26,3 +26,11 @@ test("Spanish voice is sent only when chosen and counts for dirty", () => {
   assert.equal(isDirty(s, { ...s, voiceEs: "em_alex" }), true);
   assert.equal(isDirty(s, { ...s }), false);
 });
+
+test("the narration engine is sent when chosen and counts for dirty", () => {
+  const s = { voice: "a", speed: 1, mp3Kbps: 48, ttsEngine: "kokoro" };
+  assert.deepEqual(settingsPayload({ ...s, ttsEngine: "polly" }), { voice: "a", speed: 1, mp3Kbps: 48, ttsEngine: "polly" });
+  assert.equal(isDirty(s, { ...s }), false);
+  assert.equal(isDirty(s, { ...s, ttsEngine: "polly" }), true);
+  assert.equal(isDirty({ voice: "a", speed: 1, mp3Kbps: 48 }, { ...s }), false, "an older API without ttsEngine means kokoro");
+});

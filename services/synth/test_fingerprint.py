@@ -45,3 +45,11 @@ def test_a_recording_changes_it_by_content_not_by_path(tmp_path):
 def test_force_and_title_do_not_change_it():
     base = fingerprint(BASE)
     assert fingerprint({**BASE, "force": True, "title": "A new title"}) == base
+
+
+def test_choosing_another_engine_changes_it_but_an_unset_engine_keeps_old_hashes():
+    base = fingerprint(BASE)
+    assert fingerprint({**BASE, "settings": {**BASE["settings"], "ttsEngine": None}}) == base  # passages made before the setting existed
+    kokoro = fingerprint({**BASE, "settings": {**BASE["settings"], "ttsEngine": "kokoro"}})
+    polly = fingerprint({**BASE, "settings": {**BASE["settings"], "ttsEngine": "polly"}})
+    assert kokoro != polly

@@ -23,6 +23,8 @@ RUN curl -fsSL -o /tmp/en_core_web_sm-3.8.0-py3-none-any.whl "$SPACY_MODEL_URL" 
 ENV HF_HOME=/opt/hf
 COPY services/generator/bake_model.py /tmp/bake_model.py
 RUN python /tmp/bake_model.py && rm /tmp/bake_model.py
+# Lambda hides /sys/devices/system/cpu, so PyTorch cannot count CPUs: fix the thread pools instead (see synth/engine.py configure_torch).
+ENV OMP_NUM_THREADS=2 TORCH_THREADS=2
 ENV HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PHONON_MODEL_DIR=/opt/phonon/model PHONON_VOICES_DIR=/opt/phonon/voices TRANSLATE_MODELS_DIR=/opt/translate POSSESSIVE_LM_DIR=/opt/lm/smollm2-135m
 
 # Whole directories, not file lists: a new module can no longer be forgotten (tests and caches are excluded by

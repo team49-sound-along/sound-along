@@ -134,6 +134,8 @@ describe("dynamo store v2", () => {
     assert.equal(await createDynamoStore({ client: fakeClient(), tableName: "T" }).getSettings(), null);
     const got = createDynamoStore({ client: fakeClient(() => ({ Item: { pk: "SETTINGS", sk: "CURRENT", voice: "v", speed: 1, mp3Kbps: 48, updatedAt: "t" } })), tableName: "T" });
     assert.deepEqual(await got.getSettings(), { voice: "v", speed: 1, mp3Kbps: 48 });
+    const withEngine = createDynamoStore({ client: fakeClient(() => ({ Item: { pk: "SETTINGS", sk: "CURRENT", voice: "v", speed: 1, mp3Kbps: 48, ttsEngine: "polly" } })), tableName: "T" });
+    assert.equal((await withEngine.getSettings()).ttsEngine, "polly");
   });
 
   test("pronunciations use PRONUNCIATION/{word}; created is false when an item was replaced", async () => {

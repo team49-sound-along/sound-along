@@ -28,7 +28,7 @@ describe("generate with settings snapshot", () => {
     const r = await call("POST", "/api/generate", { title: "T1", text: TEXT });
     assert.equal(r.status, 202);
     const spec = started.at(-1);
-    assert.deepEqual(spec.settings, { voice: "af_heart", voiceEs: "ef_dora", speed: 1.05, mp3Kbps: 64 });
+    assert.deepEqual(spec.settings, { voice: "af_heart", voiceEs: "ef_dora", speed: 1.05, mp3Kbps: 64, ttsEngine: "kokoro" });
     assert.deepEqual(spec.pronunciations, { gaieties: "gay-uh-teez" });
     assert.equal(spec.recordingId, null);
     assert.equal(spec.humanPassageId, null);

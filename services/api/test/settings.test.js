@@ -24,6 +24,15 @@ describe("settings", () => {
     assert.deepEqual([json.data.voice, json.data.speed, json.data.mp3Kbps], [loadVoices()[0].id, 1.1, 64]);
   });
 
+  test("the narration engine defaults to kokoro and can be switched to polly and back", async () => {
+    assert.equal((await call("GET", "/api/settings")).json.data.ttsEngine, "kokoro");
+    const r = await call("PUT", "/api/settings", { ttsEngine: "polly" });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.data.ttsEngine, "polly");
+    assert.equal((await call("GET", "/api/settings")).json.data.ttsEngine, "polly");
+    assert.equal((await call("PUT", "/api/settings", { ttsEngine: "kokoro" })).json.data.ttsEngine, "kokoro");
+  });
+
   test("rejects bad values with readable messages", async () => {
     const cases = [
       [{ voice: "nope" }, /voice/i],
@@ -33,6 +42,8 @@ describe("settings", () => {
       [{ mp3Kbps: 20 }, /kbps/i],
       [{ mp3Kbps: 64.5 }, /kbps/i],
       [{ mp3Kbps: 129 }, /kbps/i],
+      [{ ttsEngine: "espeak" }, /engine/i],
+      [{ ttsEngine: 1 }, /engine/i],
       [{}, /at least one/i],
       [[], /JSON object/i],
     ];
@@ -51,7 +62,7 @@ describe("settings helpers", () => {
     const next = mergeSettings(current, { speed: 0.7 });
     assert.equal(next.speed, 0.7);
     assert.equal(current.speed, 0.95);
-    assert.deepEqual(mergeSettings(null, {}), { voice: "af_heart", voiceEs: "ef_dora", speed: 0.95, mp3Kbps: 48 });
+    assert.deepEqual(mergeSettings(null, {}), { voice: "af_heart", voiceEs: "ef_dora", speed: 0.95, mp3Kbps: 48, ttsEngine: "kokoro" });
     const patch = parseSettingsPatch({ speed: 1.2, mp3Kbps: 24 }, loadVoices());
     assert.deepEqual(patch, { speed: 1.2, mp3Kbps: 24 });
   });

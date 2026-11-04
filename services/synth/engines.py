@@ -25,8 +25,9 @@ def create_engine(
     (and, for pronunciations, the repository's pronunciations.json)."""
     if language not in ("en", "es"):
         raise ValueError(f"Unsupported language {language!r}. Use 'en' or 'es'.")
-    chosen = (name or os.environ.get("TTS_ENGINE") or "kokoro").lower()
     options = settings or {}
+    # Precedence: an explicit name, then the teacher's choice saved with the job (settings.ttsEngine), then the deployment default.
+    chosen = (name or options.get("ttsEngine") or os.environ.get("TTS_ENGINE") or "kokoro").lower()
     voice_key = "voice" if language == "en" else "voiceEs"
     if chosen == "kokoro" and engine_for_voice(options.get(voice_key)):
         if language != "en":

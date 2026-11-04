@@ -26,7 +26,10 @@ def resolve_kbps(requested: object = None) -> int:
 def encode_mp3(audio: np.ndarray, sample_rate: int, kbps: int | None = None) -> bytes:
     import lameenc  # lazy: only needed when actually encoding
 
-    pcm = (np.clip(np.asarray(audio, dtype=np.float32), -1.0, 1.0) * 32767.0).astype("<i2")
+    samples = np.asarray(audio, dtype=np.float32)
+    if not np.isfinite(samples).all():  # NaN casts to 0: the result would be a valid but silent MP3
+        raise ValueError("Audio contains NaN or inf samples; refusing to encode a silent MP3.")
+    pcm = (np.clip(samples, -1.0, 1.0) * 32767.0).astype("<i2")
     encoder = lameenc.Encoder()
     encoder.set_bit_rate(resolve_kbps(kbps))
     encoder.set_in_sample_rate(sample_rate)

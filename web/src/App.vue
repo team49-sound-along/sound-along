@@ -71,6 +71,9 @@ watch(
         <span class="avatar" aria-hidden="true">{{ user.initials }}</span>
         <span class="who"><span class="sr-only">Signed in as </span>{{ user.label }}</span>
       </div>
+      <a v-if="role === 'teacher'" class="btn ghost cog" href="#/settings" aria-label="Settings" title="Settings" :aria-current="route.name === 'settings' ? 'page' : undefined">
+        <Icon name="cog" :size="22" />
+      </a>
     </header>
     <main id="main" ref="main" tabindex="-1">
       <h1 class="sr-only">Sound Along</h1>
@@ -84,6 +87,8 @@ watch(
 .shell { display: grid; grid-template-rows: var(--topbar-h) 1fr auto; min-height: 100vh; }
 .topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s3); background: var(--surface); border-bottom: 1px solid var(--border); }
 .spacer { flex: 1; }
+.cog { display: inline-grid; place-items: center; width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; color: var(--text); flex: none; }
+.cog[aria-current="page"] { color: var(--primary); background: var(--primary-soft); }
 .menu-btn { display: none; }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; font-size: 18px; letter-spacing: -0.01em; min-height: 44px; margin-right: var(--s2); }
 .mark { display: inline-flex; align-items: flex-end; gap: 3px; height: 24px; padding: 4px; border-radius: 8px; background: var(--primary); }
