@@ -1,7 +1,9 @@
 // Validation for the Generate form; limits mirror docs/API.md.
+import { DOCUMENT_WORDS_MAX, countWords } from "./documentSize.js";
+
 export const TITLE_MAX = 120;
 export const TEXT_MIN = 20;
-export const TEXT_MAX = 12000;
+export const TEXT_MAX = 100000;
 
 export function validateGenerate({ title = "", text = "" } = {}) {
   const errors = {};
@@ -11,6 +13,7 @@ export function validateGenerate({ title = "", text = "" } = {}) {
   else if (t.length > TITLE_MAX) errors.title = `Title must be ${TITLE_MAX} characters or fewer.`;
   if (len < TEXT_MIN) errors.text = `Passage text needs at least ${TEXT_MIN} characters.`;
   else if (len > TEXT_MAX) errors.text = `Passage text must be ${TEXT_MAX.toLocaleString("en-US")} characters or fewer.`;
+  else if (countWords(text) > DOCUMENT_WORDS_MAX) errors.text = `This is more than ${DOCUMENT_WORDS_MAX.toLocaleString("en-US")} words, the most that can be made at once (about 40 pages). Add it in volumes.`;
   return { valid: Object.keys(errors).length === 0, errors };
 }
 

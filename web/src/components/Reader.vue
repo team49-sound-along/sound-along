@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import Icon from "./Icon.vue";
 import AudioBar from "./AudioBar.vue";
 import WordHelp from "./WordHelp.vue";
+import PartNav from "./PartNav.vue";
 import ReadingSettings from "./ReadingSettings.vue";
 import { api, audioUrl, fetchCards } from "../api.js";
 import { findWordCard, placeAt, wordKey } from "../cards.js";
@@ -307,6 +308,7 @@ function onKey(event) {
       </div>
     </header>
 
+    <PartNav :timing="timing" />
     <p v-if="timing.machineTranslated" class="small muted" role="note">Machine translation, not reviewed by a person.</p>
     <ReadingSettings v-if="showSettings" :prefs="prefs" @change="prefs = $event" @close="closeSettings" />
 
@@ -351,6 +353,7 @@ function onKey(event) {
             <figcaption v-if="f.caption || f.credit">{{ f.caption }}<span v-if="f.credit" class="credit"> {{ timing.language === "es" ? "Foto" : "Photo" }}: {{ f.credit }}</span></figcaption>
           </figure>
         </div>
+        <PartNav :timing="timing" :show-label="false" class="after" />
       </div>
       <aside v-if="soundAlong" class="side">
         <WordHelp :card="card" :place="place" :show-note="wordHelp" :word="selectedWord?.text ?? ''" :can-hear="canHear" :starred="isStarred" @hear="hearWord" @star="toggleSaved" />

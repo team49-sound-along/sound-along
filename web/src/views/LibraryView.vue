@@ -7,6 +7,7 @@ import { passageIndex } from "../api.js";
 import { useResource } from "../useResource.js";
 import { LANGUAGE_FILTERS, VOICE_FILTERS, filterLibrary } from "../libraryFilters.js";
 import { groupVariants } from "../voices.js";
+import { groupSeries } from "../series.js";
 import { role } from "../session.js";
 
 const { data, loading, error, reload } = useResource(passageIndex);
@@ -14,7 +15,7 @@ const query = ref("");
 const voice = ref("any");
 const language = ref("all");
 const layout = ref("grid");
-const passages = computed(() => groupVariants(data.value ?? []));
+const passages = computed(() => groupSeries(groupVariants(data.value ?? [])));
 const shown = computed(() => filterLibrary(passages.value, { query: query.value, voice: isTeacher.value ? voice.value : "any", language: language.value }));
 const filtering = computed(() => Boolean(query.value.trim()) || (isTeacher.value && voice.value !== "any") || language.value !== "all");
 const isTeacher = computed(() => role.value === "teacher");
