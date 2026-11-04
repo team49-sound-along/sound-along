@@ -146,6 +146,28 @@ def parse_questions_enabled(value: object) -> bool:
     return value is True or value == "true"
 
 
+# A DNS hostname for the public site (-c siteDomain=sound-along.online). Labels are 1-63 chars of letters, digits
+# and hyphens (not leading/trailing), and there are at least two labels. None means CloudFront's *.cloudfront.net
+# domain only (no custom domain, no ACM certificate).
+_DOMAIN_NAME = re.compile(r"^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))+$")
+
+
+def parse_site_domain(value: object) -> str | None:
+    """Validate the `siteDomain` CDK context value: a DNS hostname such as sound-along.online, or absent.
+
+    When set, the stack adds the domain as a CloudFront alternate domain name with an ACM certificate (in us-east-1)
+    and creates Route 53 alias records in the matching public hosted zone. Absent means the default *.cloudfront.net
+    domain only.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str) or not _DOMAIN_NAME.match(value):
+        raise ValueError(
+            f'Invalid CDK context "siteDomain": {value!r}. Use a hostname, for example -c siteDomain=sound-along.online.'
+        )
+    return value.lower()
+
+
 _POLLY_VOICE = re.compile(r"^[A-Za-zÁ-ú]{3,20}$")
 POLLY_ENGINES = ("neural", "generative", "long-form", "standard")
 

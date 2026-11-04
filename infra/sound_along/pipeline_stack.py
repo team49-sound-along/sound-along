@@ -66,14 +66,19 @@ def _buildspec(props: PipelineStackProps) -> codebuild.BuildSpec:
         context_flags.append(f"-c cmsHost={props.cms_host}")
     if props.alert_email:
         context_flags.append(f"-c alertEmail={props.alert_email}")
+    has_site_domain = False
     for key, value in props.extra_context:
         context_flags.append(f"-c {key}={shlex.quote(value)}")
+        if key == "siteDomain":
+            has_site_domain = True
     # Write the stack outputs so the declared artifact (infra/_outputs.json) exists; without --outputs-file the file
     # is never created and UPLOAD_ARTIFACTS fails with "no matching artifact paths found".
     context_flags.append("--outputs-file _outputs.json")
-    # Deploy only the application stack from CodeBuild. Deploying the whole app would also redeploy the pipeline
-    # (self-mutation), which is unnecessary here and would need broader permissions.
-    cdk_deploy = "npx --yes aws-cdk@2 deploy SoundAlongStack " + " ".join(context_flags)
+    # Deploy the application stack from CodeBuild (not the whole app: that would self-mutate the pipeline). When a
+    # custom domain is configured, also deploy the us-east-1 certificate stack, which the application stack imports
+    # across regions. Both stacks are named explicitly so the pipeline is never redeployed from here.
+    deploy_targets = "SoundAlongCertificate SoundAlongStack" if has_site_domain else "SoundAlongStack"
+    cdk_deploy = f"npx --yes aws-cdk@2 deploy {deploy_targets} " + " ".join(context_flags)
 
     return codebuild.BuildSpec.from_object(
         {

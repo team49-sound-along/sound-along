@@ -10,8 +10,16 @@ from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_s3_deployment as s3deploy
 from constructs import Construct
 
+from aws_cdk import aws_certificatemanager as acm
+
 from .budget import CostBudget
-from .cdn import create_site_distribution, lambda_api_origin, vm_api_origin
+from .cdn import (
+    create_alias_records,
+    create_site_distribution,
+    lambda_api_origin,
+    lookup_hosted_zone,
+    vm_api_origin,
+)
 from .cms_vm import CmsVm, CmsVmProps
 from .config import (
     CMS_HOST_EC2,
@@ -46,6 +54,8 @@ class SoundAlongStackProps:
     questions_model: str | None = None  # "bedrock:<modelId>"; no default. None means no Bedrock permission and the function stays off
     questions_enabled: bool = False
     translate_model: str | None = None  # "bedrock:<modelId>", "amazon" or "amazon:informal"; no default. None means Opus-MT only and no extra permission for the generator
+    site_domain: str | None = None  # custom public hostname (e.g. sound-along.online); None means *.cloudfront.net only
+    site_certificate: acm.ICertificate | None = None  # us-east-1 ACM cert for site_domain; required when site_domain is set
 
 
 class SoundAlongStack(Stack):
@@ -54,6 +64,9 @@ class SoundAlongStack(Stack):
         cms_host = parse_cms_host(props.cms_host)
         sources = props.sources or default_source_paths()
         Tags.of(self).add("project", PROJECT_TAG)
+
+        if props.site_domain and props.site_certificate is None:
+            raise ValueError("site_domain requires site_certificate (an ACM certificate in us-east-1).")
 
         bucket = s3.Bucket(
             self,
@@ -110,7 +123,21 @@ class SoundAlongStack(Stack):
             state_machine.grant_start_execution(api)
             api_origin = lambda_api_origin(api)
 
-        distribution = create_site_distribution(self, bucket=bucket, api_origin=api_origin)
+        domain_names = [props.site_domain] if props.site_domain else None
+        distribution = create_site_distribution(
+            self,
+            bucket=bucket,
+            api_origin=api_origin,
+            domain_names=domain_names,
+            certificate=props.site_certificate,
+        )
+        # When a custom domain is configured, resolve the apex to CloudFront with Route 53 alias records in the
+        # domain's existing public hosted zone.
+        if props.site_domain:
+            hosted_zone = lookup_hosted_zone(self, "SiteHostedZone", props.site_domain)
+            create_alias_records(
+                self, domain_name=props.site_domain, hosted_zone=hosted_zone, distribution=distribution
+            )
         self._deploy_web_app(sources.web_dist, bucket, distribution)
 
         if props.alert_email:
@@ -118,7 +145,9 @@ class SoundAlongStack(Stack):
         else:
             Annotations.of(self).add_info("No cost budget created. Pass -c alertEmail=you@example.com to add one.")
 
-        CfnOutput(self, "SiteUrl", value=f"https://{distribution.distribution_domain_name}")
+        site_host = props.site_domain or distribution.distribution_domain_name
+        CfnOutput(self, "SiteUrl", value=f"https://{site_host}")
+        CfnOutput(self, "DistributionDomainName", value=distribution.distribution_domain_name)
         CfnOutput(self, "BucketName", value=bucket.bucket_name)
         CfnOutput(self, "TableName", value=table.table_name)
         CfnOutput(self, "StateMachineArn", value=state_machine.state_machine_arn)
