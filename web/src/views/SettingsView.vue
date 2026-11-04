@@ -4,6 +4,9 @@ import StateBlock from "../components/StateBlock.vue";
 import { api } from "../api.js";
 import { useResource } from "../useResource.js";
 import { voicesFor } from "../language.js";
+import VoiceSample from "../components/VoiceSample.vue";
+
+const voiceLabel = (list, id) => list.find((v) => v.id === id)?.label ?? "this voice";
 import { KBPS_OPTIONS, SPEED_MAX, SPEED_MIN, SPEED_STEP, formatSpeed, isDirty, mbPerMinute, settingsPayload } from "../settings.js";
 
 const { data, loading, error, reload } = useResource(() => api.settings());
@@ -45,15 +48,27 @@ async function save() {
       <form v-if="data" class="card form" novalidate @submit.prevent="save">
         <div class="field">
           <label for="s-voice">English voice</label>
-          <select id="s-voice" v-model="form.voice" class="input">
-            <option v-for="v in enVoices" :key="v.id" :value="v.id">{{ v.label }}</option>
-          </select>
+          <div class="pickrow">
+            <select id="s-voice" v-model="form.voice" class="input" aria-describedby="s-voice-help">
+              <optgroup label="Recommended (passed our listening test)">
+                <option v-for="v in enVoices.filter((x) => x.recommended !== false)" :key="v.id" :value="v.id">{{ v.label }}</option>
+              </optgroup>
+              <optgroup v-if="enVoices.some((x) => x.recommended === false)" label="More voices to try (less natural)">
+                <option v-for="v in enVoices.filter((x) => x.recommended === false)" :key="v.id" :value="v.id">{{ v.label }}</option>
+              </optgroup>
+            </select>
+            <VoiceSample :voice="form.voice" :label="voiceLabel(enVoices, form.voice)" autoplay />
+          </div>
+          <p id="s-voice-help" class="small muted">Choosing a voice plays a short sample. Press Hear it to play it again.</p>
         </div>
         <div v-if="esVoices.length" class="field">
           <label for="s-voice-es">Spanish voice</label>
-          <select id="s-voice-es" v-model="form.voiceEs" class="input">
-            <option v-for="v in esVoices" :key="v.id" :value="v.id">{{ v.label }}</option>
-          </select>
+          <div class="pickrow">
+            <select id="s-voice-es" v-model="form.voiceEs" class="input">
+              <option v-for="v in esVoices" :key="v.id" :value="v.id">{{ v.label }}</option>
+            </select>
+            <VoiceSample :voice="form.voiceEs" :label="voiceLabel(esVoices, form.voiceEs)" autoplay />
+          </div>
         </div>
         <div class="field">
           <label for="s-speed">Speaking speed: <span class="num value">{{ formatSpeed(form.speed) }}</span></label>
@@ -78,6 +93,8 @@ async function save() {
 </template>
 
 <style scoped>
+.pickrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pickrow .input { flex: 1 1 260px; min-width: 0; }
 .narrow { max-width: 720px; }
 .form { display: grid; gap: var(--s3); }
 .value { font-weight: 700; color: var(--primary); }

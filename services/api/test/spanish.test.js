@@ -16,12 +16,12 @@ const ID = "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98";
 describe("voices.json", () => {
   const voices = loadVoices();
   test("the English voices that passed blind listening (one Kokoro, two Phonon) and the three Spanish voices, every entry with a lang", () => {
-    assert.deepEqual(voices.filter((v) => v.lang === "en").map((v) => v.id), ["af_heart", "phonon_hadley", "phonon_everly"]);
+    assert.deepEqual(voices.filter((v) => v.lang === "en" && v.recommended).map((v) => v.id), ["af_heart", "phonon_hadley", "phonon_everly"]);
     assert.ok(voices.every((v) => v.id && v.label && ["en", "es"].includes(v.lang)));
     assert.deepEqual(voices.filter((v) => v.lang === "es"), [
-      { id: "ef_dora", label: "Dora (Spanish female)", lang: "es", engine: "kokoro" },
-      { id: "em_alex", label: "Alex (Spanish male)", lang: "es", engine: "kokoro" },
-      { id: "em_santa", label: "Santa (Spanish male)", lang: "es", engine: "kokoro" },
+      { id: "ef_dora", label: "Dora (Spanish female)", lang: "es", engine: "kokoro", recommended: true },
+      { id: "em_alex", label: "Alex (Spanish male)", lang: "es", engine: "kokoro", recommended: true },
+      { id: "em_santa", label: "Santa (Spanish male)", lang: "es", engine: "kokoro", recommended: true },
     ]);
     assert.equal(new Set(voices.map((v) => v.id)).size, voices.length);
   });
@@ -64,7 +64,7 @@ describe("voiceEs settings", async () => {
   });
 
   test("a stored voice that is no longer offered falls back to the default", () => {
-    const merged = mergeSettings({ voice: "bm_lewis", voiceEs: "xx", speed: 1, mp3Kbps: 48 }, {});
+    const merged = mergeSettings({ voice: "retired_voice_x", voiceEs: "xx", speed: 1, mp3Kbps: 48 }, {});
     assert.deepEqual([merged.voice, merged.voiceEs], ["af_heart", "ef_dora"]);
   });
 

@@ -11,7 +11,7 @@ describe("settings", () => {
   test("GET returns defaults and the voice list when nothing is stored", async () => {
     const { json } = await call("GET", "/api/settings");
     assert.deepEqual([json.data.voice, json.data.speed, json.data.mp3Kbps], ["af_heart", 0.95, 48]);
-    assert.equal(json.data.voices.length, 6);
+    assert.equal(json.data.voices.filter((v) => v.recommended).length, 6);
     assert.ok(json.data.voices.every((v) => v.id && v.label));
   });
 

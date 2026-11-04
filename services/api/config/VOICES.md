@@ -36,3 +36,11 @@ Hadley and Everly (`phonon_hadley`, `phonon_everly`) are selectable English voic
 - Image: the model (f32, about 99 MB) and the two voice files are baked into the generator image at pinned revisions and loaded
   from `/opt/phonon`, so nothing is downloaded at run time. The default stays `af_heart`.
 - Labels come from the voice catalog's own metadata (gender, age, description).
+
+## Hearing a voice, and the voices that are not recommended
+- Settings plays a short sample when a voice is chosen and has a "Hear it" button (`web/public/voice-samples/<id>.mp3`, made by
+  `scripts/build_voice_samples.py`; run it again after adding a voice to `voices.json`).
+- `recommended: true` voices passed the listening test and are listed first. The other Kokoro English voices (US and UK, female and male) are
+  offered under "More voices to try" so they can be heard and compared; most are graded lower by Kokoro's authors and sound less natural.
+- Spanish has only Kokoro's three voices. Other Spanish candidates (MeloTTS, Qwen3-TTS, VoxCPM2) are not integrated, and Amazon Polly's
+  Spanish neural and long-form voices need a real AWS run (`-c ttsEngine=polly`, see docs/DEPLOY.md).
