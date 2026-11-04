@@ -19,7 +19,7 @@ class FakeTTS:
 
 
 def test_the_two_listening_test_winners_are_the_only_voices():
-    assert PHONON_VOICES == {"phonon_hadley": "Hadley", "phonon_everly": "Everly"}
+    assert PHONON_VOICES == {"phonon_hadley": "Hadley", "phonon_everly": "Everly", "phonon_bryony": "Bryony", "phonon_trevor": "Trevor"}
 
 
 def test_synthesize_speaks_the_catalog_voice_and_returns_float32_audio_with_no_word_tokens():

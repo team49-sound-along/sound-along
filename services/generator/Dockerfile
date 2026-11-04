@@ -19,7 +19,7 @@ RUN curl -fsSL -o /tmp/en_core_web_sm-3.8.0-py3-none-any.whl "$SPACY_MODEL_URL" 
  && pip install /tmp/en_core_web_sm-3.8.0-py3-none-any.whl \
  && rm -f /tmp/en_core_web_sm-3.8.0-py3-none-any.whl
 
-# Bake Kokoro-82M weights and voices, and the Phonon model with its two voices, into the image (pinned revisions).
+# Bake Kokoro-82M weights and voices, and the Phonon model with its four voices, into the image (pinned revisions).
 ENV HF_HOME=/opt/hf
 COPY services/generator/bake_model.py /tmp/bake_model.py
 RUN python /tmp/bake_model.py && rm /tmp/bake_model.py

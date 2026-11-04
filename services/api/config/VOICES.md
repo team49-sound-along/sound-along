@@ -37,10 +37,14 @@ Hadley and Everly (`phonon_hadley`, `phonon_everly`) are selectable English voic
   from `/opt/phonon`, so nothing is downloaded at run time. The default stays `af_heart`.
 - Labels come from the voice catalog's own metadata (gender, age, description).
 
-## Hearing a voice, and the voices that are not recommended
-- Settings plays a short sample when a voice is chosen and has a "Hear it" button (`web/public/voice-samples/<id>.mp3`, made by
-  `scripts/build_voice_samples.py`; run it again after adding a voice to `voices.json`).
-- `recommended: true` voices passed the listening test and are listed first. The other Kokoro English voices (US and UK, female and male) are
-  offered under "More voices to try" so they can be heard and compared; most are graded lower by Kokoro's authors and sound less natural.
-- Spanish has only Kokoro's three voices. Other Spanish candidates (MeloTTS, Qwen3-TTS, VoxCPM2) are not integrated, and Amazon Polly's
-  Spanish neural and long-form voices need a real AWS run (`-c ttsEngine=polly`, see docs/DEPLOY.md).
+## The five English and three Spanish voices (2026-11-04)
+Only the most human-sounding voices are offered, each with a "Hear it" sample in Settings (`web/public/voice-samples/<id>.mp3`, made by
+`scripts/build_voice_samples.py`; run it again after changing `voices.json`).
+- **English (5):** Heart (Kokoro, grade A), Phonon Hadley and Everly (top 3 with Heart for both blind reviewers), plus Phonon Bryony (UK female,
+  "full, rich, relaxed, close to the mic") and Trevor (US male, "resonant mid-low core") as narration-style additions. Bryony and Trevor have
+  **not been rated by anyone yet**: listen to them in Settings before relying on them.
+- **Removed:** the other Kokoro English voices. Kokoro's grades do not predict how human a voice sounds (Bella A- and Nicole B- were called robotic,
+  shrill or creepy), and everything else is C+ or lower.
+- **Spanish (3):** Kokoro Dora, Alex, Santa. Nothing else is licensed and runnable: Phonon's Spanish voices need a non-commercial model, Amazon
+  Polly's Spanish voices (neural Lupe, Pedro; long-form Alba, Raul) have never been run (`-c ttsEngine=polly`, see docs/DEPLOY.md), and
+  MeloTTS, Qwen3-TTS and VoxCPM2 are not integrated and have no ratings. Getting to five Spanish voices means a real listening test first.

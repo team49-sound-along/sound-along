@@ -16,7 +16,7 @@ const ID = "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98";
 describe("voices.json", () => {
   const voices = loadVoices();
   test("the English voices that passed blind listening (one Kokoro, two Phonon) and the three Spanish voices, every entry with a lang", () => {
-    assert.deepEqual(voices.filter((v) => v.lang === "en" && v.recommended).map((v) => v.id), ["af_heart", "phonon_hadley", "phonon_everly"]);
+    assert.deepEqual(voices.filter((v) => v.lang === "en" && v.recommended).map((v) => v.id), ["af_heart", "phonon_hadley", "phonon_everly", "phonon_bryony", "phonon_trevor"]);
     assert.ok(voices.every((v) => v.id && v.label && ["en", "es"].includes(v.lang)));
     assert.deepEqual(voices.filter((v) => v.lang === "es"), [
       { id: "ef_dora", label: "Dora (Spanish female)", lang: "es", engine: "kokoro", recommended: true },

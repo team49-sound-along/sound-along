@@ -21,6 +21,20 @@
   "recommended": true
  },
  {
+  "id": "phonon_bryony",
+  "label": "Bryony (UK female, full and relaxed; not rated yet)",
+  "lang": "en",
+  "engine": "phonon",
+  "recommended": true
+ },
+ {
+  "id": "phonon_trevor",
+  "label": "Trevor (US male, warm and resonant; not rated yet)",
+  "lang": "en",
+  "engine": "phonon",
+  "recommended": true
+ },
+ {
   "id": "ef_dora",
   "label": "Dora (Spanish female)",
   "lang": "es",
@@ -40,187 +54,5 @@
   "lang": "es",
   "engine": "kokoro",
   "recommended": true
- },
- {
-  "id": "af_bella",
-  "label": "Bella (US female; rated robotic or shrill in our blind test)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "af_nicole",
-  "label": "Nicole (US female; rated creepy or the worst in our blind test)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "af_sarah",
-  "label": "Sarah (US female; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "af_sky",
-  "label": "Sky (US female; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "af_river",
-  "label": "River (US female; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "af_kore",
-  "label": "Kore (US female; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "af_jessica",
-  "label": "Jessica (US female; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "af_nova",
-  "label": "Nova (US female; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "af_alloy",
-  "label": "Alloy (US female; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "af_aoede",
-  "label": "Aoede (US female; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "bf_emma",
-  "label": "Emma (UK female; rated shrill in our blind test)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "bf_isabella",
-  "label": "Isabella (UK female; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "bf_alice",
-  "label": "Alice (UK female; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "bf_lily",
-  "label": "Lily (UK female; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "am_michael",
-  "label": "Michael (US male; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "am_fenrir",
-  "label": "Fenrir (US male; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "am_puck",
-  "label": "Puck (US male; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "am_echo",
-  "label": "Echo (US male; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "am_eric",
-  "label": "Eric (US male; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "am_adam",
-  "label": "Adam (US male; lowest Kokoro grade (F+))",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "am_onyx",
-  "label": "Onyx (US male; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "am_liam",
-  "label": "Liam (US male; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "bm_george",
-  "label": "George (UK male; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "bm_fable",
-  "label": "Fable (UK male; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "bm_daniel",
-  "label": "Daniel (UK male; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
- },
- {
-  "id": "bm_lewis",
-  "label": "Lewis (UK male; less natural in Kokoro's own grading)",
-  "lang": "en",
-  "engine": "kokoro",
-  "recommended": false
  }
 ]

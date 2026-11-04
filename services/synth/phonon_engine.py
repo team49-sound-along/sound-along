@@ -4,7 +4,7 @@ Phonon (gradium/phonon-31m-en, Apache-2.0; runtime `ptts`, MIT or Apache-2.0) is
 extension: no PyTorch, no espeak, about 80 MB of files. It gives audio but no word times, so the flow takes word timing
 from the recognizer, exactly as it does for Spanish (`native_timing = False`, no tokens).
 
-Only the two voices that won the blind listening test are offered (see services/api/config/VOICES.md). The model has no
+Hadley and Everly won the blind listening test; Bryony and Trevor are added as a narration-style British female and a male voice (not rated yet). Only these are offered (see services/api/config/VOICES.md). The model has no
 speed control: the Settings speed does not apply to these voices (students still change playback speed in the reader).
 Pronunciation fixes: plain respellings are spelled into the text; "/phonemes/" entries are Kokoro-only and are skipped.
 """
@@ -23,7 +23,7 @@ from engine import SAMPLE_RATE, SentenceAudio
 LOG = logging.getLogger(__name__)
 
 # Our voice id -> the voice's name in Phonon's catalog (gradium/phonon-voices).
-PHONON_VOICES = {"phonon_hadley": "Hadley", "phonon_everly": "Everly"}
+PHONON_VOICES = {"phonon_hadley": "Hadley", "phonon_everly": "Everly", "phonon_bryony": "Bryony", "phonon_trevor": "Trevor"}
 DEFAULT_VOICE = "phonon_hadley"
 # The revisions the listening test and benchmarks used. The Docker image bakes exactly these and loads them from disk.
 MODEL_REVISION = "8c64b55ec301728e2d1695bfea87a08a267d0c2d"

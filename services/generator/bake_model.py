@@ -33,7 +33,7 @@ MODELS = (
 )
 
 
-# Phonon (Apache-2.0): the English model and only the two offered voices, as plain folders the `ptts` runtime loads from disk
+# Phonon (Apache-2.0): the English model and only the four offered voices, as plain folders the `ptts` runtime loads from disk
 # (PHONON_MODEL_DIR / PHONON_VOICES_DIR), so nothing is downloaded at run time. Revisions match services/synth/phonon_engine.py.
 PHONON_DIR = Path("/opt/phonon")
 PHONON = (
@@ -47,7 +47,8 @@ PHONON = (
         "gradium/phonon-voices",
         "da6c9ec0d47be8df5c87c730a3aa97187f3229c3",
         "voices",
-        ["voices.jsonl", "voices/bXwrkHhURL1VFJdG.safetensors", "voices/vjFyp2BcCyTlUmYb.safetensors"],  # Hadley, Everly
+        ["voices.jsonl", "voices/bXwrkHhURL1VFJdG.safetensors", "voices/vjFyp2BcCyTlUmYb.safetensors",
+         "voices/gfP44RlHwr2kEwk7.safetensors", "voices/0zLApsZfVLLNaEGl.safetensors"],  # Hadley, Everly, Bryony, Trevor
     ),
 )
 
