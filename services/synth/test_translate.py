@@ -274,3 +274,23 @@ def test_both_larger_models_are_pinned_by_full_commit_hash():
     for pair in (("en", "es"), ("es", "en")):
         repo, revision = tr.BIG[pair]
         assert repo.startswith("Helsinki-NLP/opus-mt-tc-") and len(revision) == 40
+
+
+def test_a_first_name_that_a_model_respelled_or_translated_is_put_back():
+    assert tr.restore_translated_names(["Visitamos el parque con Ana.", "Lucía y Pedro llegaron tarde.", "El perro de Juan se escapó."], ["We visited the park with Anna.", "Lucia and Peter were late.", "John's dog ran away."]) == [
+        "We visited the park with Ana.", "Lucía and Pedro were late.", "Juan's dog ran away."]
+
+
+def test_names_are_left_alone_when_the_source_name_is_already_there_or_nothing_matches():
+    assert tr.restore_translated_names(["Ana vio a Pedro."], ["Ana saw Pedro."]) == ["Ana saw Pedro."]
+    assert tr.restore_translated_names(["Vimos un pájaro."], ["We saw a bird."]) == ["We saw a bird."]
+    assert tr.restore_translated_names(["Pablo corre."], ["Paul's friend runs."])[0].startswith("Pablo")
+
+
+def test_translating_a_passage_keeps_a_name_even_when_the_model_changes_it():
+    class Respeller:
+        def __call__(self, texts):
+            return [t.replace("Ana", "Anna").replace("Lucía", "Lucy") for t in texts]
+
+    out = tr.translate_passage({"title": "", "content": "<p>Visitamos el parque con Ana. Después vimos a Lucía.</p>"}, Respeller(), names_fn=lambda t: [])
+    assert "Ana" in out.content_html and "Anna" not in out.content_html and "Lucía" in out.content_html and "Lucy" not in out.content_html

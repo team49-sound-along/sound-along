@@ -25,8 +25,8 @@ PAIRS: dict[tuple[str, str], tuple[str, str]] = {
     ("es", "en"): ("Helsinki-NLP/opus-mt-es-en", "c96e2c5399ebfae4fc43d9669556b9afa74bb69d"),
 }
 # A larger model reads better (the small one said "mucho" for "a great deal"; this one says "un gran negocio") but is about three times slower, so it is used
-# for passages up to BIG_MAX_WORDS only. Measured in the image with 2 CPUs and 4 GB: 0.20 s/word (small: 0.08). With narration at about 0.48 s/word, 900 words
-# is about 180 s + 430 s, inside the 900 s Lambda limit with a third to spare. Not yet measured on Lambda itself.
+# for passages up to BIG_MAX_WORDS only. Measured in the image with 2 CPUs and 4 GB: English to Spanish 0.195 s/word (small 0.065), Spanish to English 0.29 s/word
+# (small 0.11). With narration at about 0.45 s/word, 900 words is at worst about 260 s + 405 s = 665 s of the 900 s Lambda limit. Not yet measured on Lambda itself.
 BIG: dict[tuple[str, str], tuple[str, str]] = {
     ("en", "es"): ("Helsinki-NLP/opus-mt-tc-big-en-es", "8f4d4924189681076e9c642b2fd85278d793fd4d"),  # CC-BY-4.0
     # Romance languages to English (Spanish included), Apache-2.0. On literary Spanish it fixes many errors of the small model ("zabacha mirrors" -> "jet mirrors",
@@ -187,7 +187,7 @@ def translate_passage(passage: dict[str, Any], model: TranslateFn, names_fn: Cal
     masked = [mask(text_of[i], protect) for i in order]
     first = _translate_all([m for m, _ in masked], model)
     if not protect:  # names were left to the model: keep each character's name the same in every sentence
-        first = restore_names([m for m, _ in masked], first)
+        first = restore_translated_names([m for m, _ in masked], restore_names([m for m, _ in masked], first))
     results: list[str] = []
     unprotected: list[int] = []
     for i, (raw, (_, table)) in zip(order, zip(first, masked)):
@@ -241,6 +241,50 @@ def fix_possessive(source: str, translated: str) -> str:
 def _caps(sentence: str) -> list[str]:
     """Capitalised words that are not the first word of the sentence (the first is capitalised anyway)."""
     return [w for w in re.findall(r"(?<!^)(?<=\s)([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñü]+)", " ".join(sentence.split()))]
+
+
+# Common first names that models translate. Spanish form -> English forms. Names that are also ordinary words (Rosa, Pilar, Sol, Mar, Grace) are left out on purpose.
+_NAME_PAIRS = {
+    "Juan": ["John"], "Pedro": ["Peter"], "José": ["Joseph", "Joe"], "Carlos": ["Charles", "Carl"], "Luis": ["Louis", "Lewis"], "Miguel": ["Michael"], "Pablo": ["Paul"],
+    "Jorge": ["George"], "Francisco": ["Francis", "Frank"], "Santiago": ["James"], "Antonio": ["Anthony", "Tony"], "Eduardo": ["Edward"], "Ricardo": ["Richard"],
+    "Guillermo": ["William"], "Fernando": ["Ferdinand"], "Rafael": ["Raphael"], "Alejandro": ["Alexander"], "Diego": ["James"], "Andrés": ["Andrew"], "Mateo": ["Matthew"],
+    "Marta": ["Martha"], "Sara": ["Sarah"], "Lucía": ["Lucy"], "Juana": ["Joan", "Joanna", "Jane"], "Catalina": ["Catherine", "Katherine"], "Margarita": ["Margaret"],
+    "Teresa": ["Theresa", "Teresa"], "Isabel": ["Isabelle", "Elizabeth"], "Elena": ["Helen", "Ellen"], "Sofía": ["Sophia", "Sophie"], "Ana": ["Anne", "Anna", "Ann"],
+    "María": ["Mary", "Maria"], "Carolina": ["Caroline"], "Victoria": ["Victoria"], "Beatriz": ["Beatrice"], "Alicia": ["Alice"], "Julia": ["Julie"],
+}
+_EQUIVALENTS: dict[str, set[str]] = {}
+for _es, _ens in _NAME_PAIRS.items():
+    _EQUIVALENTS.setdefault(_es, set()).update(_ens)
+    for _en in _ens:
+        _EQUIVALENTS.setdefault(_en, set()).add(_es)
+
+
+def _skeleton(name: str) -> str:
+    """A name without accents, capitals or doubled letters: Anna, Ana and Aná share one skeleton, so do Lucia and Lucía."""
+    import unicodedata
+
+    plain = "".join(c for c in unicodedata.normalize("NFD", name.lower()) if unicodedata.category(c) != "Mn")
+    return re.sub(r"(.)\1+", r"\1", plain)
+
+
+def restore_translated_names(sources: list[str], outputs: list[str]) -> list[str]:
+    """Put back a first name that a model respelled or translated (Anna for Ana, Lucia for Lucía, Peter for Pedro). Acts only when the name is missing from the
+    sentence's translation and an equivalent is there: a respelling with the same skeleton, or a pair from _NAME_PAIRS."""
+    result = []
+    for s, o in zip(sources, outputs):
+        names = [w for w in re.findall(r"[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñü]+", s)]
+        for name in names:
+            if re.search(rf"(?<!\w){re.escape(name)}(?!\w)", o):
+                continue
+            candidates = set(_EQUIVALENTS.get(name, ()))
+            candidates |= {w for w in re.findall(r"[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñü]+", o) if _skeleton(w) == _skeleton(name) and w != name and w not in s}
+            for variant in sorted(candidates, key=len, reverse=True):
+                pattern = re.compile(rf"(?<!\w){re.escape(variant)}(?!\w)")
+                if pattern.search(o):
+                    o = pattern.sub(name, o, count=1)
+                    break
+        result.append(o)
+    return result
 
 
 def restore_names(sources: list[str], outputs: list[str]) -> list[str]:
@@ -326,7 +370,9 @@ def load_model(source: str, target: str, words: Optional[int] = None) -> Transla
         folder = f"{source}-{target}" + ("-big" if big else "")
         where, kwargs = (os.path.join(baked, folder), {"local_files_only": True}) if baked else (repo, {"revision": revision})
         tokenizer = MarianTokenizer.from_pretrained(where, **kwargs)
-        marian = MarianMTModel.from_pretrained(where, **kwargs).eval()
+        # Always full precision: transformers 5 loads weights in the dtype they are stored in, and a half-precision model runs about 5 times slower on a CPU
+        # (20 s against 4 s for the same 30 sentences, identical output). Storing weights in half precision on disk (see bake_model.py) is fine.
+        marian = MarianMTModel.from_pretrained(where, dtype=torch.float32, **kwargs).eval()
 
         def translate(texts: list[str]) -> list[str]:
             batch = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=256)

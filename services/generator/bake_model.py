@@ -63,9 +63,22 @@ TRANSLATE = (
 TRANSLATE_FILES = ["config.json", "generation_config.json", "pytorch_model.bin", "source.spm", "special_tokens_map.json", "target.spm", "tokenizer_config.json", "vocab.json"]
 
 
+HALF_PRECISION_ON_DISK = ("es-en-big",)  # stored as float16 (467 MB instead of 933 MB); loaded back as float32. Checked: identical translations on 38 sentences.
+
+
 def bake_translation() -> None:
     for repo, revision, folder in TRANSLATE:
-        snapshot_download(repo, revision=revision, local_dir=str(TRANSLATE_DIR / folder), allow_patterns=TRANSLATE_FILES)
+        target = TRANSLATE_DIR / folder
+        snapshot_download(repo, revision=revision, local_dir=str(target), allow_patterns=TRANSLATE_FILES)
+        if folder in HALF_PRECISION_ON_DISK:
+            import torch
+            from transformers import MarianMTModel
+
+            MarianMTModel.from_pretrained(str(target), dtype=torch.float16).save_pretrained(str(target), safe_serialization=True)
+            (target / "pytorch_model.bin").unlink()
+            for f in target.iterdir():  # Lambda runs as a different, non-root user: every file must be world-readable
+                if f.is_file():
+                    f.chmod(0o644)
 
 
 def bake_phonon() -> None:
