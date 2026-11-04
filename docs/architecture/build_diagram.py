@@ -262,7 +262,7 @@ def processing_layer() -> None:
     arrow([(740, 730), (760, 730)])
     arrow([(940, 730), (960, 730)])
     for i, line in enumerate((
-        "Generator Lambda = one image, three modes: generate, translate, stitch (4 GB, 15 min).",
+        "Generator Lambda = one image, three modes: generate, translate, stitch (6 GB, 15 min).",
         "Questions and translation are caught: they never fail an audio job.",
         "A crash marks the job failed in DynamoDB. Bedrock callers stay under ~1 request/s.",
     )):

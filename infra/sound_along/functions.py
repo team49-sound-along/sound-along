@@ -144,7 +144,7 @@ def create_generator_function(scope: Construct, props: GeneratorFunctionProps) -
             ],
         ),
         architecture=lambda_.Architecture.ARM_64,
-        memory_size=4096,
+        memory_size=6144,  # 4 GB ran at 4,086 MB when translation failed; 6 GB also gives about 3.4 vCPUs
         timeout=Duration.seconds(900),  # the Lambda maximum: translating and narrating the longest text can take minutes on 2 CPUs
         reserved_concurrent_executions=1 if (props.translate_model or "").startswith("bedrock:") else 2,  # one caller at a time keeps Bedrock under the rate limit
         log_group=_log_group(scope, "GeneratorLogs"),

@@ -69,7 +69,7 @@ def test_generator_container_lambda(template: Template) -> None:
         {
             "PackageType": "Image",
             "Architectures": ["arm64"],
-            "MemorySize": 4096,
+            "MemorySize": 6144,
             "Timeout": 900,  # the Lambda maximum: the longest text can need minutes to translate and narrate
             "ReservedConcurrentExecutions": 2,
             "Environment": {"Variables": {"BUCKET": Match.any_value(), "TABLE_NAME": Match.any_value()}},

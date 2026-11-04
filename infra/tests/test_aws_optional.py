@@ -18,10 +18,12 @@ def generator_actions(template) -> list[str]:
     return actions_for_roles_starting_with(template, "GeneratorFunctionServiceRole")
 
 
-def test_by_default_the_generator_may_call_neither_translate_nor_polly():
+def test_by_default_the_generator_may_not_call_translate_or_bedrock_but_may_call_polly():
     t = synth()
     acts = generator_actions(t)
-    assert not any(a.startswith(("translate:", "polly:", "bedrock:")) for a in acts)
+    assert not any(a.startswith(("translate:", "bedrock:")) for a in acts)
+    assert "polly:SynthesizeSpeech" in acts, "teachers choose the narration engine per job, so Polly is always allowed (and only that one action)"
+    assert [a for a in acts if a.startswith("polly:")] == ["polly:SynthesizeSpeech"]
     assert "TTS_ENGINE" not in env(t) and "TRANSLATE_MODEL" not in env(t)
 
 
@@ -29,7 +31,7 @@ def test_by_default_the_generator_may_call_neither_translate_nor_polly():
 def test_amazon_translate_grants_only_translate_text_and_no_bedrock(value):
     t = synth(translate_model=value)
     acts = generator_actions(t)
-    assert "translate:TranslateText" in acts and not any(a.startswith(("bedrock:", "polly:")) for a in acts)
+    assert "translate:TranslateText" in acts and not any(a.startswith("bedrock:") for a in acts)
     assert env(t)["TRANSLATE_MODEL"] == value
 
 
