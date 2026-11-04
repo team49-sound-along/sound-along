@@ -4,6 +4,8 @@ import Icon from "./Icon.vue";
 import AudioBar from "./AudioBar.vue";
 import WordHelp from "./WordHelp.vue";
 import ReadingSettings from "./ReadingSettings.vue";
+import ReadAloudPanel from "./ReadAloudPanel.vue";
+import { recognitionSupported } from "../speechRecognizer.js";
 import { api, audioUrl, fetchCards } from "../api.js";
 import { findWordCard, placeAt, wordKey } from "../cards.js";
 import { loadState, saveState, toggleStar } from "../practice.js";
@@ -35,6 +37,19 @@ const selectedIndex = ref(-1);
 const cards = ref(null);
 const showSettings = ref(false);
 const settingsButton = ref(null);
+// Read aloud with the microphone (ReadAloudPanel): the panel follows the learner and sends back a mark for each word.
+const canReadAloud = recognitionSupported();
+const readAloudOn = ref(false);
+const readAloudButton = ref(null);
+const raMarks = ref({});
+function closeReadAloud() {
+  readAloudOn.value = false;
+  nextTick(() => readAloudButton.value?.focus());
+}
+function hearAt(index) {
+  selectedIndex.value = index;
+  hearWord();
+}
 const dock = ref(null);
 const dockHeight = ref(0);
 let dockObserver = null;
@@ -324,6 +339,7 @@ function onKey(event) {
           <button type="button" class="btn" :lang="langSwitch.lang" :aria-pressed="false" @click="switchLanguage">{{ LANGUAGE_NAMES[langSwitch.lang] || langSwitch.lang }}</button>
         </div>
         <a class="btn" :href="`#/practice/${encodeURIComponent(practiceId)}`">Practice words</a>
+        <button v-if="canReadAloud" ref="readAloudButton" type="button" class="btn" :aria-expanded="readAloudOn" @click="readAloudOn = !readAloudOn"><Icon name="speak" /> Read aloud with the mic</button>
         <button ref="settingsButton" type="button" class="btn" :aria-expanded="showSettings" :aria-controls="showSettings ? 'reading-settings' : undefined" @click="showSettings = !showSettings">
           <Icon name="settings" /> Reading settings
         </button>
@@ -332,6 +348,10 @@ function onKey(event) {
 
     <p v-if="timing.machineTranslated" class="small muted" role="note">Translated automatically.</p>
     <ReadingSettings v-if="showSettings" :prefs="prefs" @change="prefs = $event" @close="closeSettings" />
+    <ReadAloudPanel
+      v-if="readAloudOn" :words="words" :language="timing.language || 'en'" :passage-id="practiceId"
+      @marks="raMarks = $event" @cursor="revealActive" @hear="hearAt" @listen="audio?.pause()" @close="closeReadAloud"
+    />
 
     <audio v-if="soundAlong" ref="audio" :src="audioUrl(passageId)" preload="auto" @play="onPlay" @pause="onPause" @ended="onEnded" @seeked="tick" @error="onAudioError"></audio>
     <p v-if="soundAlong && playNote" role="status" class="notice warn">{{ playNote }}</p>
@@ -359,7 +379,7 @@ function onKey(event) {
             <span v-for="(line, l) in lines" :key="l" class="line">
               <template v-for="(w, k) in line" :key="w.i">
                 <span
-                  :id="`w-${w.i}`" class="w"
+                  :id="`w-${w.i}`" class="w" :data-ra="raMarks[w.i]"
                   :class="{ active: highlightOn && prefs.highlight === 'words' && w.i === activeIndex, band: isBand(w), vocab: wordHelp && (w.vocabId || definedKeys.has(wordKey(w.text))), tappable: soundAlong, haspic: hasVisual(w) }"
                   :tabindex="soundAlong && w.i === focusIndex ? 0 : -1"
                   :role="soundAlong ? 'button' : undefined"

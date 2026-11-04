@@ -1,7 +1,10 @@
 // Self-learning practice: "My words" flashcards with spaced review, and a picture-match quiz. Pure logic, no network.
 //
 // PRIVACY: everything is kept in this browser's localStorage, keyed by passage id. No accounts, nothing is sent anywhere (not even anonymous
-// events). Limit: on a shared classroom device the next student sees the last student's stars, so the screen has a "Clear my words" button.
+// events). The one exception is the optional "Read aloud with the microphone" button in the reader: the browser's own speech recognition
+// sends the voice to the browser maker's speech service while it listens, so it asks for consent first (micConsent.js); Sound Along itself
+// still stores no audio and no words, only counts on this device (readAloudStore.js). Saved words never leave the device.
+// Limit: on a shared classroom device the next student sees the last student's stars, so the screen has a "Clear my words" button.
 // Method (see docs/PRACTICE.md): retrieval practice (answer first, then reveal) and spaced review. The evidence for children is thinner than
 // for adults, so nothing here claims an effect.
 import { wordKey } from "./cards.js";
