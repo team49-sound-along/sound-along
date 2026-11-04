@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createReadAlong, feed, restartFrom } from "./readAloud.js";
-import { calloutText, marksFor, sentenceAround } from "./readAloudMarks.js";
+import { calloutText, marksFor, marksSignature, sentenceAround } from "./readAloudMarks.js";
 
 const words = "I like it because it is fun. We play all day.".split(" ").map((text, i) => ({ i, text, sentence: i < 7 ? 0 : 1 }));
 const start = () => createReadAlong(words, { language: "en" });
@@ -41,4 +41,20 @@ test("callout copy is plain and names the word", () => {
   assert.match(calloutText({ type: "skipped", index: 3, indexes: [3, 4] }, words), /“because” and “it”/);
   assert.match(calloutText({ type: "differs", index: 3, heard: "becoz" }, words), /heard “becoz” where the text says “because”/);
   assert.equal(calloutText(null, words), "");
+});
+
+test("the marks fingerprint only changes when what is shown changes", () => {
+  const first = feed(start(), { id: 0, transcript: "I like", isFinal: false });
+  const again = feed(first.state, { id: 0, transcript: "I like", isFinal: false }); // the same interim text again
+  assert.equal(marksSignature(first.state, null), marksSignature(again.state, null));
+  const more = feed(again.state, { id: 0, transcript: "I like it", isFinal: true });
+  assert.notEqual(marksSignature(again.state, null), marksSignature(more.state, null));
+});
+
+test("a callout changes the fingerprint, and restarting changes it back", () => {
+  const { state } = feed(start(), { id: 0, transcript: "I like because it", isFinal: true });
+  const stop = { type: "skipped", index: 2, indexes: [2] };
+  assert.notEqual(marksSignature(state, null), marksSignature(state, stop));
+  const restarted = restartFrom(state, 2);
+  assert.notEqual(marksSignature(state, stop), marksSignature(restarted, null));
 });

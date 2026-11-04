@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import Icon from "./Icon.vue";
 import AudioBar from "./AudioBar.vue";
 import WordHelp from "./WordHelp.vue";
@@ -49,7 +49,8 @@ const canReadAloud = computed(() => recognitionSupported() && raSettings.value.m
 const shareReadAloud = computed(() => raSettings.value.share && role.value === "student"); // a teacher trying it out adds nothing to the counts
 const readAloudOn = ref(false);
 const readAloudButton = ref(null);
-const raMarks = ref({});
+const raMarks = shallowRef({});
+const raPanel = ref(null);
 function closeReadAloud() {
   readAloudOn.value = false;
   nextTick(() => readAloudButton.value?.focus());
@@ -227,6 +228,7 @@ function onAudioError() {
 function onPlay() {
   playing.value = true;
   playNote.value = "";
+  raPanel.value?.pauseForNarration(); // the microphone must not hear the narration
   track("play");
   cancelAnimationFrame(frame);
   frame = requestAnimationFrame(tick);
@@ -364,7 +366,7 @@ function onKey(event) {
     <p v-if="timing.machineTranslated" class="small muted" role="note">Translated automatically.</p>
     <ReadingSettings v-if="showSettings" :prefs="prefs" @change="prefs = $event" @close="closeSettings" />
     <ReadAloudPanel
-      v-if="readAloudOn" :words="words" :language="timing.language || 'en'" :passage-id="practiceId" :share-passage-id="passageId"
+      v-if="readAloudOn" ref="raPanel" :words="words" :language="timing.language || 'en'" :passage-id="practiceId" :share-passage-id="passageId"
       :class-id="classId" :share="shareReadAloud" :readers="raSettings.readers"
       @marks="raMarks = $event" @cursor="revealActive" @hear="hearAt" @slow="slowAt" @practice="practiceState = loadState(practiceId)" @listen="audio?.pause()" @close="closeReadAloud"
     />

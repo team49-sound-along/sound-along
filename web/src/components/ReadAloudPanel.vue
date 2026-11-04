@@ -6,9 +6,9 @@
 // the browser asks for the microphone itself. The school (teacher switches) decides whether the feature is offered and whether anonymous
 // word counts are shared. Sound Along never records audio and never keeps what was said. Counts are saved on this device (readAloudStore.js);
 // at the end of a session ONE anonymous result is sent, only when the class allows it (readAloudShare.js).
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import { createReadAlong, cursorIndex, feed, restartFrom, summarize } from "../readAloud.js";
-import { calloutText, marksFor, sentenceAround } from "../readAloudMarks.js";
+import { calloutText, marksFor, marksSignature, sentenceAround } from "../readAloudMarks.js";
 import { createRecognizer } from "../speechRecognizer.js";
 import { api } from "../api.js";
 import { buildSharePayload } from "../readAloudShare.js";
@@ -31,7 +31,7 @@ const props = defineProps({
 const emit = defineEmits(["marks", "cursor", "hear", "listen", "close", "slow", "practice"]);
 
 const phase = ref("ready"); // ready | listening | paused | halted | done
-const follower = ref(createReadAlong(props.words, { language: props.language }));
+const follower = shallowRef(createReadAlong(props.words, { language: props.language })); // replaced, never mutated: no deep proxy over a long passage
 const callout = ref(null);
 const starting = ref(false);
 const errorText = ref("");
@@ -52,7 +52,13 @@ const canHear = computed(() => callout.value !== null && wordSlice(props.words, 
 const nextWord = computed(() => props.words[cursorIndex(follower.value)]?.text ?? "");
 const counts = computed(() => `${summary.value.read} of ${summary.value.total} words read`);
 
-watch([follower, callout], () => emit("marks", marksFor(follower.value, callout.value)), { immediate: true });
+let lastMarks = null;
+watch([follower, callout], () => {
+  const signature = marksSignature(follower.value, callout.value);
+  if (signature === lastMarks) return; // interim results that change nothing visible
+  lastMarks = signature;
+  emit("marks", marksFor(follower.value, callout.value));
+}, { immediate: true });
 
 const say = (text) => {
   announcement.value = text;
@@ -77,7 +83,8 @@ function handle(events) {
 }
 
 function onResult(result) {
-  if (phase.value !== "listening") return;
+  // "paused" is accepted too: Stop flushes the last spoken words as a final result a moment after the phase changes.
+  if (phase.value !== "listening" && phase.value !== "paused") return;
   const out = feed(follower.value, result);
   follower.value = out.state;
   handle(out.events);
@@ -126,6 +133,14 @@ function pause() {
   phase.value = "paused";
   say("Stopped listening.");
 }
+/** The passage narration started while the microphone was on: stop listening so the voice is not mistaken for the learner. */
+function pauseForNarration() {
+  if (phase.value !== "listening") return;
+  recognizer?.stop();
+  phase.value = "paused";
+  say("Paused while the passage plays. Press Keep reading when you are ready.");
+}
+defineExpose({ pauseForNarration });
 function carryOn() {
   follower.value = restartFrom(follower.value, cursorIndex(follower.value) ?? 0, { retry: false });
   begin();

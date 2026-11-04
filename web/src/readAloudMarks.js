@@ -15,6 +15,12 @@ export function marksFor(state, callout) {
   return marks;
 }
 
+/** A cheap fingerprint of what the marks would be: the panel re-emits marks only when it changes, so a long passage is not redrawn for every interim result. */
+export function marksSignature(state, callout) {
+  const stop = callout ? `${callout.type}:${callout.index}:${(callout.indexes ?? []).join(",")}` : "";
+  return `${Object.keys(state.read).length}|${state.done ? "d" : cursorIndex(state)}|${stop}`;
+}
+
 /** First word index and the words of the sentence holding `index`, so the learner can restart the sentence. */
 export function sentenceAround(words, index) {
   const sentence = words[index]?.sentence;
