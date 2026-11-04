@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from aws_cdk.assertions import Template
 
-from sound_along.iam_util import API_MANIFEST_KEY, API_RAW_PREFIX
+from sound_along.iam_util import API_INDEX_KEY, API_MANIFEST_KEY, API_PASSAGE_FILE_KEYS, API_RAW_PREFIX
 from tests.helpers import actions_for_roles_starting_with, synth
 
 
@@ -33,7 +33,7 @@ def test_api_role_reads_raw_inputs_and_the_listening_manifest_and_nothing_broade
     role_prefix = "ApiFunctionServiceRole" if mode == "lambda" else "CmsVmInstanceRole"
     actions = actions_for_roles_starting_with(template, role_prefix)
     assert {a for a in actions if a.startswith("s3:")} >= {"s3:PutObject", "s3:GetObject", "s3:ListBucket"}
-    assert not [a for a in actions if a in ("s3:*", "s3:Get*", "s3:Put*", "s3:List*", "s3:DeleteObject")]
+    assert not [a for a in actions if a in ("s3:*", "s3:Get*", "s3:Put*", "s3:List*", "s3:Delete*")]
     statements = _statements(template)
     resources = json.dumps([s["Resource"] for s in statements if "s3:GetObject" in _actions(s)], default=str)
     assert "/raw/*" in resources and API_MANIFEST_KEY in resources
@@ -88,5 +88,27 @@ def test_api_reads_only_timing_files_under_data_so_a_read_aloud_word_is_looked_u
         assert _actions(s) == ["s3:GetObject"]
         assert API_TIMING_KEY in json.dumps(s["Resource"], default=str)
     data_writes = [s for s in grants if "s3:PutObject" in _actions(s) and "/data/" in json.dumps(s["Resource"], default=str)]
-    assert all(API_QUESTIONS_KEY in json.dumps(s["Resource"], default=str) for s in data_writes)
-    assert not any("s3:DeleteObject" in _actions(s) for s in grants)
+    assert all(API_QUESTIONS_KEY in json.dumps(s["Resource"], default=str) or API_INDEX_KEY in json.dumps(s["Resource"], default=str) for s in data_writes)
+
+
+@pytest.mark.parametrize("mode", ["lambda", "ec2"])
+def test_api_can_delete_only_the_per_passage_files_so_a_teacher_can_remove_a_passage(mode: str) -> None:
+    """DELETE /api/passages/:id removes data/<id>.<suffix> and publishes data/index.json again. The delete is limited to those names: never the
+    index, the pictures (content-hashed, possibly shared), raw/ inputs or anything else; and the index is the only new data/ write."""
+    template = synth(mode)
+    role_prefix = "ApiFunctionServiceRole" if mode == "lambda" else "CmsVmInstanceRole"
+    policies = [
+        p for p in template.find_resources("AWS::IAM::Policy").values()
+        if any(str(r.get("Ref", "")).startswith(role_prefix) for r in p["Properties"]["Roles"])
+    ]
+    grants = [s for p in policies for s in p["Properties"]["PolicyDocument"]["Statement"]]
+    deletes = [s for s in grants if "s3:DeleteObject" in _actions(s)]
+    assert deletes, "the API must be able to delete a passage's files"
+    for s in deletes:
+        assert _actions(s) == ["s3:DeleteObject"]
+        resources = json.dumps(s["Resource"], default=str)
+        for key in API_PASSAGE_FILE_KEYS:
+            assert key in resources, key
+        assert "/raw/" not in resources and "data/*\"" not in resources and API_INDEX_KEY not in resources
+    writes = json.dumps([s["Resource"] for s in grants if "s3:PutObject" in _actions(s)], default=str)
+    assert API_INDEX_KEY in writes, "the Library list is published again after a delete"

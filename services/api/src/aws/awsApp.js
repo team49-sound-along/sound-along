@@ -8,6 +8,7 @@ import { createS3Manifest } from "../ratings/manifest.js";
 import { createDynamoCatalog } from "./dynamoCatalog.js";
 import { createDynamoJobs } from "./dynamoJobs.js";
 import { createDynamoStore } from "./dynamoStore.js";
+import { createS3PassageRemoval } from "./s3PassageRemoval.js";
 import { createS3Questions } from "./s3Questions.js";
 import { createS3Recordings } from "./s3Recordings.js";
 import { createS3Sources } from "./s3Sources.js";
@@ -30,6 +31,7 @@ function trustedProxyHops(env) {
 export function createAwsApp(env, clients, logger = console) {
   const { BUCKET: bucket, TABLE_NAME: tableName, STATE_MACHINE_ARN: stateMachineArn } = env;
   const jobs = createDynamoJobs({ client: clients.ddb, tableName });
+  const passages = createDynamoCatalog({ client: clients.ddb, tableName });
   return createApp({
     config: {
       generationEnabled: (env.GENERATION_ENABLED ?? "true") === "true",
@@ -39,7 +41,11 @@ export function createAwsApp(env, clients, logger = console) {
       readerInsights: (env.READER_INSIGHTS ?? "false") === "true", // reader codes need teacher sign-in first: off unless the stack is deployed with it
     },
     store: createDynamoStore({ client: clients.ddb, tableName }),
-    catalog: { ...createDynamoCatalog({ client: clients.ddb, tableName }), ...createS3Timing({ s3: clients.s3, bucket }) },
+    catalog: {
+      ...passages,
+      ...createS3Timing({ s3: clients.s3, bucket }),
+      ...createS3PassageRemoval({ s3: clients.s3, ddb: clients.ddb, bucket, tableName, catalog: passages }),
+    },
     jobs,
     recordings: createS3Recordings({ s3: clients.s3, bucket, presign: clients.presign ?? ((command, opts) => getSignedUrl(clients.s3, command, opts)) }),
     sources: createS3Sources({ s3: clients.s3, bucket }),

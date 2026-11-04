@@ -3,6 +3,7 @@ import express from "express";
 import path from "node:path";
 import { HttpError, errorHandler, fail, ok, route } from "./http.js";
 import { buildInsights } from "./insights.js";
+import { linkedPassageIds } from "./passageGroup.js";
 import { createRateLimiter } from "./rateLimit.js";
 import { contentRoutes } from "./routes/content.js";
 import { mountLocalClips, ratingRoutes } from "./routes/ratings.js";
@@ -16,6 +17,7 @@ import { mountLocalRecordingUpload, recordingRoutes } from "./routes/recordings.
 import { loadVoices } from "./settings.js";
 import { parseAssignmentInput, parseEvent, parseToggle } from "./validate.js";
 
+const PASSAGE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const DATA_FILE = /^[0-9a-f-]{36}\.(mp3|timing\.json|soundalong\.json|cards\.json|questions\.json|(?:place|word|figure)-[a-z0-9-]{1,60}-[0-9a-f]{8}\.(?:jpg|png))$/;
 
 const SECURITY_HEADERS = {
@@ -108,6 +110,28 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
     route(async (req, res) => {
       if (!(await store.deleteAssignment(req.params.id))) throw new HttpError(404, "That assignment no longer exists.");
       res.json(ok({ id: req.params.id }));
+    }),
+  );
+
+  // Teacher: remove a passage from the Library. Its voice pair and translations go with it (the Library shows them as one card), and so do the
+  // assignments of any of them. Like every other teacher action here, the role check is in the UI only: the API has no sign-in yet.
+  api.delete(
+    "/passages/:id",
+    (req, res, next) => (writeLimiter(req.ip) ? next() : next(new HttpError(429, "Too many changes in a short time. Wait a minute and try again."))),
+    route(async (req, res) => {
+      const id = String(req.params.id).toLowerCase();
+      if (!PASSAGE_ID.test(id)) throw new HttpError(400, "That is not a passage id.");
+      if (!catalog.remove) throw new HttpError(501, "Deleting passages is not available here.");
+      const all = await catalog.list();
+      const ids = linkedPassageIds(all, id);
+      if (!ids.length) throw new HttpError(404, "That passage is no longer in the Library.");
+      const { pending } = splitReady(all);
+      if (pending.some((p) => ids.includes(p.id))) throw new HttpError(409, "This passage is still being created. Try again when it is in the Library.");
+      await catalog.remove(ids);
+      const assignments = (await store.listAssignments()).filter((a) => ids.includes(a.passageId));
+      for (const a of assignments) await store.deleteAssignment(a.id);
+      logger.info?.("passages removed", { ids, assignments: assignments.length });
+      res.json(ok({ ids, assignmentsRemoved: assignments.length }));
     }),
   );
 

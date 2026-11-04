@@ -19,6 +19,26 @@ const shown = computed(() => filterLibrary(passages.value, { query: query.value,
 const filtering = computed(() => Boolean(query.value.trim()) || (isTeacher.value && voice.value !== "any") || language.value !== "all");
 const isTeacher = computed(() => role.value === "teacher");
 
+// Teacher: delete a passage card (the API removes its voice pair and translations with it). The list is then loaded again.
+const deletingId = ref("");
+const flash = ref("");
+const actionError = ref("");
+async function remove(passage) {
+  if (!isTeacher.value) return;
+  deletingId.value = passage.id;
+  flash.value = "";
+  actionError.value = "";
+  try {
+    const { assignmentsRemoved } = await api.deletePassage(passage.id);
+    flash.value = `Deleted "${passage.title}" from the Library${assignmentsRemoved ? `, with ${assignmentsRemoved} assignment${assignmentsRemoved === 1 ? "" : "s"}` : ""}.`;
+    await reload();
+  } catch (e) {
+    actionError.value = `Could not delete "${passage.title}". ${e.message}`;
+  } finally {
+    deletingId.value = "";
+  }
+}
+
 // A teacher also sees what is still being made (the audio and its translation). It is never offered for reading until it is complete.
 const pending = ref([]);
 async function checkPending() {
@@ -87,6 +107,9 @@ onBeforeUnmount(() => { clearTimeout(pendingTimer); document.removeEventListener
       </ul>
       <p class="small muted">A passage appears in the Library when every part and its translation are ready. This list updates by itself.</p>
     </section>
+    <p class="sr-only" role="status" aria-live="polite">{{ flash }}</p>
+    <p v-if="isTeacher && flash" class="notice ok">{{ flash }}</p>
+    <p v-if="isTeacher && actionError" class="notice error" role="alert">{{ actionError }}</p>
     <StateBlock
       :loading="loading"
       :error="error"
@@ -99,7 +122,10 @@ onBeforeUnmount(() => { clearTimeout(pendingTimer); document.removeEventListener
       <p v-if="!shown.length" class="card muted" role="status"><template v-if="query.trim()">No passages match &ldquo;{{ query.trim() }}&rdquo; with these filters.</template><template v-else-if="filtering">No passages match these filters.</template><template v-else>No passages to show.</template></p>
       <ul v-else class="grid" :class="layout" aria-label="Passages">
         <li v-for="p in shown" :key="p.id">
-          <PassageCard :passage="p" :can-assign="isTeacher" :list="layout === 'list'" />
+          <PassageCard
+            :passage="p" :can-assign="isTeacher" :can-delete="isTeacher" :busy="deletingId === p.id"
+            :list="layout === 'list'" @remove="remove"
+          />
         </li>
       </ul>
       <p class="small muted" aria-live="polite">{{ shown.length }} of {{ passages.length }} passages</p>
