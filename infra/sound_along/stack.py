@@ -163,13 +163,30 @@ class SoundAlongStack(Stack):
                 f'Web build not found at {web_dist}; skipping BucketDeployment. Run "npm run build" in web/ and synth again.'
             )
             return
+        # index.html is the one file whose name never changes: it must be re-checked on every visit (no-cache: the browser still gets a cheap 304 when
+        # nothing changed), or a browser keeps an old copy and an old app after a deploy. Everything else has a content-hashed name or rarely changes.
+        index_file = web_dist / "index.html"
         s3deploy.BucketDeployment(
             self,
             "WebDeployment",
-            sources=[s3deploy.Source.asset(str(web_dist))],
+            sources=[s3deploy.Source.asset(str(web_dist), exclude=["index.html"])],
             destination_bucket=bucket,
             destination_key_prefix="app",
-            distribution=distribution,
-            distribution_paths=["/*"],
+            cache_control=[s3deploy.CacheControl.from_string("public"), s3deploy.CacheControl.max_age(Duration.hours(1))],
+            prune=False,  # two deployments share the prefix: neither may delete the other's files
             memory_limit=512,
         )
+        if index_file.exists():
+            s3deploy.BucketDeployment(
+                self,
+                "WebIndexDeployment",
+                sources=[s3deploy.Source.data("index.html", index_file.read_text(encoding="utf-8"))],
+                destination_bucket=bucket,
+                destination_key_prefix="app",
+                cache_control=[s3deploy.CacheControl.from_string("no-cache")],
+                content_type="text/html",
+                prune=False,
+                distribution=distribution,
+                distribution_paths=["/*"],
+                memory_limit=512,
+            )

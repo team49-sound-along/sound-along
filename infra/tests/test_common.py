@@ -113,7 +113,7 @@ def test_budget_alerts_at_25_50_80(template: Template) -> None:
 
 
 def test_web_deployment_and_outputs(template: Template) -> None:
-    template.resource_count_is("Custom::CDKBucketDeployment", 1)
+    template.resource_count_is("Custom::CDKBucketDeployment", 2)  # the app files, and index.html on its own (it must never be cached)
     outputs = template.to_json()["Outputs"]
     for name in ("SiteUrl", "BucketName", "TableName", "StateMachineArn", "CmsHost"):
         assert name in outputs, f"missing output {name}"
@@ -123,3 +123,12 @@ def test_no_budget_without_alert_email() -> None:
     """A sandbox that blocks the Budgets API must not fail the deploy."""
     for mode in ("ec2", "lambda"):
         assert synth(mode, alert_email=None).find_resources("AWS::Budgets::Budget") == {}
+
+
+def test_index_html_is_never_cached_but_the_other_app_files_are(template: Template) -> None:
+    """Without this a browser keeps an old index.html after a deploy and shows the old app (for example no new voice choices)."""
+    deployments = template.find_resources("Custom::CDKBucketDeployment")
+    headers = sorted(str(d["Properties"].get("SystemMetadata", {}).get("cache-control", "")) for d in deployments.values())
+    assert any(h == "no-cache" for h in headers), headers
+    assert any("max-age=3600" in h for h in headers), headers
+    assert all(d["Properties"].get("Prune") is False for d in deployments.values()), "two deployments share one prefix: neither may prune"
