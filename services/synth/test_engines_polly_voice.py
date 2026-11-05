@@ -11,7 +11,7 @@ from engines import create_engine
 def fake_boto3(monkeypatch):
     made = []
     module = types.ModuleType("boto3")
-    module.client = lambda service, region_name=None: made.append((service, region_name)) or object()
+    module.client = lambda service, region_name=None, **kwargs: made.append((service, region_name)) or object()
     monkeypatch.setitem(sys.modules, "boto3", module)
     monkeypatch.delenv("TTS_ENGINE", raising=False)
     monkeypatch.delenv("POLLY_VOICE", raising=False)
