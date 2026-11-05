@@ -55,10 +55,13 @@ def create_engine(
 
         from polly_engine import PollyEngine, polly_choice
 
-        client = boto3.client("polly", region_name=os.environ.get("AWS_REGION", "us-west-2"))
+        from botocore.config import Config
+
+        client = boto3.client("polly", region_name=os.environ.get("AWS_REGION", "us-west-2"), config=Config(retries={"max_attempts": 6, "mode": "adaptive"}))
         voice, engine = polly_choice(language, options, os.environ)
         other = "es" if language == "en" else "en"
         other_voice, other_engine = polly_choice(other, options, os.environ)  # the other language's voice reads foreign names and words in a mixed text
         foreign = PollyEngine(client, voice=other_voice, engine=other_engine, language=other)
-        return PollyEngine(client, voice=voice, engine=engine, language=language, foreign=foreign)
+        return PollyEngine(client, voice=voice, engine=engine, language=language, foreign=foreign,
+                           respellings=load_respellings() if respellings is None else respellings)
     raise ValueError(f"Unknown TTS_ENGINE {chosen!r}. Use 'kokoro', 'phonon' or 'polly'.")

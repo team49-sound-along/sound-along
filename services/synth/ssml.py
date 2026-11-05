@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from mixed import ForeignSpan
 
@@ -26,6 +26,7 @@ class SsmlDoc:
     ssml: str
     # (ssml_start, ssml_end, plain_start) in characters, one per run of text copied from the sentence; the gaps between runs are markup.
     runs: tuple[tuple[int, int, int], ...]
+    edits: int = 0  # pronunciation tags (sub / phoneme) inserted around the sentence's own words
 
     def origin_of(self, ssml_char_offset: int) -> int | None:
         for s_start, s_end, plain_start in self.runs:
@@ -39,14 +40,43 @@ def _plain_len(escaped: str) -> int:
     return len(re.sub(r"&(?:amp|lt|gt|quot|apos);", "x", escaped))
 
 
-def build_ssml(text: str, spans: Sequence[ForeignSpan]) -> SsmlDoc:
-    """``<speak>`` document for ``text``; spans must be sorted and non-overlapping (mixed.clean_spans)."""
+Rule = tuple[str, str]  # ("alias", respelling) or ("ipa", phonemes)
+IPA_ALPHABET_OK = re.compile(r"^[\w\u0250-\u02FF\u0300-\u036F\u1D00-\u1DBF\u02B0-\u02FF.ˈˌː\- ]+$")
+
+
+def rules_from_respellings(respellings: Mapping[str, str] | None) -> dict[str, Rule]:
+    """Teacher respellings as Polly rules. A plain respelling ("gay uh teez") becomes a <sub alias>: the voice reads the alias, the page keeps the
+    spelling. A value written /like this/ is taken as IPA phonemes. Anything that cannot be written safely in SSML is dropped."""
+    rules: dict[str, Rule] = {}
+    for word, value in (respellings or {}).items():
+        word, text = str(word).strip().lower(), str(value).strip()
+        if not word or not text:
+            continue
+        if len(text) > 2 and text.startswith("/") and text.endswith("/"):
+            if IPA_ALPHABET_OK.match(text[1:-1]):
+                rules[word] = ("ipa", text[1:-1])
+        elif len(text) <= 80:
+            rules[word] = ("alias", text)
+    return rules
+
+
+def _pronunciation_markup(rule: Rule) -> str:
+    kind, value = rule
+    return f'<sub alias="{escape_xml(value)}">' if kind == "alias" else f'<phoneme alphabet="ipa" ph="{escape_xml(value)}">'
+
+
+def build_ssml(text: str, spans: Sequence[ForeignSpan], rules: Mapping[str, Rule] | None = None) -> SsmlDoc:
+    """``<speak>`` document for ``text``; spans must be sorted and non-overlapping (mixed.clean_spans). ``rules`` (word -> pronunciation, see
+    rules_from_respellings) wrap the sentence's own words outside foreign spans; the word itself stays inside the tag, so the speech marks still
+    name the original spelling."""
     out = ["<speak>"]
     runs: list[tuple[int, int, int]] = []
     length = len(out[0])
     cursor = 0
+    edits = 0
+    word_rule = (re.compile(r"(?<!\w)(" + "|".join(re.escape(w) for w in sorted(rules, key=len, reverse=True)) + r")(?!\w)", re.IGNORECASE) if rules else None)
 
-    def add_text(start: int, end: int) -> None:
+    def add_run(start: int, end: int) -> None:
         nonlocal length
         if end <= start:
             return
@@ -54,6 +84,26 @@ def build_ssml(text: str, spans: Sequence[ForeignSpan]) -> SsmlDoc:
         runs.append((length, length + len(piece), start))
         out.append(piece)
         length += len(piece)
+
+    def add_text(start: int, end: int, own_words: bool = True) -> None:
+        nonlocal length, edits
+        if end <= start:
+            return
+        if word_rule is None or not own_words:
+            add_run(start, end)
+            return
+        at = start
+        for match in word_rule.finditer(text, start, end):
+            add_run(at, match.start())
+            markup = _pronunciation_markup(rules[match.group(1).lower()])  # type: ignore[index]
+            out.append(markup)
+            length += len(markup)
+            add_run(match.start(), match.end())
+            out.append("</sub>" if markup.startswith("<sub") else "</phoneme>")
+            length += len(out[-1])
+            edits += 1
+            at = match.end()
+        add_run(at, end)
 
     def add_markup(markup: str) -> None:
         nonlocal length
@@ -63,12 +113,12 @@ def build_ssml(text: str, spans: Sequence[ForeignSpan]) -> SsmlDoc:
     for span in spans:
         add_text(cursor, span.start)
         add_markup(f'<lang xml:lang="{LANG_TAG[span.lang]}">')
-        add_text(span.start, span.end)
+        add_text(span.start, span.end, own_words=False)
         add_markup("</lang>")
         cursor = span.end
     add_text(cursor, len(text))
     add_markup("</speak>")
-    return SsmlDoc("".join(out), tuple(runs))
+    return SsmlDoc("".join(out), tuple(runs), edits)
 
 
 def word_marks(marks: Sequence[dict[str, Any]], doc: SsmlDoc | None) -> list[dict[str, Any]]:

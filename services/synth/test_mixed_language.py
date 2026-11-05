@@ -382,3 +382,90 @@ def test_a_sentence_without_foreign_words_is_read_by_the_base_voice_only():
     client = VoiceFake()
     spliced_engine(client).synthesize("It is a nice day.", spans=())
     assert {c["VoiceId"] for c in client.calls} == {"Joanna"}
+
+
+# ---- Polly rate limit and teacher pronunciations -------------------------------------------------------------------------------------------
+def test_a_throttled_request_is_retried_with_a_pause_and_the_sentence_still_succeeds(monkeypatch):
+    import polly_engine as pe
+
+    monkeypatch.setattr(pe.time, "sleep", lambda s: None)
+    monkeypatch.setattr(pe.GATE, "wait", lambda: None)
+
+    class Throttled(FakePolly):
+        def __init__(self):
+            super().__init__(lambda text, kind: [{"time": 0, "type": "word", "start": 0, "end": 5, "value": "Hello"}])
+            self.failures = 3
+
+        def synthesize_speech(self, **kw):
+            if self.failures:
+                self.failures -= 1
+                err = Exception("Rate exceeded")
+                err.response = {"Error": {"Code": "ThrottlingException"}}
+                raise err
+            return super().synthesize_speech(**kw)
+
+    out = PollyEngine(Throttled()).synthesize("Hello")
+    assert out.audio.size and [t.text for t in out.tokens] == ["Hello"]
+
+
+def test_a_non_throttle_error_is_not_retried_forever(monkeypatch):
+    import polly_engine as pe
+
+    monkeypatch.setattr(pe.GATE, "wait", lambda: None)
+    calls = []
+
+    class Broken(FakePolly):
+        def synthesize_speech(self, **kw):
+            calls.append(1)
+            raise ValueError("bad request")
+
+    with pytest.raises(ValueError):
+        PollyEngine(Broken()).synthesize("Hello")
+    assert len(calls) == 1
+
+
+def test_the_rate_gate_spaces_requests_apart():
+    from polly_engine import RateGate
+
+    now, slept = [0.0], []
+    gate = RateGate(per_second=4, clock=lambda: now[0], sleep=lambda s: (slept.append(round(s, 3)), now.__setitem__(0, now[0] + s)))
+    for _ in range(4):
+        gate.wait()
+    assert slept == [0.25, 0.25, 0.25], "the first request goes at once, the next ones a quarter second apart"
+
+
+def test_a_teacher_pronunciation_is_sent_to_polly_as_a_sub_alias_and_the_word_keeps_its_own_spelling(monkeypatch):
+    from ssml import rules_from_respellings
+
+    monkeypatch.setenv("MIXED_LANGUAGE", "off")
+    text = "One food is called songpyeon."
+
+    class Recording(FakePolly):
+        def __init__(self):
+            super().__init__(None)
+            self.sent = []
+
+        def synthesize_speech(self, **kw):
+            self.sent.append(kw)
+            if kw["OutputFormat"] == "pcm":
+                return {"AudioStream": io.BytesIO(self.pcm)}
+            ssml = kw["Text"]
+            marks, cursor = [], 0
+            for n, word in enumerate(["One", "food", "is", "called", "songpyeon"]):
+                i = ssml.index(word, cursor)
+                marks.append({"time": n * 300, "type": "word", "start": i, "end": i + len(word), "value": word})
+                cursor = i + len(word)
+            return {"AudioStream": io.BytesIO("\n".join(json.dumps(m) for m in marks).encode())}
+
+    client = Recording()
+    out = PollyEngine(client, respellings={"songpyeon": "sung pyun"}).synthesize(text)
+    assert all(c["TextType"] == "ssml" for c in client.sent)
+    assert '<sub alias="sung pyun">songpyeon</sub>' in client.sent[0]["Text"]
+    assert [t.text for t in out.tokens] == ["One", "food", "is", "called", "songpyeon"], "the page still shows and highlights the original spelling"
+    assert rules_from_respellings({"x": "/ˈeks/", "bad": "<script>"})["x"] == ("ipa", "ˈeks")
+
+
+def test_a_sentence_without_a_respelled_word_stays_plain_text():
+    client = VoiceFake()
+    PollyEngine(client, respellings={"songpyeon": "sung pyun"}).synthesize("Hello there")
+    assert all(c["TextType"] == "text" for c in client.calls)

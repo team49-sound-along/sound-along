@@ -8,6 +8,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
+import time
 import unicodedata
 from typing import Any, Mapping, Sequence
 
@@ -16,7 +18,7 @@ import numpy as np
 from engine import SAMPLE_RATE, SentenceAudio
 from mixed import ForeignSpan
 from mixed_kokoro import splice_sentence
-from ssml import SsmlDoc, build_ssml, word_marks
+from ssml import Rule, SsmlDoc, build_ssml, rules_from_respellings, word_marks
 from word_mapper import EngineToken
 
 LOG = logging.getLogger(__name__)
@@ -92,6 +94,34 @@ def polly_voice_for(language: str, env: Any) -> tuple[str, str]:
     return polly_choice(language, {}, env)
 
 
+class RateGate:
+    """Spaces Polly requests out. The account allows 8 SynthesizeSpeech requests a second per engine (neural, generative), shared by every running
+    generator, and each sentence costs two requests (audio and word marks). A gate of about 3.5 a second per process keeps two generators at
+    the limit; a request that is throttled anyway is retried with a growing pause instead of failing the whole passage."""
+
+    def __init__(self, per_second: float = 3.5, clock=time.monotonic, sleep=time.sleep) -> None:
+        self._gap, self._clock, self._sleep = 1.0 / per_second, clock, sleep
+        self._next = 0.0
+        self._lock = threading.Lock()
+
+    def wait(self) -> None:
+        with self._lock:
+            now = self._clock()
+            start = max(now, self._next)
+            self._next = start + self._gap
+        if start > now:
+            self._sleep(start - now)
+
+
+GATE = RateGate(float(os.environ.get("POLLY_REQUESTS_PER_SECOND") or 3.5))
+THROTTLE_TRIES = 8
+
+
+def _is_throttle(exc: Exception) -> bool:
+    code = (getattr(exc, "response", None) or {}).get("Error", {}).get("Code", "")
+    return "Throttl" in str(code) or "Throttl" in type(exc).__name__ or "Rate exceeded" in str(exc)
+
+
 def _is_invalid_ssml(exc: Exception) -> bool:
     code = (getattr(exc, "response", None) or {}).get("Error", {}).get("Code", "")
     return "InvalidSsml" in str(code) or "InvalidSsml" in type(exc).__name__
@@ -100,8 +130,10 @@ def _is_invalid_ssml(exc: Exception) -> bool:
 class PollyEngine:
     name = "polly"
 
-    def __init__(self, client: Any, voice: str = "Joanna", engine: str = "neural", language: str = "en", foreign: "PollyEngine | None" = None) -> None:
+    def __init__(self, client: Any, voice: str = "Joanna", engine: str = "neural", language: str = "en", foreign: "PollyEngine | None" = None,
+                 respellings: Mapping[str, str] | None = None) -> None:
         self._client = client
+        self._rules: dict[str, Rule] = rules_from_respellings(respellings)  # teacher pronunciations: <sub alias> / <phoneme> around those words
         self.voice = voice
         self._engine = engine
         self._language = language
@@ -120,7 +152,7 @@ class PollyEngine:
             except Exception as exc:  # noqa: BLE001
                 LOG.warning("Polly voice splice failed (%s); using language tags for this sentence", exc)
         if spans and self.accepts_spans:
-            doc = build_ssml(sentence, spans)
+            doc = build_ssml(sentence, spans, self._rules)
             try:
                 return self._speak(doc.ssml, doc, len(spans))
             except Exception as exc:  # noqa: BLE001
@@ -138,16 +170,41 @@ class PollyEngine:
         return splice_sentence(sentence, spans, self._language, synth, base_timed=both_timed, foreign_timed=both_timed)
 
     def _speak(self, text: str, doc: SsmlDoc | None, applied: int) -> SentenceAudio:
+        if doc is None and self._rules:  # a plain sentence that contains a respelled word is sent as SSML with just that word's tag
+            candidate = build_ssml(text, (), self._rules)
+            if candidate.edits:
+                try:
+                    return self._speak_ssml(candidate, applied)
+                except Exception as exc:  # noqa: BLE001
+                    if not _is_invalid_ssml(exc):
+                        raise
+                    LOG.warning("Polly rejected a pronunciation tag; reading the sentence as written: %.60s", text)
         audio = self._audio(text, doc)
         if audio.size == 0 or not self.native_timing:
             return SentenceAudio(audio, (), applied if audio.size else 0)
         return SentenceAudio(audio, self._tokens(text, doc, len(audio) / SAMPLE_RATE), applied)
 
+    def _speak_ssml(self, doc: SsmlDoc, applied: int) -> SentenceAudio:
+        audio = self._audio(doc.ssml, doc)
+        if audio.size == 0 or not self.native_timing:
+            return SentenceAudio(audio, (), applied if audio.size else 0)
+        return SentenceAudio(audio, self._tokens(doc.ssml, doc, len(audio) / SAMPLE_RATE), applied)
+
     def _request(self, text: str, doc: SsmlDoc | None, **extra: Any) -> bytes:
-        response = self._client.synthesize_speech(
-            Text=text, VoiceId=self.voice, Engine=self._engine, TextType="text" if doc is None else "ssml", **extra
-        )
-        return response["AudioStream"].read()
+        for attempt in range(THROTTLE_TRIES):
+            GATE.wait()
+            try:
+                response = self._client.synthesize_speech(
+                    Text=text, VoiceId=self.voice, Engine=self._engine, TextType="text" if doc is None else "ssml", **extra
+                )
+                return response["AudioStream"].read()
+            except Exception as exc:  # noqa: BLE001
+                if not _is_throttle(exc) or attempt == THROTTLE_TRIES - 1:
+                    raise
+                pause = min(0.5 * 2**attempt, 8.0)
+                LOG.warning("Polly throttled a request (try %d of %d); pausing %.1fs", attempt + 1, THROTTLE_TRIES, pause)
+                time.sleep(pause)
+        raise RuntimeError("unreachable")
 
     def _audio(self, text: str, doc: SsmlDoc | None = None) -> np.ndarray:
         raw = self._request(text, doc, OutputFormat="pcm", SampleRate=str(POLLY_PCM_RATE))
