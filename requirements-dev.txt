@@ -9,3 +9,4 @@ faster-whisper==1.2.1
 pytest==9.2.0
 ptts==0.6.0   # Phonon voices (MIT or Apache-2.0); Rust wheel, no PyTorch
 sentencepiece==0.2.2   # tokenizer for the Opus-MT translation models (Apache-2.0)
+boto3==1.41.0               # Amazon Polly / Translate clients (part of the Lambda runtime; needed here to run the AWS-facing scripts and tests)
