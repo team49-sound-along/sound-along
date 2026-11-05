@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Bundle the CMS API with esbuild into infra/build/ (run before `cdk synth` / `cdk deploy`).
 
-  build/api-lambda/src/index.mjs  + config/voices.json   handler: src/index.handler  (cmsHost=lambda)
-  build/api-vm/src/serverVm.js    + config/voices.json   `node src/serverVm.js`       (cmsHost=ec2)
+  build/api-lambda/src/index.mjs  + config/*.json   handler: src/index.handler  (cmsHost=lambda)
+  build/api-vm/src/serverVm.js    + config/*.json   `node src/serverVm.js`       (cmsHost=ec2)
 
-The app finds config/voices.json at ../config relative to the bundle, hence the src/ + config/ layout.
+The app finds config/*.json (voices.json, polly-voices.json, polly-voice-ratings.json) at ../config relative to the bundle, hence the src/ + config/ layout.
 Needs Node and npx (esbuild is fetched by npx at the pinned version).
 """
 from __future__ import annotations
@@ -50,7 +50,8 @@ def bundle(entry_relative: str, out_name: str, entry_out: str) -> Path:
         check=True,
         cwd=API_ROOT,
     )
-    shutil.copy(API_ROOT / "config" / "voices.json", out_dir / "config" / "voices.json")
+    for config_file in sorted((API_ROOT / "config").glob("*.json")):  # every config document the API reads at start (voices, Polly voices, Polly ratings)
+        shutil.copy(config_file, out_dir / "config" / config_file.name)
     (out_dir / "package.json").write_text(json.dumps({"type": "module"}) + "\n")
     return out_dir
 
