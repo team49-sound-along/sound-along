@@ -5,6 +5,7 @@ Every reply carries its token counts, so the real cost of a run is measured and 
 from __future__ import annotations
 
 import json
+import time
 import urllib.request
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -26,7 +27,9 @@ class ModelReply:
 
 
 class ModelAdapter(Protocol):
-    def complete(self, system: str, user: str, *, max_tokens: int = 1500, temperature: float = 0.2) -> ModelReply: ...
+    def complete(
+        self, system: str, user: str, *, max_tokens: int = 1500, temperature: float = 0.2, json_schema: dict[str, Any] | None = None
+    ) -> ModelReply: ...
 
 
 def _http_post(url: str, payload: dict[str, Any], timeout: float) -> dict[str, Any]:
@@ -59,7 +62,9 @@ class OllamaAdapter:
         self.model, self.host, self._post, self.timeout = model, host.rstrip("/"), post or _http_post, timeout
         self.think = _default_think(model) if think == "auto" else think
 
-    def complete(self, system: str, user: str, *, max_tokens: int = 1500, temperature: float = 0.2) -> ModelReply:
+    def complete(
+        self, system: str, user: str, *, max_tokens: int = 1500, temperature: float = 0.2, json_schema: dict[str, Any] | None = None
+    ) -> ModelReply:  # json_schema is ignored: local models are only asked in words
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
@@ -84,8 +89,22 @@ def _default_bedrock_client(region: str) -> Any:
     return boto3.client("bedrock-runtime", region_name=region)
 
 
+SCHEMA_TOOL = "reply"
+MIN_SECONDS_BETWEEN_CALLS = 1.1  # the hackathon limit is 1 request per second; the margin covers clock jitter
+
+
+def _is_nova(model_id: str) -> bool:
+    return "amazon.nova" in model_id.lower()
+
+
 class BedrockAdapter:
-    """A model on Amazon Bedrock, called through the Converse API. Tested here with a fake client only; see docs/QUESTIONS.md for sandbox steps."""
+    """A model on Amazon Bedrock, called through the Converse API. Tested here with a fake client only; see docs/QUESTIONS.md for sandbox steps.
+
+    Three behaviours depend on the model or the hackathon rules:
+    - Amazon Nova can be forced to answer in a JSON Schema by describing the answer as a tool (AWS calls this constrained decoding). `use_schema` is on for Nova.
+    - Nova has a small output limit, so `max_output_tokens` caps every request (2048 for Nova).
+    - Calls are spaced `min_interval` seconds apart (the hackathon allows 1 request per second).
+    """
 
     def __init__(
         self,
@@ -93,9 +112,18 @@ class BedrockAdapter:
         region: str = DEFAULT_REGION,
         client: Any | None = None,
         client_factory: Callable[[str], Any] | None = None,
+        use_schema: bool | None = None,
+        max_output_tokens: int | None = None,
+        min_interval: float = MIN_SECONDS_BETWEEN_CALLS,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self.model_id, self.region = model_id, region
         self._client, self._factory = client, client_factory or _default_bedrock_client
+        self.use_schema = _is_nova(model_id) if use_schema is None else use_schema
+        self.max_output_tokens = (2048 if _is_nova(model_id) else None) if max_output_tokens is None else max_output_tokens
+        self._min_interval, self._clock, self._sleep = min_interval, clock, sleep
+        self._last_call: float | None = None
 
     def _get_client(self) -> Any:
         if self._client is None:
@@ -105,19 +133,40 @@ class BedrockAdapter:
                 raise AdapterError("boto3 is not installed; run `pip install boto3` (it is already present in AWS Lambda)") from error
         return self._client
 
-    def complete(self, system: str, user: str, *, max_tokens: int = 1500, temperature: float = 0.2) -> ModelReply:
+    def _wait_for_turn(self) -> None:
+        if self._last_call is not None:
+            remaining = self._min_interval - (self._clock() - self._last_call)
+            if remaining > 0:
+                self._sleep(remaining)
+        self._last_call = self._clock()
+
+    def complete(
+        self, system: str, user: str, *, max_tokens: int = 1500, temperature: float = 0.2, json_schema: dict[str, Any] | None = None
+    ) -> ModelReply:
         client = self._get_client()
+        cap = min(max_tokens, self.max_output_tokens) if self.max_output_tokens else max_tokens
+        request: dict[str, Any] = {
+            "modelId": self.model_id,
+            "system": [{"text": system}],
+            "messages": [{"role": "user", "content": [{"text": user}]}],
+            "inferenceConfig": {"maxTokens": cap, "temperature": temperature},
+        }
+        if json_schema is not None and self.use_schema:
+            request["toolConfig"] = {
+                "tools": [{"toolSpec": {"name": SCHEMA_TOOL, "description": "Return the answer in this exact structure.", "inputSchema": {"json": json_schema}}}],
+                "toolChoice": {"any": {}},
+            }
+        self._wait_for_turn()
         try:
-            response = client.converse(
-                modelId=self.model_id,
-                system=[{"text": system}],
-                messages=[{"role": "user", "content": [{"text": user}]}],
-                inferenceConfig={"maxTokens": max_tokens, "temperature": temperature},
-            )
+            response = client.converse(**request)
         except Exception as error:  # noqa: BLE001 (boto raises many types; every one is reported, none is swallowed)
             raise AdapterError(f"Bedrock call failed: {error}") from error
         blocks = response.get("output", {}).get("message", {}).get("content", [])
         text = "".join(block["text"] for block in blocks if "text" in block)  # reasoning blocks have no "text" key and are skipped
+        if not text.strip():
+            tool = next((block["toolUse"] for block in blocks if "toolUse" in block), None)
+            if tool is not None:
+                text = json.dumps(tool.get("input", {}))  # schema mode: the structured answer arrives as the tool's input
         if not text.strip():
             raise AdapterError("Bedrock returned no text (the model may have used every token reasoning; raise max_tokens)")
         usage = response.get("usage", {})
@@ -131,7 +180,9 @@ class FakeAdapter:
         self._replies = list(replies)
         self.calls: list[tuple[str, str]] = []
 
-    def complete(self, system: str, user: str, *, max_tokens: int = 1500, temperature: float = 0.2) -> ModelReply:
+    def complete(
+        self, system: str, user: str, *, max_tokens: int = 1500, temperature: float = 0.2, json_schema: dict[str, Any] | None = None
+    ) -> ModelReply:
         self.calls.append((system, user))
         if not self._replies:
             raise AdapterError("FakeAdapter has no more scripted replies")
@@ -139,11 +190,11 @@ class FakeAdapter:
         return reply if isinstance(reply, ModelReply) else ModelReply(reply, 0, 0)
 
 
-def adapter_from_spec(spec: str, region: str = DEFAULT_REGION, client: Any | None = None) -> ModelAdapter:
+def adapter_from_spec(spec: str, region: str = DEFAULT_REGION, client: Any | None = None, min_interval: float | None = None) -> ModelAdapter:
     """`ollama:<name>` or `bedrock:<modelId>`. Only the first colon splits, because model names contain colons."""
     kind, _, name = spec.partition(":")
     if kind == "ollama" and name:
         return OllamaAdapter(name)
     if kind == "bedrock" and name:
-        return BedrockAdapter(name, region=region, client=client)
+        return BedrockAdapter(name, region=region, client=client, min_interval=MIN_SECONDS_BETWEEN_CALLS if min_interval is None else min_interval)
     raise ValueError(f"unknown model spec {spec!r}; use ollama:<name> or bedrock:<modelId>")

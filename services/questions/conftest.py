@@ -44,7 +44,7 @@ class PretendModel:
         self.with_passage, self.without_passage, self.tokens = with_passage, without_passage, tokens
         self.calls = []
 
-    def complete(self, system, user, *, max_tokens=1500, temperature=0.2):
+    def complete(self, system, user, *, max_tokens=1500, temperature=0.2, json_schema=None):
         import json
 
         from qg_adapters import ModelReply

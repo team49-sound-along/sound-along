@@ -9,6 +9,30 @@ from qg_extract import extract_json
 PROMPT_VERSION = "q2"
 LETTERS = "ABCD"
 
+# JSON Schemas for models that can be forced to follow one (Amazon Nova through Bedrock tool use). Other models are only asked in words.
+GENERATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "questions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "skill": {"type": "string", "enum": ["literal", "inferential"]},
+                    "question": {"type": "string"},
+                    "choices": {"type": "array", "items": {"type": "string"}},
+                    "answerIndex": {"type": "integer"},
+                    "evidenceQuote": {"type": "string"},
+                    "evidenceSentence": {"type": "integer"},
+                },
+                "required": ["skill", "question", "choices", "answerIndex", "evidenceQuote", "evidenceSentence"],
+            },
+        }
+    },
+    "required": ["questions"],
+}
+ANSWER_SCHEMA = {"type": "object", "properties": {"answer": {"type": "string", "enum": list(LETTERS)}}, "required": ["answer"]}
+
 _GENERATION_SYSTEM = (
     "You write reading comprehension questions for children in grades 2 to 5. Use simple words and short sentences. "
     "Every question must be answerable from the passage alone, never from outside knowledge. "

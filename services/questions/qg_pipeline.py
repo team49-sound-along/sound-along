@@ -9,7 +9,7 @@ from qg_adapters import AdapterError, ModelAdapter
 from qg_cost import Price, estimate_usd
 from qg_extract import extract_json
 from qg_passage import sentences_from_timing
-from qg_prompt import PROMPT_VERSION, generation_messages
+from qg_prompt import GENERATION_SCHEMA, PROMPT_VERSION, generation_messages
 from qg_validate import shuffle_choices, too_similar, validate_question
 from qg_verify import verify_question
 
@@ -43,7 +43,7 @@ def generate_draft(
     count = min(max(n, 1), MAX_QUESTIONS)
 
     system, user = generation_messages(title, sentences, count)
-    reply = adapter.complete(system, user, max_tokens=GENERATION_MAX_TOKENS, temperature=0.4)
+    reply = adapter.complete(system, user, max_tokens=GENERATION_MAX_TOKENS, temperature=0.4, json_schema=GENERATION_SCHEMA)
     calls, tokens_in, tokens_out = 1, reply.input_tokens, reply.output_tokens
     try:
         raw_questions = extract_json(reply.text, require_key="questions")["questions"]

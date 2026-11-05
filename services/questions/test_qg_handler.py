@@ -94,3 +94,19 @@ def test_failures_are_reported_not_raised_and_write_nothing():
     result = run(s3, adapter=FakeAdapter([ModelReply("sorry I cannot", 5, 2)]))
     assert result["status"] == "failed" and "JSON" in result["error"] and s3.puts == []
     assert run(FakeS3({}))["status"] == "failed"  # the timing file does not exist yet
+
+
+def test_min_interval_setting_reaches_the_bedrock_adapter():
+    from qg_adapters import BedrockAdapter, adapter_from_spec
+    assert adapter_from_spec("bedrock:amazon.nova-lite-v1:0", client=object(), min_interval=2.2)._min_interval == 2.2
+    assert adapter_from_spec("bedrock:amazon.nova-lite-v1:0", client=object())._min_interval == 1.1
+    assert isinstance(adapter_from_spec("bedrock:m", client=object(), min_interval=0), BedrockAdapter)
+
+
+def test_a_bad_min_interval_is_a_loud_configuration_error():
+    import pytest
+    from qg_handler import _min_interval
+    assert _min_interval({}) is None and _min_interval({"QUESTIONS_MIN_INTERVAL": "2.2"}) == 2.2
+    for bad in ("fast", "-1", "99"):
+        with pytest.raises(ValueError, match="QUESTIONS_MIN_INTERVAL"):
+            _min_interval({"QUESTIONS_MIN_INTERVAL": bad})

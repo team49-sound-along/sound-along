@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from qg_adapters import ModelAdapter
-from qg_prompt import answer_messages, parse_answer
+from qg_prompt import ANSWER_SCHEMA, answer_messages, parse_answer
 
 ANSWER_MAX_TOKENS = 800  # reasoning models count their thinking against this, so it is not tiny
 
@@ -23,7 +23,7 @@ class VerifyResult:
 
 def _pick(adapter: ModelAdapter, question: Mapping[str, Any], sentences: Sequence[str] | None) -> tuple[int | None, int, int]:
     system, user = answer_messages(question["question"], question["choices"], sentences)
-    reply = adapter.complete(system, user, max_tokens=ANSWER_MAX_TOKENS, temperature=0.0)
+    reply = adapter.complete(system, user, max_tokens=ANSWER_MAX_TOKENS, temperature=0.0, json_schema=ANSWER_SCHEMA)
     return parse_answer(reply.text, len(question["choices"])), reply.input_tokens, reply.output_tokens
 
 

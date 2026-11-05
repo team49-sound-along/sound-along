@@ -44,13 +44,27 @@ def _already_reviewed(s3: Any, bucket: str, passage_id: str) -> bool:
         return False
 
 
+def _min_interval(env: Mapping[str, str]) -> float | None:
+    """Seconds between Bedrock calls (QUESTIONS_MIN_INTERVAL). Unset means the adapter default; a bad value is a configuration error, so it is loud."""
+    raw = env.get("QUESTIONS_MIN_INTERVAL")
+    if raw in (None, ""):
+        return None
+    try:
+        value = float(raw)
+    except ValueError:
+        value = -1.0
+    if not 0 <= value <= 30:
+        raise ValueError(f"QUESTIONS_MIN_INTERVAL must be a number of seconds from 0 to 30, not {raw!r}")
+    return value
+
+
 def handle(
     event: Mapping[str, Any],
     *,
     s3: Any,
     bucket: str,
     env: Mapping[str, str],
-    adapter_factory: Callable[[str, str], ModelAdapter] = lambda spec, region: adapter_from_spec(spec, region),
+    adapter_factory: Callable[[str, str], ModelAdapter] | None = None,
     today: str | None = None,
 ) -> dict[str, Any]:
     passage_id = str(event.get("passageId", ""))
@@ -64,9 +78,11 @@ def handle(
     if _already_reviewed(s3, bucket, passage_id):
         return {"status": "skipped", "passageId": passage_id, "reason": "reviewed questions already exist"}
 
+    interval = _min_interval(env)
+    factory = adapter_factory or (lambda spec, region: adapter_from_spec(spec, region, min_interval=interval))
     try:
         timing = _read_json(s3, bucket, f"data/{passage_id}.timing.json")
-        adapter = adapter_factory(spec, env.get("QUESTIONS_REGION", DEFAULT_REGION))
+        adapter = factory(spec, env.get("QUESTIONS_REGION", DEFAULT_REGION))
         draft = generate_draft(
             timing, adapter, n=int(env.get("QUESTIONS_COUNT", "4")), model=spec, price=price_for(spec), today=today or date.today().isoformat()
         )
