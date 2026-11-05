@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import unicodedata
 from typing import Any, Mapping, Sequence
 
@@ -14,6 +15,7 @@ import numpy as np
 
 from engine import SAMPLE_RATE, SentenceAudio
 from mixed import ForeignSpan
+from mixed_kokoro import splice_sentence
 from ssml import SsmlDoc, build_ssml, word_marks
 from word_mapper import EngineToken
 
@@ -32,9 +34,6 @@ POLLY_VOICES: dict[str, dict[str, Any]] = {
     "Stephen": {"lang": "en-US", "engines": ("neural", "generative")},
     "Gregory": {"lang": "en-US", "engines": ("neural", "long-form")},
     "Joey": {"lang": "en-US", "engines": ("neural",)},
-    "Ivy": {"lang": "en-US", "engines": ("neural",)},
-    "Kevin": {"lang": "en-US", "engines": ("neural",)},
-    "Justin": {"lang": "en-US", "engines": ("neural",)},
     "Matthew": {"lang": "en-US", "engines": ("neural", "generative", "long-form")},
     "Ruth": {"lang": "en-US", "engines": ("neural", "generative", "long-form")},
     "Lupe": {"lang": "es-US", "engines": ("neural", "generative")},
@@ -101,15 +100,25 @@ def _is_invalid_ssml(exc: Exception) -> bool:
 class PollyEngine:
     name = "polly"
 
-    def __init__(self, client: Any, voice: str = "Joanna", engine: str = "neural") -> None:
+    def __init__(self, client: Any, voice: str = "Joanna", engine: str = "neural", language: str = "en", foreign: "PollyEngine | None" = None) -> None:
         self._client = client
         self.voice = voice
         self._engine = engine
+        self._language = language
+        self._foreign = foreign  # the other language's voice: it speaks the foreign words itself
         self.native_timing = engine != "generative"  # Polly returns no word marks for generative voices; the recognizer supplies the times
         self.accepts_spans = engine != "long-form"  # <lang> is verified for neural, generative and standard only
 
     def synthesize(self, sentence: str, spans: Sequence[ForeignSpan] = ()) -> SentenceAudio:
-        """With ``spans`` the foreign words are wrapped in SSML <lang> tags. Polly refusing the SSML costs nothing but the tags: the sentence is read plain."""
+        """With ``spans`` the foreign words are spoken in their own language. Default ("voice"): the other language's Polly voice reads them (a native Spanish voice
+        for "El Salvador" inside an English text) and the pieces are joined with a short crossfade. MIXED_LANGUAGE_POLLY=tag instead wraps them in SSML <lang> tags
+        for the same voice (the English voice then only applies Spanish spelling rules and still sounds English). Polly refusing the SSML costs nothing but
+        the tags: the sentence is read plain."""
+        if spans and self.accepts_spans and self._foreign is not None and (os.environ.get("MIXED_LANGUAGE_POLLY") or "voice").lower() != "tag":
+            try:
+                return self._splice(sentence, spans)
+            except Exception as exc:  # noqa: BLE001
+                LOG.warning("Polly voice splice failed (%s); using language tags for this sentence", exc)
         if spans and self.accepts_spans:
             doc = build_ssml(sentence, spans)
             try:
@@ -119,6 +128,14 @@ class PollyEngine:
                     raise
                 LOG.warning("Polly rejected the SSML for a sentence; retrying without language tags: %.60s", sentence)
         return self._speak(sentence, None, 0)
+
+    def _splice(self, sentence: str, spans: Sequence[ForeignSpan]) -> SentenceAudio:
+        def synth(lang: str, text: str) -> SentenceAudio:
+            engine = self if lang == self._language else self._foreign
+            return engine._speak(text, None, 0)  # type: ignore[union-attr]
+
+        both_timed = self.native_timing and self._foreign.native_timing  # type: ignore[union-attr]
+        return splice_sentence(sentence, spans, self._language, synth, base_timed=both_timed, foreign_timed=both_timed)
 
     def _speak(self, text: str, doc: SsmlDoc | None, applied: int) -> SentenceAudio:
         audio = self._audio(text, doc)

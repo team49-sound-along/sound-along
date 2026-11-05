@@ -11,7 +11,7 @@ const { call } = ctx;
 
 describe("the curated Polly voice list", () => {
   test("has the requested US English and US/Mexican Spanish voices, no UK, Australian, Indian or Castilian ones", () => {
-    assert.deepEqual(polly.filter((v) => v.lang === "en").map((v) => v.id).sort(), ["Danielle", "Gregory", "Ivy", "Joanna", "Joey", "Justin", "Kendra", "Kevin", "Kimberly", "Matthew", "Ruth", "Salli", "Stephen"]);
+    assert.deepEqual(polly.filter((v) => v.lang === "en").map((v) => v.id).sort(), ["Danielle", "Gregory", "Joanna", "Joey", "Kendra", "Kimberly", "Matthew", "Ruth", "Salli", "Stephen"]);
     assert.deepEqual(polly.filter((v) => v.lang === "es").map((v) => v.id).sort(), ["Andres", "Carlos", "Lupe", "Mia", "Pedro"]);
     assert.ok(polly.every((v) => (v.lang === "en" ? v.accent === "en-US" : ["es-US", "es-MX"].includes(v.accent))));
   });
@@ -52,7 +52,7 @@ describe("validation depends on the engine", () => {
     assert.throws(() => parseSettingsPatch({ pollyEngine: "turbo" }, voices), /Voice quality/);
   });
   test("a generative-only voice cannot be picked when it does not exist for that quality", () => {
-    assert.deepEqual(parseSettingsPatch({ ttsEngine: "polly", voice: "Ivy", pollyEngine: "generative" }, voices), { ttsEngine: "polly", voice: "Ivy", pollyEngine: "generative" }); // falls back to neural at run time
+    assert.deepEqual(parseSettingsPatch({ ttsEngine: "polly", voice: "Kendra", pollyEngine: "generative" }, voices), { ttsEngine: "polly", voice: "Kendra", pollyEngine: "generative" }); // falls back to neural at run time
   });
 });
 

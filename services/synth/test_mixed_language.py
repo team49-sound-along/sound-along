@@ -321,3 +321,64 @@ def test_untimed_base_engine_leaves_timing_to_the_recognizer():
 def test_splice_with_only_empty_audio_returns_empty():
     empty = lambda lang, text: SentenceAudio(np.zeros(0, dtype=np.float32), ())  # noqa: E731
     assert splice_sentence(SENTENCE, SPANS, "en", empty, True).audio.size == 0
+
+
+# ---- voice splice (the default for Polly): the other language's voice reads the foreign words -------------------------------------------------
+class VoiceFake(FakePolly):
+    """Records which voice each request used and returns word marks for plain text."""
+
+    def synthesize_speech(self, **kw):
+        self.calls.append(kw)
+        if kw["OutputFormat"] == "pcm":
+            return {"AudioStream": io.BytesIO(self.pcm)}
+        words, cursor, marks = [w for w in kw["Text"].split() if any(c.isalnum() for c in w)], 0, []  # Polly marks words, never lone punctuation
+        for n, word in enumerate(words):
+            i = kw["Text"].index(word, cursor)
+            marks.append({"time": n * 300, "type": "word", "start": i, "end": i + len(word), "value": word})
+            cursor = i + len(word)
+        return {"AudioStream": io.BytesIO("\n".join(json.dumps(m) for m in marks).encode())}
+
+
+def spliced_engine(client):
+    foreign = PollyEngine(client, voice="Lupe", engine="neural", language="es")
+    return PollyEngine(client, voice="Joanna", engine="neural", language="en", foreign=foreign)
+
+
+def test_the_foreign_words_are_read_by_the_other_languages_voice_not_by_a_language_tag(monkeypatch):
+    monkeypatch.delenv("MIXED_LANGUAGE_POLLY", raising=False)
+    client = VoiceFake()
+    out = spliced_engine(client).synthesize(SENTENCE, spans=SPANS)
+    voices = [(c["VoiceId"], c["Text"]) for c in client.calls if c["OutputFormat"] == "pcm"]
+    assert ("Lupe", "La Calabiuza") in voices and ("Lupe", "El Salvador") in voices
+    assert any(v == "Joanna" and t.startswith("It is called") for v, t in voices)
+    assert all(c["TextType"] == "text" for c in client.calls), "no SSML tags in this mode"
+    assert [t.text for t in out.tokens] == ["It", "is", "called", "La", "Calabiuza", "in", "El", "Salvador"]
+    starts = [t.start_s for t in out.tokens]
+    assert starts == sorted(starts) and all(s is not None for s in starts), "every word, foreign ones too, has its own time, in order"
+    assert out.spans_applied == 2
+
+
+def test_the_tag_mode_switch_brings_the_ssml_path_back(monkeypatch):
+    monkeypatch.setenv("MIXED_LANGUAGE_POLLY", "tag")
+    client = FakePolly(recorded_marks)
+    spliced_engine(client).synthesize(SENTENCE, spans=SPANS)
+    assert all(c["TextType"] == "ssml" for c in client.calls)
+
+
+def test_a_failed_splice_falls_back_to_tags_instead_of_losing_the_sentence(monkeypatch):
+    monkeypatch.delenv("MIXED_LANGUAGE_POLLY", raising=False)
+
+    class Flaky(FakePolly):
+        def synthesize_speech(self, **kw):
+            if kw["TextType"] == "text" and kw["VoiceId"] == "Lupe":
+                raise RuntimeError("Lupe is unavailable")
+            return super().synthesize_speech(**kw)
+
+    out = spliced_engine(Flaky(recorded_marks)).synthesize(SENTENCE, spans=SPANS)
+    assert out.audio.size and out.spans_applied == 2
+
+
+def test_a_sentence_without_foreign_words_is_read_by_the_base_voice_only():
+    client = VoiceFake()
+    spliced_engine(client).synthesize("It is a nice day.", spans=())
+    assert {c["VoiceId"] for c in client.calls} == {"Joanna"}

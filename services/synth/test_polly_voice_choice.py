@@ -13,7 +13,7 @@ API_VOICES = Path(__file__).resolve().parents[1] / "api" / "config" / "polly-voi
 
 def test_the_generator_table_matches_the_settings_list_voice_for_voice():
     listed = json.loads(API_VOICES.read_text())
-    assert len(listed) >= 18
+    assert len(listed) >= 15
     for v in listed:
         known = POLLY_VOICES[canonical_voice(v["id"])]
         assert known["lang"] == v["accent"], v["id"]
@@ -44,7 +44,7 @@ def test_generative_is_used_when_the_voice_supports_it_and_the_job_or_environmen
 
 
 def test_a_voice_without_the_asked_quality_uses_the_one_it_has_instead_of_failing_the_job():
-    assert polly_choice("en", {"voice": "Kevin", "pollyEngine": "generative"}, {}) == ("Kevin", "neural")
+    assert polly_choice("en", {"voice": "Kendra", "pollyEngine": "generative"}, {}) == ("Kendra", "neural")
     assert polly_choice("es", {"voiceEs": "Carlos", "pollyEngine": "neural"}, {}) == ("Carlos", "generative")
 
 

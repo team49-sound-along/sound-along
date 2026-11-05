@@ -69,27 +69,6 @@
   "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
   "bytes": 46412
  },
- "Ivy": {
-  "file": "polly-Ivy.mp3",
-  "engine": "neural",
-  "language": "en-US",
-  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
-  "bytes": 44108
- },
- "Kevin": {
-  "file": "polly-Kevin.mp3",
-  "engine": "neural",
-  "language": "en-US",
-  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
-  "bytes": 41516
- },
- "Justin": {
-  "file": "polly-Justin.mp3",
-  "engine": "neural",
-  "language": "en-US",
-  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
-  "bytes": 44252
- },
  "Lupe": {
   "file": "polly-Lupe.mp3",
   "engine": "neural",

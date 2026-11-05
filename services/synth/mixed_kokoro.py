@@ -1,5 +1,6 @@
 """Splice a sentence from per-language pieces: each foreign span is spoken by the other language's pipeline.
 
+With `foreign_timed` (engines that return word marks for every piece, such as Polly) the foreign words keep their own times as well.
 Pieces are level-matched (mastering.level_match) and joined with a short crossfade, so the sentence stays one continuous
 clip. Word times: the base language's own tokens are shifted to their place in the sentence; the words of a foreign piece get
 tokens WITHOUT times, so the word mapper keeps in step but marks them unaligned instead of guessing (the recognizer pass
@@ -44,7 +45,7 @@ def _shift(token: EngineToken, by: float) -> EngineToken:
     return EngineToken(token.text, None if token.start_s is None else token.start_s + by, None if token.end_s is None else token.end_s + by)
 
 
-def splice_sentence(sentence: str, spans: Sequence[ForeignSpan], base_lang: str, synth: Synth, base_timed: bool) -> SentenceAudio:
+def splice_sentence(sentence: str, spans: Sequence[ForeignSpan], base_lang: str, synth: Synth, base_timed: bool, foreign_timed: bool = False) -> SentenceAudio:
     pieces = [(lang, text.strip()) for lang, text in segments(sentence, spans, base_lang) if text.strip()]
     rendered = [(lang, text, synth(lang, text)) for lang, text in pieces]
     rendered = [r for r in rendered if r[2].audio.size]
@@ -53,7 +54,7 @@ def splice_sentence(sentence: str, spans: Sequence[ForeignSpan], base_lang: str,
     audio, starts = join(level_match([r[2].audio for r in rendered]))
     tokens: list[EngineToken] = []
     for (lang, text, spoken), start in zip(rendered, starts):
-        if lang == base_lang:
+        if lang == base_lang or (foreign_timed and spoken.tokens):  # an engine with word marks of its own (Polly) times the foreign pieces too
             tokens += [_shift(t, start) for t in spoken.tokens]
         else:
             tokens += [EngineToken(word, None, None) for word in text.split()]
