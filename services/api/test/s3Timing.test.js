@@ -4,7 +4,7 @@ import { createS3Timing } from "../src/aws/s3Timing.js";
 import { fakeClient } from "./support/harness.js";
 
 const ID = "2b781dab-4521-40d2-a9b6-ad5f2bb0ba98";
-const body = (doc) => ({ Body: { transformToString: async () => JSON.stringify(doc) } });
+const body = (doc) => ({ Body: { transformToString: async () => JSON.stringify(doc), transformToByteArray: async () => Buffer.from(JSON.stringify(doc)) } });
 
 describe("s3Timing", () => {
   test("reads data/<id>.timing.json once, keeps only language and words, and caches", async () => {
