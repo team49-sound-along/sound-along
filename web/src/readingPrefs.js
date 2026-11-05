@@ -13,7 +13,7 @@ export const CHOICES = Object.freeze({
 const SWITCHES = ["phraseBreaks", "reduceMotion"];
 
 // Defaults follow the research notes: larger text for young readers, roomy spacing, word highlight, phrase breaks on.
-export const DEFAULTS = Object.freeze({ size: "large", font: "standard", spacing: "roomy", highlight: "words", phraseBreaks: true, reduceMotion: false });
+export const DEFAULTS = Object.freeze({ size: "large", font: "standard", spacing: "roomy", highlight: "words", phraseBreaks: false, reduceMotion: false });
 
 const SIZES = { large: "28px", xl: "34px", huge: "40px" };
 const SPACING = {

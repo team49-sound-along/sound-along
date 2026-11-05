@@ -15,13 +15,13 @@ const brokenStorage = {
   setItem() { throw new Error("blocked"); },
 };
 
-test("defaults follow the research: large text, roomy spacing, word highlight, phrase breaks on", () => {
-  assert.deepEqual(DEFAULTS, { size: "large", font: "standard", spacing: "roomy", highlight: "words", phraseBreaks: true, reduceMotion: false });
+test("defaults follow the research: large text, roomy spacing, word highlight, paragraph flow (phrase breaks off, a teacher or student can turn them on)", () => {
+  assert.deepEqual(DEFAULTS, { size: "large", font: "standard", spacing: "roomy", highlight: "words", phraseBreaks: false, reduceMotion: false });
 });
 
 test("sanitize keeps valid values and replaces invalid ones with defaults", () => {
   const result = sanitizePrefs({ size: "huge", font: "comic", spacing: "roomy", highlight: "sentences", phraseBreaks: "yes", reduceMotion: true, extra: 1 });
-  assert.deepEqual(result, { size: "huge", font: "standard", spacing: "roomy", highlight: "sentences", phraseBreaks: true, reduceMotion: true });
+  assert.deepEqual(result, { size: "huge", font: "standard", spacing: "roomy", highlight: "sentences", phraseBreaks: false, reduceMotion: true });
 });
 
 test("sanitize handles non-objects", () => {
