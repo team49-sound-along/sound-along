@@ -104,7 +104,9 @@ Reading is served from static files, so the cost that grows with usage is audio 
 Edit `services/synth/pronunciations.json`: a word and a plain-English respelling (or `/phonemes/`). The passage still shows and highlights the original spelling. `scripts/build_samples.py` lists words the independent transcript heard differently, as candidates.
 
 ## Switching the voice engine
-`TTS_ENGINE=kokoro` (default) or `TTS_ENGINE=polly` (Amazon Polly Neural; needs AWS credentials and bills the text twice, once for audio and once for word marks). The Polly engine is covered by unit tests with a fake client; it has not been run against the real service.
+On AWS the default narration engine is **Amazon Polly** (`-c ttsEngine=polly`, voices Joanna and Lupe, neural), and teachers can choose another Polly voice or the built-in voices (Kokoro and Phonon) per deployment in Settings. Polly bills the text twice (once for audio and once for word marks); requests are paced and retried when the account's rate limit (8 a second) is reached. `TTS_ENGINE=kokoro` runs the open-source voices instead: they work on a laptop and are what the committed sample passages were narrated with, but they do not run reliably inside Lambda (PyTorch cannot read the CPU list there), so the live site uses Polly. A word's teacher pronunciation (a plain respelling or `/IPA/`) works with both engines. Foreign names and words inside a passage are read by the other language's voice (Lupe for a Spanish name in English text).
+
+Everything measured in the quality table above was measured with Kokoro. The same measurements for Polly have not been run yet.
 
 ## License
 MIT for this project's code (`LICENSE`). Third-party components and content are listed in `NOTICE.md`. ReadWorks passage text belongs to ReadWorks.
