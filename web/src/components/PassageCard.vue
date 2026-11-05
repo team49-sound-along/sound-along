@@ -27,7 +27,14 @@ function confirmRemove() {
 </script>
 
 <template>
-  <article class="pcard" :class="{ list }" :aria-labelledby="`p-${passage.id}`" :aria-describedby="`s-${passage.id}`">
+  <article class="pcard" :class="{ list, deletable: canDelete }" :aria-labelledby="`p-${passage.id}`" :aria-describedby="`s-${passage.id}`">
+    <button
+      v-if="canDelete" class="del" type="button" :disabled="busy" :aria-busy="busy" :aria-expanded="confirming"
+      :aria-label="busy ? `Deleting ${passage.title}` : `Delete ${passage.title}`" :title="busy ? 'Deleting…' : 'Delete'"
+      @click="confirming = !confirming"
+    >
+      <Icon name="trash" :size="20" />
+    </button>
     <div class="text">
       <h3 :id="`p-${passage.id}`">{{ passage.title }}</h3>
       <p v-if="isSpanish(passage) || passage.translationLangs?.length" class="badges">
@@ -43,12 +50,6 @@ function confirmRemove() {
       <a v-if="canAssign" class="btn" :href="`#/assignments?passageId=${encodeURIComponent(passage.id)}`" :aria-label="`Assign ${passage.title}`">
         <Icon name="assign" :size="18" /> Assign
       </a>
-      <button
-        v-if="canDelete && !confirming" class="btn ghost" type="button" :disabled="busy"
-        :aria-label="`Delete ${passage.title}`" @click="confirming = true"
-      >
-        <Icon name="trash" :size="18" /> {{ busy ? "Deleting…" : "Delete" }}
-      </button>
     </div>
     <div v-if="canDelete && confirming" class="confirm" role="group" :aria-label="`Confirm delete ${passage.title}`">
       <p class="small">
@@ -64,7 +65,15 @@ function confirmRemove() {
 </template>
 
 <style scoped>
-.pcard { display: flex; flex-direction: column; gap: var(--s2); height: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s3); }
+.pcard { position: relative; display: flex; flex-direction: column; gap: var(--s2); height: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s3); }
+/* Teacher's delete: a red trash icon in the top-right corner (44px touch target). The title keeps clear of it. */
+.del { position: absolute; top: 6px; right: 6px; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid transparent; border-radius: var(--r-sm); background: transparent; color: var(--danger); cursor: pointer; }
+.del:hover, .del[aria-expanded="true"] { background: var(--danger-soft); border-color: var(--danger); }
+.del:focus-visible { outline: 2px solid var(--danger); outline-offset: 2px; }
+.del[disabled] { opacity: 0.55; cursor: not-allowed; }
+.pcard.deletable .text { padding-right: 40px; }
+.pcard.list.deletable { padding-right: 60px; }
+.pcard.list.deletable .text { padding-right: 0; }
 .text { display: grid; gap: 4px; min-width: 0; }
 h3 { font-size: 20px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
@@ -82,6 +91,8 @@ h3 { font-size: 20px; line-height: 1.3; font-weight: 700; overflow-wrap: anywher
   .pcard { padding: var(--s2); }
   .pcard.list { flex-direction: column; align-items: stretch; gap: var(--s2); }
   .pcard.list .actions { flex-wrap: wrap; }
+  .pcard.list.deletable { padding-right: var(--s2); }
+  .pcard.list.deletable .text { padding-right: 40px; }
   .actions .btn { flex: 1 1 auto; }
 }
 </style>
