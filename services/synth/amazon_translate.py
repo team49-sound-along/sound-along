@@ -70,7 +70,9 @@ class AmazonTranslator:
             try:
                 got = self._one(text)
                 if any(got.count(p) != 1 for p in _PLACEHOLDER.findall(text)):
-                    raise ValueError("a protected name was lost")
+                    # A protected name came back changed or missing. The built-in model is NOT used for this (it needs PyTorch, which cannot start on some
+                    # Lambda hosts): the answer is returned as is, and translate_passage sees the lost placeholder and asks again with the real names.
+                    LOG.info("Amazon Translate changed a protected name; the passage code will translate that sentence again unmasked")
                 out[i] = got
             except Exception as err:  # noqa: BLE001 (this sentence goes to the fallback)
                 LOG.warning("Amazon Translate failed for one sentence, using the built-in translator: %s", err)

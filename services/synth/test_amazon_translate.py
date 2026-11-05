@@ -40,11 +40,26 @@ def test_a_failed_or_empty_sentence_uses_the_fallback_and_the_others_keep_amazon
     assert make(c)(["A.", "B.", "C."]) == ["Uno.", "FB B.", "FB C."]
 
 
-def test_a_lost_protected_name_is_not_accepted():
+def test_a_lost_protected_name_is_returned_as_is_and_never_sent_to_the_built_in_model():
     c = FakeClient({"We saw Xqax today.": "Vimos hoy."})
-    assert make(c)(["We saw Xqax today."]) == ["FB We saw Xqax today."]
+    out = make(c)(["We saw Xqax today."])
+    assert out == ["Vimos hoy."], "the passage code sees the missing placeholder and asks again with the real names; the fallback (PyTorch) is not used"
     c2 = FakeClient({"We saw Xqax today.": "Vimos Xqax hoy."})
     assert make(c2)(["We saw Xqax today."]) == ["Vimos Xqax hoy."]
+
+
+def test_translate_passage_recovers_a_lost_name_with_amazon_alone():
+    from translate import translate_passage
+
+    def explode(texts):
+        raise AssertionError("the built-in model must not be needed")
+
+    answers = {"On November 1st, a special tradition happens in Xqax.": "El 1 de noviembre ocurre una tradición especial.",  # the name is lost
+               "On November 1st, a special tradition happens in El Salvador.": "El 1 de noviembre ocurre una tradición especial en El Salvador."}
+    passage = {"title": "T", "language": "en", "content": "<p>On November 1st, a special tradition happens in El Salvador.</p>"}
+    translator = at.AmazonTranslator(FakeClient(answers), "en", "es", explode, clock=lambda: 0.0, sleep=lambda s: None)
+    out = translate_passage(passage, translator, lambda text: ["El Salvador"] if "El Salvador" in text else [])
+    assert "El Salvador" in out.content_html and out.unprotected == [0]
 
 
 def test_a_throttled_request_is_retried_then_succeeds():
