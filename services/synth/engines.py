@@ -53,9 +53,9 @@ def create_engine(
     if chosen == "polly":
         import boto3
 
-        from polly_engine import PollyEngine, polly_voice_for
+        from polly_engine import PollyEngine, polly_choice
 
         client = boto3.client("polly", region_name=os.environ.get("AWS_REGION", "us-west-2"))
-        voice, engine = polly_voice_for(language, os.environ)
+        voice, engine = polly_choice(language, options, os.environ)
         return PollyEngine(client, voice=voice, engine=engine)
     raise ValueError(f"Unknown TTS_ENGINE {chosen!r}. Use 'kokoro', 'phonon' or 'polly'.")
