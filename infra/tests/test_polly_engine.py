@@ -31,7 +31,7 @@ def _generator_env(template: Template) -> dict[str, object]:
 def test_polly_is_the_default_and_kokoro_stays_a_choice() -> None:
     template = _synth(TtsConfig())
     env = _generator_env(template)
-    assert env["TTS_ENGINE"] == "polly" and env["POLLY_VOICE"] == "Joanna" and env["POLLY_VOICE_ES"] == "Lupe"
+    assert env["TTS_ENGINE"] == "polly" and env["POLLY_VOICE"] == "Ruth" and env["POLLY_VOICE_ES"] == "Lupe"
     kokoro = _generator_env(_synth(TtsConfig(engine="kokoro")))
     assert "TTS_ENGINE" not in kokoro and "POLLY_VOICE" not in kokoro  # kokoro is the synth library's own default
     actions = actions_for_roles_starting_with(template, "GeneratorFunctionServiceRole")
@@ -42,7 +42,7 @@ def test_polly_is_the_default_and_kokoro_stays_a_choice() -> None:
 def test_polly_sets_engine_env_and_default_voices() -> None:
     env = _generator_env(_synth(TtsConfig(engine="polly")))
     assert env["TTS_ENGINE"] == "polly"
-    assert env["POLLY_VOICE"] == "Joanna"
+    assert env["POLLY_VOICE"] == "Ruth"
     assert env["POLLY_VOICE_ES"] == "Lupe"
 
 

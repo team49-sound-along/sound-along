@@ -22,7 +22,7 @@ TTS_ENGINE_KOKORO = "kokoro"
 TTS_ENGINE_POLLY = "polly"
 TTS_ENGINES: tuple[str, ...] = (TTS_ENGINE_KOKORO, TTS_ENGINE_POLLY)
 DEFAULT_TTS_ENGINE = TTS_ENGINE_POLLY
-DEFAULT_POLLY_VOICE = "Joanna"
+DEFAULT_POLLY_VOICE = "Ruth"
 DEFAULT_POLLY_VOICE_ES = "Lupe"
 
 # The CMS API listens here on the VM; CloudFront reaches it over plain HTTP (the security group only admits CloudFront).
@@ -188,11 +188,11 @@ POLLY_ENGINES = ("neural", "generative", "long-form", "standard")
 
 
 def parse_polly_voice(value: object, key: str) -> str | None:
-    """An optional Polly voice name (-c pollyVoice=Joanna, -c pollyVoiceEs=Lupe): letters only. None keeps the default."""
+    """An optional Polly voice name (-c pollyVoice=Ruth, -c pollyVoiceEs=Lupe): letters only. None keeps the default."""
     if value is None:
         return None
     if not isinstance(value, str) or not _POLLY_VOICE.match(value):
-        raise ValueError(f'Invalid CDK context "{key}": {value!r}. Letters only, for example Joanna or Lupe.')
+        raise ValueError(f'Invalid CDK context "{key}": {value!r}. Letters only, for example Ruth or Lupe.')
     return value
 
 

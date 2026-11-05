@@ -74,7 +74,7 @@ compares them). Andres is spelled without the accent as the VoiceId (the generat
 
 Where the choice goes: Settings saves `voice` / `voiceEs` (Polly VoiceIds when the engine is Polly) and optionally `pollyEngine` (neural or
 generative). The API refuses a voice that is not offered for the saved engine and language, and treats an open-source voice saved while the engine
-is Polly as the deployment default (POLLY_VOICE / POLLY_VOICE_ES when listed, else Joanna and Lupe). The job carries these settings and
+is Polly as the deployment default (POLLY_VOICE / POLLY_VOICE_ES when listed, else Ruth and Lupe). The job carries these settings and
 `services/synth/engines.py` hands them to `polly_engine.polly_choice`. A voice without the asked quality uses the one it has. Generative voices
 return no word times, so the recognizer times them (the same path as Spanish with Kokoro).
 

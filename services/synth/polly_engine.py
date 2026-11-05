@@ -72,9 +72,9 @@ def _degrade(engine: str, supported: Sequence[str]) -> str:
 
 def polly_choice(language: str, options: Mapping[str, Any], env: Any) -> tuple[str, str]:
     """(voice, engine) for one job. The job's own choice (options voice/voiceEs and pollyEngine, from Settings) wins; otherwise POLLY_VOICE /
-    POLLY_VOICE_ES and POLLY_ENGINE apply, then Joanna / Lupe and neural. With only deployment settings, a voice that cannot use the engine is
+    POLLY_VOICE_ES and POLLY_ENGINE apply, then Ruth / Lupe and neural. With only deployment settings, a voice that cannot use the engine is
     refused here, before any request is billed; with a teacher's choice the voice's own best quality is used instead."""
-    default = (env.get("POLLY_VOICE") or "Joanna") if language == "en" else (env.get("POLLY_VOICE_ES") or "Lupe")
+    default = (env.get("POLLY_VOICE") or "Ruth") if language == "en" else (env.get("POLLY_VOICE_ES") or "Lupe")
     job_voice = _job_voice(language, options)
     voice = job_voice or default
     asked = options.get("pollyEngine")
@@ -130,7 +130,7 @@ def _is_invalid_ssml(exc: Exception) -> bool:
 class PollyEngine:
     name = "polly"
 
-    def __init__(self, client: Any, voice: str = "Joanna", engine: str = "neural", language: str = "en", foreign: "PollyEngine | None" = None,
+    def __init__(self, client: Any, voice: str = "Ruth", engine: str = "neural", language: str = "en", foreign: "PollyEngine | None" = None,
                  respellings: Mapping[str, str] | None = None) -> None:
         self._client = client
         self._rules: dict[str, Rule] = rules_from_respellings(respellings)  # teacher pronunciations: <sub alias> / <phoneme> around those words

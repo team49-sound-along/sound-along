@@ -274,7 +274,7 @@ def ai_layer() -> None:
               sub="optional \u2022 enabled per deploy flag (-c ...)", label_color="#016b5a")
     card(1200, 418, 315, 95, "polly", "Amazon Polly", [
         "ttsEngine=polly (default; kokoro optional)",
-        "Neural voices Joanna (en), Lupe (es)",
+        "Neural voices Ruth (en), Lupe (es)",
         "polly:SynthesizeSpeech only",
     ])
     card(1200, 530, 315, 95, "bedrock", "Amazon Bedrock", [

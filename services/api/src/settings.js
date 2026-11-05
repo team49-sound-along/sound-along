@@ -10,7 +10,7 @@ export const POLLY_ENGINES = Object.freeze(["neural", "generative"]);
 /** The engine Settings starts with: the deployment's (DEFAULT_TTS_ENGINE, "polly" on AWS), else "kokoro", which runs on a laptop with no AWS account. */
 const startingEngine = TTS_ENGINES.includes(process.env.DEFAULT_TTS_ENGINE) ? process.env.DEFAULT_TTS_ENGINE : "kokoro";
 export const DEFAULT_SETTINGS = Object.freeze({ voice: "af_heart", voiceEs: "ef_dora", speed: 0.95, mp3Kbps: 48, ttsEngine: startingEngine });
-const POLLY_FALLBACK = Object.freeze({ voice: "Joanna", voiceEs: "Lupe" });
+const POLLY_FALLBACK = Object.freeze({ voice: "Ruth", voiceEs: "Lupe" });
 const SPEED = { min: 0.7, max: 1.2 };
 const KBPS = { min: 24, max: 128 };
 const CONFIG_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "config");

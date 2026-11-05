@@ -57,7 +57,7 @@ headless Edge or Chrome to render the PNG.
 
 | Service | Enabled by | Use case and permission |
 |---|---|---|
-| **Amazon Polly** | `ttsEngine=polly` | Neural narration with the Joanna (English) and Lupe (Spanish) voices by default. The only permission is `polly:SynthesizeSpeech`. |
+| **Amazon Polly** | `ttsEngine=polly` | Neural narration with the Ruth (English) and Lupe (Spanish) voices by default. The only permission is `polly:SynthesizeSpeech`. |
 | **Amazon Bedrock** | `questionsModel` and/or `translateModel=bedrock:<id>` | LLM question drafting and context-aware translation. `bedrock:InvokeModel` is granted on one model only, or on its `us.` inference profile. Callers pace themselves to stay under about 1 request per second for the account. |
 | **Amazon Translate** | `translateModel=amazon:informal` (default) | Machine translation of passages. The only permission is `translate:TranslateText`. |
 

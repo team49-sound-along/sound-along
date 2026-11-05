@@ -26,7 +26,7 @@ def test_a_job_voice_overrides_the_deployment_default_for_its_language():
 
 
 def test_an_open_source_or_wrong_language_job_voice_falls_back_to_the_deployment_default():
-    assert polly_choice("en", {"voice": "af_heart"}, {}) == ("Joanna", "neural")
+    assert polly_choice("en", {"voice": "af_heart"}, {}) == ("Ruth", "neural")
     assert polly_choice("en", {"voice": "Lupe"}, {"POLLY_VOICE": "Matthew"}) == ("Matthew", "neural")
     assert polly_choice("es", {"voiceEs": "Ruth"}, {}) == ("Lupe", "neural")
     assert polly_choice("es", {"voiceEs": "Carlos"}, {})[0] == "Carlos"

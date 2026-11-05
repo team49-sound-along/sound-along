@@ -89,7 +89,7 @@ def test_the_voice_catalogue_says_which_engine_each_spanish_voice_can_use():
 
 
 def test_voice_and_engine_are_chosen_from_the_language_and_the_environment():
-    assert polly_voice_for("en", {}) == ("Joanna", "neural")
+    assert polly_voice_for("en", {}) == ("Ruth", "neural")
     assert polly_voice_for("es", {}) == ("Lupe", "neural")
     assert polly_voice_for("es", {"POLLY_VOICE_ES": "Sergio", "POLLY_ENGINE": "generative"}) == ("Sergio", "generative")
 

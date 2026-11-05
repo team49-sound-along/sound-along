@@ -59,7 +59,7 @@ describe("validation depends on the engine", () => {
 describe("saved settings that no longer fit the engine", () => {
   test("an open-source voice saved while the engine is Polly falls back to the Polly default", () => {
     const out = effectiveSettings({ ttsEngine: "polly", voice: "phonon_hadley", voiceEs: "ef_dora" }, voices);
-    assert.deepEqual([out.voice, out.voiceEs], ["Joanna", "Lupe"]);
+    assert.deepEqual([out.voice, out.voiceEs], ["Ruth", "Lupe"]);
   });
   test("a Polly voice saved while the engine is built-in falls back to the built-in default", () => {
     const out = effectiveSettings({ ttsEngine: "kokoro", voice: "Ruth", voiceEs: "Mia" }, voices);
@@ -83,12 +83,12 @@ describe("saved settings that no longer fit the engine", () => {
   });
   test("switching the engine in a patch re-resolves the voices", () => {
     const merged = mergeSettings({ ttsEngine: "kokoro", voice: "phonon_hadley", voiceEs: "em_alex" }, { ttsEngine: "polly" }, voices);
-    assert.deepEqual([merged.ttsEngine, merged.voice, merged.voiceEs], ["polly", "Joanna", "Lupe"]);
+    assert.deepEqual([merged.ttsEngine, merged.voice, merged.voiceEs], ["polly", "Ruth", "Lupe"]);
   });
   test("the settings view carries the voices, per-engine defaults and the deployment's voice quality", () => {
     const view = settingsView({ ttsEngine: "polly" }, voices);
     assert.equal(view.voices.length, voices.length);
-    assert.deepEqual(view.voiceDefaults.polly, { voice: "Joanna", voiceEs: "Lupe" });
+    assert.deepEqual(view.voiceDefaults.polly, { voice: "Ruth", voiceEs: "Lupe" });
     assert.deepEqual(view.voiceDefaults.kokoro, { voice: "af_heart", voiceEs: "ef_dora" });
     assert.equal(view.pollyEngine, "neural");
   });
