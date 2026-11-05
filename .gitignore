@@ -20,3 +20,9 @@ samples/cards/images.candidates.json
 
 # one-off photo candidates for word cards (review sheets); only the approved photos in services/synth/word_photos/ are committed
 scripts/_word_photos_work/
+
+# Blind rating keys and objective scores: never commit (they reveal which clip is which voice)
+*rating KEY*
+*rating scores*
+polly-voice-scores*.csv
+polly-voice-rating-key*.csv
