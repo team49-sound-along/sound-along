@@ -1,0 +1,7 @@
+{
+ "version": 1,
+ "rule": "A Polly voice is recommended only when its human listening score is at or above the best reference voice of its language, or within the margin. Written by scripts/apply_polly_ratings.py.",
+ "margin": 0.2,
+ "ratings": {},
+ "recommended": []
+}

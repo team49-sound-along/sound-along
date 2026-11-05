@@ -1,0 +1,209 @@
+[
+ {
+  "id": "Joanna",
+  "label": "Joanna (US female)",
+  "lang": "en",
+  "accent": "en-US",
+  "engine": "polly",
+  "engines": [
+   "neural",
+   "generative"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Ruth",
+  "label": "Ruth (US female)",
+  "lang": "en",
+  "accent": "en-US",
+  "engine": "polly",
+  "engines": [
+   "neural",
+   "generative"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Danielle",
+  "label": "Danielle (US female)",
+  "lang": "en",
+  "accent": "en-US",
+  "engine": "polly",
+  "engines": [
+   "neural",
+   "generative"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Salli",
+  "label": "Salli (US female)",
+  "lang": "en",
+  "accent": "en-US",
+  "engine": "polly",
+  "engines": [
+   "neural",
+   "generative"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Kendra",
+  "label": "Kendra (US female)",
+  "lang": "en",
+  "accent": "en-US",
+  "engine": "polly",
+  "engines": [
+   "neural"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Kimberly",
+  "label": "Kimberly (US female)",
+  "lang": "en",
+  "accent": "en-US",
+  "engine": "polly",
+  "engines": [
+   "neural"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Matthew",
+  "label": "Matthew (US male)",
+  "lang": "en",
+  "accent": "en-US",
+  "engine": "polly",
+  "engines": [
+   "neural",
+   "generative"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Gregory",
+  "label": "Gregory (US male)",
+  "lang": "en",
+  "accent": "en-US",
+  "engine": "polly",
+  "engines": [
+   "neural"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Stephen",
+  "label": "Stephen (US male)",
+  "lang": "en",
+  "accent": "en-US",
+  "engine": "polly",
+  "engines": [
+   "neural",
+   "generative"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Joey",
+  "label": "Joey (US male)",
+  "lang": "en",
+  "accent": "en-US",
+  "engine": "polly",
+  "engines": [
+   "neural"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Ivy",
+  "label": "Ivy (US child, female)",
+  "lang": "en",
+  "accent": "en-US",
+  "engine": "polly",
+  "engines": [
+   "neural"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Kevin",
+  "label": "Kevin (US child, male)",
+  "lang": "en",
+  "accent": "en-US",
+  "engine": "polly",
+  "engines": [
+   "neural"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Justin",
+  "label": "Justin (US child, male)",
+  "lang": "en",
+  "accent": "en-US",
+  "engine": "polly",
+  "engines": [
+   "neural"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Lupe",
+  "label": "Lupe (US Spanish female)",
+  "lang": "es",
+  "accent": "es-US",
+  "engine": "polly",
+  "engines": [
+   "neural",
+   "generative"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Pedro",
+  "label": "Pedro (US Spanish male)",
+  "lang": "es",
+  "accent": "es-US",
+  "engine": "polly",
+  "engines": [
+   "neural"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Carlos",
+  "label": "Carlos (US Spanish male)",
+  "lang": "es",
+  "accent": "es-US",
+  "engine": "polly",
+  "engines": [
+   "generative"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Mia",
+  "label": "Mia (Mexican Spanish female)",
+  "lang": "es",
+  "accent": "es-MX",
+  "engine": "polly",
+  "engines": [
+   "neural",
+   "generative"
+  ],
+  "recommended": false
+ },
+ {
+  "id": "Andres",
+  "label": "Andres (Mexican Spanish male)",
+  "lang": "es",
+  "accent": "es-MX",
+  "engine": "polly",
+  "engines": [
+   "neural",
+   "generative"
+  ],
+  "recommended": false
+ }
+]

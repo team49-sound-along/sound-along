@@ -1,7 +1,7 @@
 import { HttpError, ok, route } from "../http.js";
 import { parseRespelling, parseWord } from "../pronunciations.js";
 import { buildReviewItems } from "../review.js";
-import { effectiveSettings, mergeSettings, parseSettingsPatch } from "../settings.js";
+import { effectiveSettings, mergeSettings, parseSettingsPatch, settingsView } from "../settings.js";
 
 const limited = (limiter) => (req, res, next) =>
   limiter(req.ip) ? next() : next(new HttpError(429, "Too many changes in a short time. Wait a minute and try again."));
@@ -9,7 +9,7 @@ const limited = (limiter) => (req, res, next) =>
 /** Settings, pronunciation fixes and the pronunciation review queue. */
 export function contentRoutes(api, { store, catalog, voices, writeLimiter }) {
   const writes = limited(writeLimiter);
-  const viewOf = (settings) => ({ ...effectiveSettings(settings), voices });
+  const viewOf = (settings) => settingsView(settings, voices);
 
   api.get("/settings", route(async (req, res) => res.json(ok(viewOf(await store.getSettings())))));
 
@@ -17,8 +17,9 @@ export function contentRoutes(api, { store, catalog, voices, writeLimiter }) {
     "/settings",
     writes,
     route(async (req, res) => {
-      const patch = parseSettingsPatch(req.body, voices);
-      const saved = await store.putSettings(mergeSettings(await store.getSettings(), patch));
+      const current = await store.getSettings();
+      const patch = parseSettingsPatch(req.body, voices, effectiveSettings(current, voices).ttsEngine);
+      const saved = await store.putSettings(mergeSettings(current, patch, voices));
       res.json(ok(viewOf(saved)));
     }),
   );

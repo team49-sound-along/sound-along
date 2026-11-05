@@ -14,7 +14,7 @@ import { generationRoutes } from "./routes/generation.js";
 import { createLocalQuestions } from "./questions/localQuestions.js";
 import { questionRoutes } from "./routes/questions.js";
 import { mountLocalRecordingUpload, recordingRoutes } from "./routes/recordings.js";
-import { loadVoices } from "./settings.js";
+import { loadAllVoices } from "./settings.js";
 import { parseAssignmentInput, parseEvent, parseToggle } from "./validate.js";
 
 const PASSAGE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -135,12 +135,12 @@ export function createApp({ store, catalog, jobs, runner, recordings, sources, c
     }),
   );
 
-  generationRoutes(api, { store, jobs, runner, recordings, sources, config, generateLimiter });
+  generationRoutes(api, { store, jobs, runner, recordings, sources, config, generateLimiter, voices: config.voices ?? loadAllVoices() });
   recordingRoutes(api, { recordings, config, writeLimiter });
   ratingRoutes(api, { store, manifest, writeLimiter, config, random });
   questionRoutes(api, { questions, readyList, writeLimiter, logger });
   readAloudRoutes(api, { store, catalog, readyList, passageIds, classIds, writeLimiter, readLimiter, readerInsightsOn: config.readerInsights === true });
-  contentRoutes(api, { store, catalog, voices: config.voices ?? loadVoices(), writeLimiter });
+  contentRoutes(api, { store, catalog, voices: config.voices ?? loadAllVoices(), writeLimiter });
 
   api.get(
     "/jobs/:id",
