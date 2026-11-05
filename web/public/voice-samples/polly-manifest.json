@@ -1,0 +1,128 @@
+{
+ "Joanna": {
+  "file": "polly-Joanna.mp3",
+  "engine": "neural",
+  "language": "en-US",
+  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
+  "bytes": 41084
+ },
+ "Ruth": {
+  "file": "polly-Ruth.mp3",
+  "engine": "neural",
+  "language": "en-US",
+  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
+  "bytes": 43244
+ },
+ "Danielle": {
+  "file": "polly-Danielle.mp3",
+  "engine": "neural",
+  "language": "en-US",
+  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
+  "bytes": 41948
+ },
+ "Salli": {
+  "file": "polly-Salli.mp3",
+  "engine": "neural",
+  "language": "en-US",
+  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
+  "bytes": 45404
+ },
+ "Kendra": {
+  "file": "polly-Kendra.mp3",
+  "engine": "neural",
+  "language": "en-US",
+  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
+  "bytes": 49292
+ },
+ "Kimberly": {
+  "file": "polly-Kimberly.mp3",
+  "engine": "neural",
+  "language": "en-US",
+  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
+  "bytes": 46988
+ },
+ "Matthew": {
+  "file": "polly-Matthew.mp3",
+  "engine": "neural",
+  "language": "en-US",
+  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
+  "bytes": 37484
+ },
+ "Gregory": {
+  "file": "polly-Gregory.mp3",
+  "engine": "neural",
+  "language": "en-US",
+  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
+  "bytes": 37196
+ },
+ "Stephen": {
+  "file": "polly-Stephen.mp3",
+  "engine": "neural",
+  "language": "en-US",
+  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
+  "bytes": 40940
+ },
+ "Joey": {
+  "file": "polly-Joey.mp3",
+  "engine": "neural",
+  "language": "en-US",
+  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
+  "bytes": 46412
+ },
+ "Ivy": {
+  "file": "polly-Ivy.mp3",
+  "engine": "neural",
+  "language": "en-US",
+  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
+  "bytes": 44108
+ },
+ "Kevin": {
+  "file": "polly-Kevin.mp3",
+  "engine": "neural",
+  "language": "en-US",
+  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
+  "bytes": 41516
+ },
+ "Justin": {
+  "file": "polly-Justin.mp3",
+  "engine": "neural",
+  "language": "en-US",
+  "text": "Hello! This is how I sound when I read a story aloud. Today we are going to explore a lighthouse by the sea.",
+  "bytes": 44252
+ },
+ "Lupe": {
+  "file": "polly-Lupe.mp3",
+  "engine": "neural",
+  "language": "es-US",
+  "text": "¡Hola! Así sueno cuando leo un cuento en voz alta. Hoy vamos a explorar un faro junto al mar.",
+  "bytes": 37340
+ },
+ "Pedro": {
+  "file": "polly-Pedro.mp3",
+  "engine": "neural",
+  "language": "es-US",
+  "text": "¡Hola! Así sueno cuando leo un cuento en voz alta. Hoy vamos a explorar un faro junto al mar.",
+  "bytes": 34892
+ },
+ "Carlos": {
+  "file": "polly-Carlos.mp3",
+  "engine": "generative",
+  "language": "es-US",
+  "text": "¡Hola! Así sueno cuando leo un cuento en voz alta. Hoy vamos a explorar un faro junto al mar.",
+  "bytes": 28268
+ },
+ "Mia": {
+  "file": "polly-Mia.mp3",
+  "engine": "neural",
+  "language": "es-MX",
+  "text": "¡Hola! Así sueno cuando leo un cuento en voz alta. Hoy vamos a explorar un faro junto al mar.",
+  "bytes": 36476
+ },
+ "Andres": {
+  "file": "polly-Andres.mp3",
+  "engine": "neural",
+  "language": "es-MX",
+  "text": "¡Hola! Así sueno cuando leo un cuento en voz alta. Hoy vamos a explorar un faro junto al mar.",
+  "bytes": 33020
+ }
+}
