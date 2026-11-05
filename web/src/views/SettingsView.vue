@@ -3,23 +3,27 @@ import { computed, ref, watch } from "vue";
 import StateBlock from "../components/StateBlock.vue";
 import { api } from "../api.js";
 import { useResource } from "../useResource.js";
-import { voicesFor } from "../language.js";
 import VoiceSample from "../components/VoiceSample.vue";
 
 const voiceLabel = (list, id) => list.find((v) => v.id === id)?.label ?? "this voice";
-import { DEFAULT_TTS_ENGINE, KBPS_OPTIONS, SPEED_MAX, SPEED_MIN, SPEED_STEP, TTS_ENGINE_OPTIONS, formatSpeed, isDirty, mbPerMinute, settingsPayload } from "../settings.js";
+import { DEFAULT_POLLY_QUALITY, DEFAULT_TTS_ENGINE, KBPS_OPTIONS, POLLY_QUALITY_OPTIONS, SPEED_MAX, SPEED_MIN, SPEED_STEP, TTS_ENGINE_OPTIONS, formForEngine, formatSpeed, isDirty, mbPerMinute, settingsPayload, voiceGroups, voicesForEngine } from "../settings.js";
 
 const { data, loading, error, reload } = useResource(() => api.settings());
-const form = ref({ voice: "", voiceEs: "", speed: 0.95, mp3Kbps: 48, ttsEngine: DEFAULT_TTS_ENGINE });
+const form = ref({ voice: "", voiceEs: "", speed: 0.95, mp3Kbps: 48, ttsEngine: DEFAULT_TTS_ENGINE, pollyEngine: DEFAULT_POLLY_QUALITY });
 const usesPolly = computed(() => form.value.ttsEngine === "polly");
 const saving = ref(false);
 const saveError = ref("");
 const saved = ref("");
 
-watch(data, (d) => { if (d) form.value = { voice: d.voice, voiceEs: d.voiceEs ?? "", speed: d.speed, mp3Kbps: d.mp3Kbps, ttsEngine: d.ttsEngine ?? DEFAULT_TTS_ENGINE }; }, { immediate: true });
+watch(data, (d) => { if (d) form.value = { voice: d.voice, voiceEs: d.voiceEs ?? "", speed: d.speed, mp3Kbps: d.mp3Kbps, ttsEngine: d.ttsEngine ?? DEFAULT_TTS_ENGINE, pollyEngine: d.pollyEngine ?? DEFAULT_POLLY_QUALITY }; }, { immediate: true });
 const dirty = computed(() => isDirty(data.value, form.value));
-const enVoices = computed(() => voicesFor(data.value?.voices, "en"));
-const esVoices = computed(() => voicesFor(data.value?.voices, "es"));
+const enVoices = computed(() => voicesForEngine(data.value?.voices, form.value.ttsEngine, "en"));
+const esVoices = computed(() => voicesForEngine(data.value?.voices, form.value.ttsEngine, "es"));
+const enGroups = computed(() => voiceGroups(enVoices.value, form.value.ttsEngine));
+const esGroups = computed(() => voiceGroups(esVoices.value, form.value.ttsEngine));
+const engineOf = (list, id) => list.find((v) => v.id === id)?.engine ?? "";
+// Choosing an engine swaps the voice menus; a voice the other engine does not offer becomes that engine's default.
+const chooseEngine = (engine) => { form.value = formForEngine(form.value, engine, data.value?.voices, data.value?.voiceDefaults); };
 const size = computed(() => mbPerMinute(Number(form.value.mp3Kbps)));
 
 async function save() {
@@ -50,37 +54,46 @@ async function save() {
         <fieldset class="field engines">
           <legend>Narration engine</legend>
           <label v-for="e in TTS_ENGINE_OPTIONS" :key="e.id" class="engine" :class="{ on: form.ttsEngine === e.id }">
-            <input v-model="form.ttsEngine" type="radio" name="s-engine" :value="e.id" :aria-describedby="`s-engine-${e.id}`" />
+            <input v-model="form.ttsEngine" type="radio" name="s-engine" :value="e.id" :aria-describedby="`s-engine-${e.id}`" @change="chooseEngine(e.id)" />
             <span>
               <strong>{{ e.label }}</strong>
               <span :id="`s-engine-${e.id}`" class="small muted">{{ e.hint }}</span>
             </span>
           </label>
         </fieldset>
-        <div class="field" :class="{ unused: usesPolly }">
+        <div class="field">
           <label for="s-voice">English voice</label>
           <div class="pickrow">
             <select id="s-voice" v-model="form.voice" class="input" aria-describedby="s-voice-help">
-              <optgroup label="Recommended (passed our listening test)">
-                <option v-for="v in enVoices.filter((x) => x.recommended !== false)" :key="v.id" :value="v.id">{{ v.label }}</option>
-              </optgroup>
-              <optgroup v-if="enVoices.some((x) => x.recommended === false)" label="More voices to try (less natural)">
-                <option v-for="v in enVoices.filter((x) => x.recommended === false)" :key="v.id" :value="v.id">{{ v.label }}</option>
+              <optgroup v-for="g in enGroups" :key="g.label" :label="g.label">
+                <option v-for="v in g.voices" :key="v.id" :value="v.id">{{ v.label }}</option>
               </optgroup>
             </select>
-            <VoiceSample :voice="form.voice" :label="voiceLabel(enVoices, form.voice)" autoplay />
+            <VoiceSample :voice="form.voice" :engine="engineOf(enVoices, form.voice)" :label="voiceLabel(enVoices, form.voice)" autoplay />
           </div>
           <p id="s-voice-help" class="small muted">Choosing a voice plays a short sample. Press Hear it to play it again.</p>
         </div>
-        <div v-if="esVoices.length" class="field" :class="{ unused: usesPolly }">
+        <div v-if="esVoices.length" class="field">
           <label for="s-voice-es">Spanish voice</label>
           <div class="pickrow">
             <select id="s-voice-es" v-model="form.voiceEs" class="input">
-              <option v-for="v in esVoices" :key="v.id" :value="v.id">{{ v.label }}</option>
+              <optgroup v-for="g in esGroups" :key="g.label" :label="g.label">
+                <option v-for="v in g.voices" :key="v.id" :value="v.id">{{ v.label }}</option>
+              </optgroup>
             </select>
-            <VoiceSample :voice="form.voiceEs" :label="voiceLabel(esVoices, form.voiceEs)" autoplay />
+            <VoiceSample :voice="form.voiceEs" :engine="engineOf(esVoices, form.voiceEs)" :label="voiceLabel(esVoices, form.voiceEs)" autoplay />
           </div>
         </div>
+        <fieldset v-if="usesPolly" class="field engines" data-testid="polly-quality">
+          <legend>Voice quality</legend>
+          <label v-for="q in POLLY_QUALITY_OPTIONS" :key="q.id" class="engine" :class="{ on: form.pollyEngine === q.id }">
+            <input v-model="form.pollyEngine" type="radio" name="s-quality" :value="q.id" :aria-describedby="`s-quality-${q.id}`" />
+            <span>
+              <strong>{{ q.label }}</strong>
+              <span :id="`s-quality-${q.id}`" class="small muted">{{ q.hint }}</span>
+            </span>
+          </label>
+        </fieldset>
         <div class="field">
           <label for="s-speed">Speaking speed: <span class="num value">{{ formatSpeed(form.speed) }}</span></label>
           <input id="s-speed" v-model.number="form.speed" class="range" type="range" :min="SPEED_MIN" :max="SPEED_MAX" :step="SPEED_STEP" aria-describedby="s-speed-help" :aria-valuetext="formatSpeed(form.speed)" />
@@ -117,5 +130,4 @@ async function save() {
 .engine.on { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
 .engine input { margin-top: 3px; accent-color: var(--primary); }
 .engine > span { display: grid; gap: 2px; }
-.unused { opacity: 0.55; } /* still editable: they apply again when the open-source engine is chosen */
 </style>

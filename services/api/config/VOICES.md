@@ -61,3 +61,30 @@ to the image's library versions, MeloTTS. Open-source Piper was also left out fo
   and long-form Alba and Raúl. Polly works locally too when the machine has AWS credentials that may call `polly:SynthesizeSpeech`.
 - **Next step, once the sandbox is connected:** `python3 scripts/polly_rating_pack.py --dry-run` (14 clips, about $0.33), then run it without `--dry-run`, send the `clips` folder to raters, and keep the key file.
   The winners are then added to `voices.json` as Polly voices chosen by voice id, like the Phonon voices, with a "Hear it" sample each.
+  (Superseded by the section below: Polly voices now live in `polly-voices.json`, and `scripts/polly_voice_rating_pack.py` also includes our existing voices as references.)
+
+## Amazon Polly voices (Settings, when the engine is Amazon Polly)
+The open-source voices above cannot run on AWS Lambda, so a deployment that narrates with Amazon Polly offers Polly's voices instead.
+`polly-voices.json` is the curated list: US English (Joanna, Ruth, Danielle, Salli, Kendra, Kimberly, Matthew, Gregory, Stephen, Joey, and the
+child voices Ivy, Kevin, Justin) and Spanish (Lupe, Pedro, Carlos for US Spanish; Mia, Andres for Mexican Spanish). No UK, Australian,
+Indian English or Castilian Spanish voice is offered. Each entry has `engine: "polly"`, `accent` (en-US, es-US, es-MX) and `engines` (neural,
+generative). Labels state only gender and accent. The engine lists are from the AWS voice tables as we know them, not re-verified against the
+live service: check the current AWS "Available voices" page, and fix `engines` here and in `services/synth/polly_engine.py` together (a test
+compares them). Andres is spelled without the accent as the VoiceId (the generator also accepts Andrés).
+
+Where the choice goes: Settings saves `voice` / `voiceEs` (Polly VoiceIds when the engine is Polly) and optionally `pollyEngine` (neural or
+generative). The API refuses a voice that is not offered for the saved engine and language, and treats an open-source voice saved while the engine
+is Polly as the deployment default (POLLY_VOICE / POLLY_VOICE_ES when listed, else Joanna and Lupe). The job carries these settings and
+`services/synth/engines.py` hands them to `polly_engine.polly_choice`. A voice without the asked quality uses the one it has. Generative voices
+return no word times, so the recognizer times them (the same path as Spanish with Kokoro).
+
+### When is a Polly voice "recommended"?
+Never until people have listened. The existing voices (Heart, Hadley, Everly, Bryony, Trevor in English; Dora and Alex in Spanish) are the benchmark.
+1. `python3 scripts/polly_voice_rating_pack.py` makes a blind pack: the references and every Polly voice/engine read the same sentences, random codes,
+   and the answer key is a separate git-ignored CSV. Add `--score` for a predicted-naturalness (UTMOS) table; it is a proxy and English-trained.
+2. At least 3 raters score each clip 1-5 for naturalness; put the scores in `ratings.json` as `{"<code>": [4, 5, 3]}`.
+3. `python3 scripts/apply_polly_ratings.py --ratings ratings.json --key "<key csv>"` writes `polly-voice-ratings.json`.
+
+**Rule:** a Polly voice is recommended only if one of its engines scores at or above the best reference voice of its language, or within
+0.2 points of it (`--margin`). Recommended voices are listed first in Settings; the rest sit under "More voices". Until a listening test is
+applied, every Polly voice is in one plain list with no quality claim.

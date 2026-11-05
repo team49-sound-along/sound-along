@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Sequence
+import unicodedata
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 
@@ -24,31 +25,72 @@ POLLY_PCM_RATE = 16_000  # the highest PCM rate Polly offers for neural voices
 # for a generative voice the audio comes from Polly and the word times from the recognizer (flow.run_flow), exactly as for Kokoro in Spanish.
 POLLY_VOICES: dict[str, dict[str, Any]] = {
     "Joanna": {"lang": "en-US", "engines": ("neural", "generative", "long-form")},
+    "Danielle": {"lang": "en-US", "engines": ("neural", "generative", "long-form")},
+    "Salli": {"lang": "en-US", "engines": ("neural", "generative")},
+    "Kendra": {"lang": "en-US", "engines": ("neural",)},
+    "Kimberly": {"lang": "en-US", "engines": ("neural",)},
+    "Stephen": {"lang": "en-US", "engines": ("neural", "generative")},
+    "Gregory": {"lang": "en-US", "engines": ("neural", "long-form")},
+    "Joey": {"lang": "en-US", "engines": ("neural",)},
+    "Ivy": {"lang": "en-US", "engines": ("neural",)},
+    "Kevin": {"lang": "en-US", "engines": ("neural",)},
+    "Justin": {"lang": "en-US", "engines": ("neural",)},
     "Matthew": {"lang": "en-US", "engines": ("neural", "generative", "long-form")},
     "Ruth": {"lang": "en-US", "engines": ("neural", "generative", "long-form")},
     "Lupe": {"lang": "es-US", "engines": ("neural", "generative")},
     "Pedro": {"lang": "es-US", "engines": ("neural",)},
     "Carlos": {"lang": "es-US", "engines": ("generative",)},
     "Mia": {"lang": "es-MX", "engines": ("neural", "generative")},
-    "Andrés": {"lang": "es-MX", "engines": ("neural", "generative")},
+    "Andres": {"lang": "es-MX", "engines": ("neural", "generative")},
     "Lucia": {"lang": "es-ES", "engines": ("neural", "generative")},
     "Sergio": {"lang": "es-ES", "engines": ("neural", "generative")},
     "Alba": {"lang": "es-ES", "engines": ("long-form",)},
-    "Raúl": {"lang": "es-ES", "engines": ("long-form",)},
+    "Raul": {"lang": "es-ES", "engines": ("long-form",)},
 }
 ENGINES = ("neural", "generative", "long-form", "standard")
 
 
-def polly_voice_for(language: str, env: Any) -> tuple[str, str]:
-    """(voice, engine) from POLLY_VOICE / POLLY_VOICE_ES and POLLY_ENGINE. A voice that cannot use the chosen engine is refused here, before any request is billed."""
-    voice = (env.get("POLLY_VOICE") or "Joanna") if language == "en" else (env.get("POLLY_VOICE_ES") or "Lupe")
-    engine = (env.get("POLLY_ENGINE") or "neural").lower()
+def canonical_voice(voice: str) -> str:
+    """The ASCII VoiceId: Polly's accented display names (Andrés, Raúl) and their ASCII ids are the same voice."""
+    return "".join(c for c in unicodedata.normalize("NFD", voice) if unicodedata.category(c) != "Mn")
+
+
+def _job_voice(language: str, options: Mapping[str, Any]) -> str | None:
+    """The voice the teacher chose for this language, when it is a Polly voice that speaks it (an open-source id saved earlier is ignored)."""
+    chosen = options.get("voice" if language == "en" else "voiceEs")
+    known = POLLY_VOICES.get(canonical_voice(chosen)) if isinstance(chosen, str) else None
+    return canonical_voice(chosen) if known and known["lang"].startswith(language) else None
+
+
+def _degrade(engine: str, supported: Sequence[str]) -> str:
+    """The asked-for quality when the voice has it, else the voice's neural or generative one: a teacher's choice never fails a job."""
+    if engine == "standard" or engine in supported:
+        return engine
+    return next((e for e in ("neural", "generative") if e in supported), supported[0])
+
+
+def polly_choice(language: str, options: Mapping[str, Any], env: Any) -> tuple[str, str]:
+    """(voice, engine) for one job. The job's own choice (options voice/voiceEs and pollyEngine, from Settings) wins; otherwise POLLY_VOICE /
+    POLLY_VOICE_ES and POLLY_ENGINE apply, then Joanna / Lupe and neural. With only deployment settings, a voice that cannot use the engine is
+    refused here, before any request is billed; with a teacher's choice the voice's own best quality is used instead."""
+    default = (env.get("POLLY_VOICE") or "Joanna") if language == "en" else (env.get("POLLY_VOICE_ES") or "Lupe")
+    job_voice = _job_voice(language, options)
+    voice = job_voice or default
+    asked = options.get("pollyEngine")
+    engine = str(asked or env.get("POLLY_ENGINE") or "neural").lower()
     if engine not in ENGINES:
-        raise ValueError(f"Unknown POLLY_ENGINE {engine!r}. Use one of {', '.join(ENGINES)}.")
-    known = POLLY_VOICES.get(voice)
+        raise ValueError(f"Unknown {'pollyEngine' if asked else 'POLLY_ENGINE'} {engine!r}. Use one of {', '.join(ENGINES)}.")
+    known = POLLY_VOICES.get(canonical_voice(voice))
     if known and engine != "standard" and engine not in known["engines"]:
-        raise ValueError(f"Polly voice {voice} cannot use the {engine} engine (it supports {', '.join(known['engines'])}).")
-    return voice, engine
+        if not (job_voice or asked):
+            raise ValueError(f"Polly voice {voice} cannot use the {engine} engine (it supports {', '.join(known['engines'])}).")
+        engine = _degrade(engine, known["engines"])
+    return canonical_voice(voice) if known else voice, engine
+
+
+def polly_voice_for(language: str, env: Any) -> tuple[str, str]:
+    """(voice, engine) from the deployment's POLLY_VOICE / POLLY_VOICE_ES and POLLY_ENGINE alone."""
+    return polly_choice(language, {}, env)
 
 
 def _is_invalid_ssml(exc: Exception) -> bool:
